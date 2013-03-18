@@ -1,0 +1,5 @@
+.git*            export-ignore
+.hooks*          export-ignore
+
+*                text=auto
+*                whitespace=tab-in-indent
