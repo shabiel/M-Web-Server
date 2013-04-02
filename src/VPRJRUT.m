@@ -1,6 +1,9 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-04-02  7:25 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
+ ; Various mods to support GT.M. See diff with original for full listing.
+ ;
+UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
  ;
 LTRIM(%X) ; Trim whitespace from left side of string
@@ -159,7 +162,7 @@ SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
  I $L($G(MESSAGE)) S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"domain")=MESSAGE
  Q
  ;
- ; Cache specific functions
+ ; Cache specific functions (selected one support GT.M too!)
  ;
 LCLHOST() ; return TRUE if the peer connection is localhost
  I $E($I,1,5)'="|TCP|" Q 0
@@ -173,38 +176,223 @@ LCLHOST() ; return TRUE if the peer connection is localhost
  Q 0
  ;
 HASH(X) ; return CRC-32 of string contained in X
- Q $ZCRC(X,7) ; return the CRC-32 value
+ Q $$CRC32(X) ; return the CRC-32 value; works on both Cache 
  ;
 GMT() ; return HTTP date string (this is really using UTC instead of GMT)
  N TM,DAY
- S TM=$ZTIMESTAMP,DAY=$ZDATETIME(TM,11)
- Q $P(DAY," ")_", "_$ZDATETIME(TM,2)_" GMT"
+ I $$UP($ZV)["CACHE" D  Q $P(DAY," ")_", "_$ZDATETIME(TM,2)_" GMT"
+ . S TM=$ZTIMESTAMP,DAY=$ZDATETIME(TM,11)
+ ;
+ N OUT
+ I $$UP($ZV)["GT.M" D  Q OUT
+ . N D S D="datetimepipe"
+ . N OLDIO S OLDIO=$I
+ . O D:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
+ . U D R OUT:1 
+ . U OLDIO C D
+ ;
+ QUIT "UNIMPLEMENTED"
  ;
 SYSID() ; return a likely unique system ID
- N X
- S X=$ZUTIL(110)_":"_$G(^VPRHTTP("port"),9080)
- Q $ZHEX($ZCRC(X,6))
+ S X=$SYSTEM_":"_$G(^VPRHTTP("port"),9080) ; VPR web server port number
+ QUIT $$CRC16HEX(X) ; return CRC-16 in hex
+ ;
+ ;
+CRC16HEX(X) ; return CRC-16 in hexadecimal
+ QUIT $$BASE($$CRC16(X),10,16) ; return CRC-16 in hex
+ ;
+ ;
+CRC32HEX(X) ; return CRC-32 in hexadecimal
+ QUIT $$BASE($$CRC32(X),10,16) ; return CRC-32 in hex
+ ;
+ ;
  ;
 DEC2HEX(NUM) ; return a decimal number as hex
- Q $ZHEX(NUM)
+ Q $$BASE(NUM,10,16)
+ ;Q $ZHEX(NUM)
  ;
 HEX2DEC(HEX) ; return a hex number as decimal
- Q $ZHEX(HEX_"H")
+ Q $$BASE(HEX,16,10)
+ ;Q $ZHEX(HEX_"H")
  ;
 WR4HTTP ; open file to save HTTP response
- O "VPRJT.TXT":"WNS"  ; open for writing
+ I $$UP($ZV)["CACHE" O "VPRJT.TXT":"WNS"
+ I $$UP($ZV)["GT.M" O "VPRJT.TXT":(newversion)
  U "VPRJT.TXT"
  Q
 RD4HTTP() ; read HTTP body from file and return as value
  N X
- O "VPRJT.TXT":"RSD" ; for reading and delete when done
+ I $$UP($ZV)["CACHE" O "VPRJT.TXT":"RSD" ; read sequential and delete afterwards
+ I $$UP($ZV)["GT.M" O "VPRJT.TXT":(readonly:rewind) ; read sequential from the top.
  U "VPRJT.TXT"
- F  R X:1 Q:'$L(X)  ; read lines until there is an empty one
+ F  R X:1 S X=$TR(X,$C(13)) Q:'$L(X)  ; read lines until there is an empty one ($TR for GT.M)
  R X:2              ; now read the JSON object
- D C4HTTP
+ I $$UP($ZV)["GT.M" C "VPRJT.TXT":(delete) U $P
+ I $$UP($ZV)["CACHE" D C4HTTP
  Q X
  ;
 C4HTTP ; close file used for HTTP response
- C "VPRJT.TXT"
- U $P
+ C "VPRJT.TXT" U $P
  Q
+CRC32(string,seed) ;
+ ; Polynomial X**32 + X**26 + X**23 + X**22 +
+ ;          + X**16 + X**12 + X**11 + X**10 +
+ ;          + X**8  + X**7  + X**5  + X**4 +
+ ;          + X**2  + X     + 1
+ N I,J,R
+ I '$D(seed) S R=4294967295
+ E  I seed'<0,seed'>4294967295 S R=4294967295-seed
+ E  S $ECODE=",M28,"
+ F I=1:1:$L(string) D
+ . S R=$$XOR($A(string,I),R,8)
+ . F J=0:1:7 D
+ . . I R#2 S R=$$XOR(R\2,3988292384,32)
+ . . E  S R=R\2
+ . . Q
+ . Q
+ Q 4294967295-R
+XOR(a,b,w) N I,M,R
+ S R=b,M=1
+ F I=1:1:w D
+ . S:a\M#2 R=R+$S(R\M#2:-M,1:M)
+ . S M=M+M
+ . Q
+ Q R
+BASE(%X1,%X2,%X3) ;Convert %X1 from %X2 base to %X3 base
+ I (%X2<2)!(%X2>16)!(%X3<2)!(%X3>16) Q -1
+ Q $$CNV($$DEC(%X1,%X2),%X3)
+DEC(N,B) ;Cnv N from B to 10
+ Q:B=10 N N I,Y S Y=0
+ F I=1:1:$L(N) S Y=Y*B+($F("0123456789ABCDEF",$E(N,I))-2)
+ Q Y
+CNV(N,B) ;Cnv N from 10 to B
+ Q:B=10 N N I,Y S Y=""
+ F I=1:1 S Y=$E("0123456789ABCDEF",N#B+1)_Y,N=N\B Q:N<1
+ Q Y
+CRC16(string,seed) ;
+ ; Polynomial x**16 + x**15 + x**2 + x**0
+ N I,J,R
+ I '$D(seed) S R=0
+ E  I seed'<0,seed'>65535 S R=seed\1
+ E  S $ECODE=",M28,"
+ F I=1:1:$L(string) D
+ . S R=$$XOR($A(string,I),R,8)
+ . F J=0:1:7 D
+ . . I R#2 S R=$$XOR(R\2,40961,16)
+ . . E  S R=R\2
+ . . Q
+ . Q
+ Q R
+ ;
+HTFM(%H,%F) ;$H to FM, %F=1 for date only
+ N X,%,%T,%Y,%M,%D S:'$D(%F) %F=0
+ I $$HR(%H) Q -1 ;Check Range
+ I '%F,%H[",0" S %H=(%H-1)_",86400"
+ D YMD S:%T&('%F) X=X_%T
+ Q X
+YMD ;21608 = 28 feb 1900, 94657 = 28 feb 2100, 141 $H base year
+ S %=(%H>21608)+(%H>94657)+%H-.1,%Y=%\365.25+141,%=%#365.25\1
+ S %D=%+306#(%Y#4=0+365)#153#61#31+1,%M=%-%D\29+1
+ S X=%Y_"00"+%M_"00"+%D,%=$P(%H,",",2)
+ S %T=%#60/100+(%#3600\60)/100+(%\3600)/100 S:'%T %T=".0"
+ Q
+HR(%V) ;Check $H in valid range
+ Q (%V<2)!(%V>99999)
+ ;
+HTE(%H,%F) ;$H to external
+ Q:$$HR(%H) %H ;Range Check
+ N Y,%T,%R
+ S %F=$G(%F,1) S Y=$$HTFM(%H,0)
+T2 S %T="."_$E($P(Y,".",2)_"000000",1,7)
+ D FMT Q %R
+FMT ;
+ N %G S %G=+%F
+ G F1:%G=1,F2:%G=2,F3:%G=3,F4:%G=4,F5:%G=5,F6:%G=6,F7:%G=7,F8:%G=8,F9:%G=9,F1
+ Q
+ ;
+F1 ;Apr 10, 2002
+ S %R=$P($$M()," ",$S($E(Y,4,5):$E(Y,4,5)+2,1:0))_$S($E(Y,4,5):" ",1:"")_$S($E(Y,6,7):$E(Y,6,7)_", ",1:"")_($E(Y,1,3)+1700)
+ ;
+TM ;All formats come here to format Time.
+ N %,%S Q:%T'>0!(%F["D")
+ I %F'["P" S %R=%R_"@"_$E(%T,2,3)_":"_$E(%T,4,5)_$S(%F["M":"",$E(%T,6,7)!(%F["S"):":"_$E(%T,6,7),1:"")
+ I %F["P" D
+ . S %R=%R_" "_$S($E(%T,2,3)>12:$E(%T,2,3)-12,+$E(%T,2,3)=0:"12",1:+$E(%T,2,3))_":"_$E(%T,4,5)_$S(%F["M":"",$E(%T,6,7)!(%F["S"):":"_$E(%T,6,7),1:"")
+ . S %R=%R_$S($E(%T,2,7)<120000:" am",$E(%T,2,3)=24:" am",1:" pm")
+ . Q
+ Q
+ ;Return Month names
+M() Q "  Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec"
+ ;
+F2 ;4/10/02
+ S %R=$J(+$E(Y,4,5),2)_"/"_$J(+$E(Y,6,7),2)_"/"_$E(Y,2,3)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F3 ;10/4/02
+ S %R=$J(+$E(Y,6,7),2)_"/"_$J(+$E(Y,4,5),2)_"/"_$E(Y,2,3)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F4 ;02/4/10
+ S %R=$E(Y,2,3)_"/"_$J(+$E(Y,4,5),2)_"/"_$J(+$E(Y,6,7),2)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F5 ;4/10/2002
+ S %R=$J(+$E(Y,4,5),2)_"/"_$J(+$E(Y,6,7),2)_"/"_($E(Y,1,3)+1700)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F6 ;10/4/2002
+ S %R=$J(+$E(Y,6,7),2)_"/"_$J(+$E(Y,4,5),2)_"/"_($E(Y,1,3)+1700)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F7 ;2002/4/10
+ S %R=($E(Y,1,3)+1700)_"/"_$J(+$E(Y,4,5),2)_"/"_$J(+$E(Y,6,7),2)
+ S:%F["Z" %R=$TR(%R," ","0") S:%F'["F" %R=$TR(%R," ")
+ G TM
+F8 ;10 Apr 02
+ S %R=$S($E(Y,6,7):$E(Y,6,7)_" ",1:"")_$P($$M()," ",$S($E(Y,4,5):$E(Y,4,5)+2,1:0))_$S($E(Y,4,5):" ",1:"")_$E(Y,2,3)
+ G TM
+F9 ;10 Apr 2002
+ S %R=$S($E(Y,6,7):$E(Y,6,7)_" ",1:"")_$P($$M()," ",$S($E(Y,4,5):$E(Y,4,5)+2,1:0))_$S($E(Y,4,5):" ",1:"")_($E(Y,1,3)+1700)
+ G TM
+ ;
+PARSE10(BODY,PARSED) ; Parse BODY by CRLF and return the array in PARSED
+ ; Input: BODY: By Ref - BODY to be parsed
+ ; Output: PARSED: By Ref - PARSED Output
+ ; E.g. if BODY is ABC_CRLF_DEF_CRLF, PARSED is PARSED(1)="ABC",PARSED(2)="DEF",PARSED(3)=""
+ N LL S LL="" ; Last line
+ N L S L=1 ; Line counter.
+ K PARSED ; Kill return array
+ N I S I="" F  S I=$O(BODY(I)) Q:'I  D  ; For each 4000 character block
+ . N J F J=1:1:$L(BODY(I),$C(10)) D  ; For each line
+ . . S:(J=1&(L>1)) L=L-1 ; Replace old line (see 2 lines below)
+ . . S PARSED(L)=$TR($P(BODY(I),$C(10),J),$C(13)) ; Get line; Take CR out if there.
+ . . S:(J=1&(L>1)) PARSED(L)=LL_PARSED(L) ; If first line, append the last line before it and replace it.
+ . . S LL=PARSED(L) ; Set last line
+ . . S L=L+1 ; LineNumber++
+ QUIT
+ ;
+ADDCRLF(RESULT) ; Add CRLF to each line
+ I $E($G(RESULT))="^" D  QUIT  ; Global
+ . N V,QL S V=RESULT,QL=$QL(V) F  S V=$Q(@V) Q:V=""  Q:$NA(@V,QL)'=RESULT  S @V=@V_$C(13,10)
+ E  D  ; Local variable passed by reference
+ . I $D(RESULT)#2 S RESULT=RESULT_$C(13,10)
+ . N V S V=$NA(RESULT) F  S V=$Q(@V) Q:V=""  S @V=@V_$C(13,10)
+ QUIT
+ ;
+TESTCRLF
+ S RESULT=$NA(^TMP($J))
+ K @RESULT
+ S ^TMP($J,1)="HELLO"
+ S ^TMP($J,2)="WORLD"
+ S ^TMP($J,3)=""
+ D ADDCRLF(.RESULT)
+ ZWRITE @RESULT@(*)
+ K RESULT
+ S RESULT="HELLO"
+ S RESULT(1)="WORLD"
+ S RESULT(2)="BYE"
+ S RESULT(3)=""
+ D ADDCRLF(.RESULT)
+ ZWRITE RESULT
+ QUIT
+

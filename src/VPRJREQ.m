@@ -1,7 +1,8 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-04-01  9:35 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Listener Process ---------------------------------------
+ ; Mods by VEN/SMH for GT.M support: Labels GTMSTL, GTMLNX, 2-3 changes for Use command
  ;
 START(TCPPORT) ; set up listening for connections
  S ^VPRHTTP(0,"listener")="running"
@@ -19,6 +20,17 @@ LOOP ; wait for connection, spawn process to handle it
  I $ZA\8196#2=1 W *-2 ;job failed to clear bit
  G LOOP
  ;
+GTMSTL(PORT) ; GT.M single threaded listener - VEN/SMH; but this won't work as below uses $P.
+ S ^VPRHTTP(0,"listener")="running"
+ N EXITRULE S EXITRULE="I $E(^VPRHTTP(0,""listener"",1,4)=""stop"") S ZISQUIT=1,^VPRHTTP(0,""listener"")=""stopped"""
+ D LISTEN^%ZISTCP($G(PORT,9080),"CHILD^VPRJREQ",EXITRULE)
+ QUIT
+
+GTMLNX	;From Linux xinetd script; $P is the main stream
+ S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)""")
+ X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
+ S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
+ G CHILD
  ;
  ; Child Handling Process ---------------------------------
  ;
@@ -47,7 +59,8 @@ NEXT ; begin next request
  ;
 WAIT ; wait for request on this connection
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C $P Q
- U $P:(::"CT")
+ I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
+ I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G WAIT
  I '$L(TCPX) G WAIT
  ;
@@ -65,7 +78,8 @@ WAIT ; wait for request on this connection
  F  S TCPX=$$RDCRLF() Q:'$L(TCPX)  D ADDHEAD(TCPX)
  ;
  ; -- decide how to read body, if any
- U $P:(::"S")
+ I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""S"")" ; Stream mode
+ I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $$LOW^VPRJRUT($G(HTTPREQ("header","transfer-encoding")))="chunked" D
  . D RDCHNKS ; TODO: handle chunked input
  . I HTTPLOG>2 ; log array of chunks
@@ -81,8 +95,10 @@ WAIT ; wait for request on this connection
  ; TODO: restore HTTPLOG if necessary
  ;
  ; -- write out the response (error if HTTPERR>0)
- U $P:(::"S")
+ I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""S"")" ; Stream mode
+ I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $G(HTTPERR) D RSPERROR^VPRJRSP ; switch to error response
+ I HTTPLOG>2 D LOGRSP
  D SENDATA^VPRJRSP
  ;
  ; -- exit on Connection: Close
@@ -91,6 +107,7 @@ WAIT ; wait for request on this connection
  . C $P
  ;
  ; -- otherwise get ready for the next request
+ I $$UP^VPRJRUT($ZV)["GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
  G NEXT
  ;
 RDCRLF() ; read a header line
@@ -168,7 +185,7 @@ INCRLOG ; get unique log id for each request
  L -^VPRHTTP("log",DT)
  S HTTPLOG("ID")=ID
  Q:'HTTPLOG
- S ^VPRHTTP("log",DT,$J,ID)=$$HTE^XLFDT($H)_"  $J:"_$J_"  $P:"_$P_"  $STACK:"_$STACK
+ S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_$P_"  $STACK:"_$STACK
  Q
 LOGRAW(X) ; log raw lines read in
  N DT,ID,LN
@@ -192,21 +209,23 @@ LOGBODY ; log the request body
  M ^VPRHTTP("log",DT,$J,ID,"req","body")=HTTPREQ("body")
  Q
 LOGRSP ; log the response before sending
- Q:'$L($G(HTTPRSP))  Q:'$D(@HTTPRSP)
+ Q:'$L($G(HTTPRSP))  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
+ I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
+ E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
  Q
 LOGERR ; log error information
  N %D,%I
  S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
- S ^VPRHTTP("log",%D,$J,%I,"error")=$ZERROR_"  ($ECODE:"_$ECODE_")"
+ N ISGTM S ISGTM=$P($SYSTEM,",")=47
+ S ^VPRHTTP("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
  N %LVL,%TOP,%N
  S %TOP=$STACK(-1),%N=0
  F %LVL=0:1:%TOP S %N=%N+1,^VPRHTTP("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
  N %X,%Y
  S %X="^VPRHTTP(""log"",%D,$J,%I,""error"",""symbols"","
- ;TODO make the following loop work also in GTM (DOLRO^%ZOSV)
+ ; Works on GT.M and Cache to capture ST.
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
  Q
  ;
