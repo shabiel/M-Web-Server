@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-02  7:17 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-02  9:59 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -39,6 +39,7 @@ FV(RESULTS,ARGS) ; Get fileman field value.
  ; if results is a regular field, that's the value we will get.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
  I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
+ ZSHOW "D":^KBANDEV
  QUIT
  ;
 MOCHA(RESULTS,ARGS) ;
@@ -53,20 +54,21 @@ MOCHA(RESULTS,ARGS) ;
  QUIT
  ;
 POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
- S IEN=$O(^%W(6.6002,""),-1)+1
+ N IEN S IEN=$O(^%W(6.6002,""),-1)+1
  N %WFDA S %WFDA(6.6002,"?+1,",.01)=IEN D UPDATE^DIE("",$NA(%WFDA))
  S RESULT="/fileman/6.6002/"_IEN_"/"_1 ; Stored URL
  N PARSED ; Parsed array which stores each line on a separate node.
  D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
  D WP^DIE(6.6002,IEN_",",1,"K",$NA(PARSED))
- ZSHOW "V":^KBANPARSED
- S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ ; ZSHOW "V":^KBANPARSED
+ S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  Q RESULT
  ;
 MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
  N TYPE S TYPE=$G(ARGS("type"))
  N PARSEDTEXT D PARSE10^VPRJRUT(.BODY,.PARSEDTEXT)
  K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
+ ; ZSHOW "*":^KBANPARSED
  S HTTPRSP("mime")="text/xml; charset=utf-8"
- D GETXML^KBAIT1(.RESULT,TYPE)
+ D GETXRSP^KBAIT1(.RESULT,TYPE)
  Q "/mocha/"_TYPE
