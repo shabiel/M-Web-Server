@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-04-01  7:59 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-04-03  11:07 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -17,7 +17,7 @@ RESPOND ; find entry point to handle request and call it
  . N BODY
  . M BODY=HTTPREQ("body") K HTTPREQ("body")
  . X "S LOCATION=$$"_ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)" ; VEN/SMH - Modified -- added HTTPRSP per http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.2
- . I $L(LOCATION) S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):"http://"_HTTPREQ("header","host")_LOCATION,1:LOCATION)
+ . I $L(LOCATION) S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):"https://"_HTTPREQ("header","host")_LOCATION,1:LOCATION)
  E  D @(ROUTINE_"(.HTTPRSP,.HTTPARGS)")
  Q
 QSPLIT(QUERY) ; parses and decodes query fragment into array
