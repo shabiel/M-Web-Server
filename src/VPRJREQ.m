@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-04-02  11:46 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-04-03  8:22 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Listener Process ---------------------------------------
@@ -78,7 +78,7 @@ WAIT ; wait for request on this connection
  F  S TCPX=$$RDCRLF() Q:'$L(TCPX)  D ADDHEAD(TCPX)
  ;
  ; -- Handle Contiuation Request - VEN/SMH
- I $G(HTTPREQ("header","expect"))="100-continue" W "HTTP/1.1 100 Continue",$C(13,10,13,10)
+ I $G(HTTPREQ("header","expect"))="100-continue" W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
  I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""S"")" ; Stream mode
