@@ -1,0 +1,17 @@
+service VPRJ-9281-TLS
+{
+        port        = 9281
+        socket_type = stream
+        protocol    = tcp
+        type        = UNLISTED
+        user        = vista
+        groups      = yes
+        server      = /usr/bin/stunnel
+        server_args = -p /etc/stunnel/stunnel.pem -l /home/vista/bin/VPRJ.sh
+        env         = USER=vista
+        env        += HOME=/home/vista
+        wait        = no
+        disable     = no
+        per_source  = UNLIMITED
+        instances   = UNLIMITED
+}
