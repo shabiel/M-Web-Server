@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-02  9:59 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-04  4:17 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -36,6 +36,7 @@ FV(RESULTS,ARGS) ; Get fileman field value.
  N IENS S IENS=$G(ARGS("iens")) ; se
  N FIELD S FIELD=$G(ARGS("field")) ; se
  S RESULTS=$$GET1^DIQ(FILE,IENS,FIELD,,$NA(^TMP($J))) ; double trouble.
+ I $D(^TMP("DIERR",$J)) D SETERROR^VPRJRUT(404,"File or field not found") QUIT
  ; if results is a regular field, that's the value we will get.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
  I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
@@ -59,7 +60,7 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  S RESULT="/fileman/6.6002/"_IEN_"/"_1 ; Stored URL
  N PARSED ; Parsed array which stores each line on a separate node.
  D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
- D WP^DIE(6.6002,IEN_",",1,"K",$NA(PARSED))
+ D WP^DIE(6.6002,IEN_",",1,"K",$NA(PARSED)) ; File WP field; lock record in process.
  ; ZSHOW "V":^KBANPARSED
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  Q RESULT
@@ -69,6 +70,7 @@ MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
  N PARSEDTEXT D PARSE10^VPRJRUT(.BODY,.PARSEDTEXT)
  K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
  ; ZSHOW "*":^KBANPARSED
- S HTTPRSP("mime")="text/xml; charset=utf-8"
+ S RESULT("mime")="text/xml; charset=utf-8"
  D GETXRSP^KBAIT1(.RESULT,TYPE)
+ I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Post box location not found") Q ""
  Q "/mocha/"_TYPE
