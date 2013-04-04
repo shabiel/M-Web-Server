@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-04  4:17 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-04  9:11 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -23,7 +23,7 @@ SAVE(RN)	;Save a routine
  S $ETRAP="S $ECODE="""" Q"
  S %I=$I,SP=" ",%F=$$RTNDIR^%ZOSV()_$TR(RN,"%","_")_".m"
  O %F:(newversion:noreadonly:blocksize=2048:recordsize=2044) U %F
- F  S XCN=$O(@(DIE_XCN_")")) Q:XCN'>0  S %=@(DIE_XCN_")") Q:$E(%,1)="$"  I $E(%)'=";" W $P(%,SP)_$C(9)_$P(%,SP,2,99999),!
+ F  S XCN=$O(@(DIE_XCN_")")) Q:XCN'>0  S %=@(DIE_XCN_")") Q:$E(%,1)="$"  I $E(%)'=";" W %,!
  C %F ;S %N=$$NULL
  ZLINK RN
  ;C %N
@@ -40,7 +40,7 @@ FV(RESULTS,ARGS) ; Get fileman field value.
  ; if results is a regular field, that's the value we will get.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
  I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
- ZSHOW "D":^KBANDEV
+ ;ZSHOW "D":^KBANDEV
  QUIT
  ;
 MOCHA(RESULTS,ARGS) ;
@@ -73,4 +73,5 @@ MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
  S RESULT("mime")="text/xml; charset=utf-8"
  D GETXRSP^KBAIT1(.RESULT,TYPE)
  I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Post box location not found") Q ""
+ ; D ADDCRLF^VPRJRUT(.RESULT)
  Q "/mocha/"_TYPE
