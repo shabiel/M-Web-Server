@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-04-02  7:25 PM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-04-05  11:02 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -395,4 +395,11 @@ TESTCRLF
  D ADDCRLF(.RESULT)
  ZWRITE RESULT
  QUIT
+UNKARGS(ARGS,LIST) ; returns true if any argument is unknown
+ N X,UNKNOWN
+ S UNKNOWN=0,LIST=","_LIST_","
+ S X="" F  S X=$O(ARGS(X)) Q:X=""  I LIST'[(","_X_",") D
+ . S UNKNOWN=1
+ . D SETERROR^VPRJRUT(111,X)
+ Q UNKNOWN
 
