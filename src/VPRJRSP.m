@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-04-03  11:07 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-04-05  9:48 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -44,16 +44,16 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  ;
  ;
- IF $D(^%W(6.6001)) DO  ; If we have the %W file for mapping...
- . ; ^%W(6.6001,"B","GET","xml"
+ IF $D(^%W(17.6001)) DO  ; If we have the %W file for mapping...
+ . ; ^%W(17.6001,"B","GET","xml"
  . N PATH1 S PATH1=$$URLDEC^VPRJRUT($P(PATH,"/",1),1) ; get first / piece of path; and decode.
  . N PATTERN S PATTERN=PATH1  ; looper variable; start at first piece of path.
- . I $D(^%W(6.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
- . . S ROUTINE=$O(^%W(6.6001,"B",HTTPREQ("method"),PATTERN,""))
+ . I $D(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
+ . . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
  . . S PATHOK=1
  . E  D
  . . ; Loop through patterns. Start with first piece of path. quit if $order took us off the deep end.
- . . F  S PATTERN=$O(^%W(6.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
+ . . F  S PATTERN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
  . . . I $L(PATTERN,"/")'=$L(PATH,"/") QUIT  ; not the same number of pieces; quit.
  . . . K ARGS
  . . . N FAIL S FAIL=0
@@ -68,7 +68,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . . . . S DONE=1,PATHOK=1
  . ; ZSHOW "*":^KBANSAM
  . Q:PATH1'=$E(PATTERN,1,$L(PATH1))
- . S ROUTINE=$O(^%W(6.6001,"B",HTTPREQ("method"),PATTERN,""))
+ . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
  ;
  ;
  ; Using built-in table
