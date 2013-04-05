@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-04  9:11 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-05  11:04 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -30,7 +30,7 @@ SAVE(RN)	;Save a routine
  U %I
  Q
 FV(RESULTS,ARGS) ; Get fileman field value.
- I $$UNKARGS^VPRJCU(.ARGS,"file,iens,field") Q  ; Is any of these not passed?
+ I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser
  N FILE S FILE=$G(ARGS("file")) ; se
  N IENS S IENS=$G(ARGS("iens")) ; se
