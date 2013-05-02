@@ -59,7 +59,7 @@ NEXT ; begin next request
  K ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
 WAIT ; wait for request on this connection
- I $E(^VPRHTTP(0,"listener"),1,4)="stop" C $P Q
+ I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C $P Q
  X:%WOS="CACHE" "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
  X:%WOS="GT.M" "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
