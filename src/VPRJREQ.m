@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-04-03  8:22 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-02  12:50 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Listener Process ---------------------------------------
@@ -49,6 +49,7 @@ GTMLNX	;From Linux xinetd script; $P is the main stream
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
+ N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
  N $ET S $ET="G ETSOCK^VPRJREQ"
@@ -59,10 +60,10 @@ NEXT ; begin next request
  ;
 WAIT ; wait for request on this connection
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C $P Q
- I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
- I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
- R TCPX:10 I '$T G WAIT
- I '$L(TCPX) G WAIT
+ X:%WOS="CACHE" "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
+ X:%WOS="GT.M" "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
+ R TCPX:10 I '$T G ETDC
+ I '$L(TCPX) G ETDC
  ;
  ; -- got a request and have the first line
  D INCRLOG ; set unique request id
@@ -81,8 +82,8 @@ WAIT ; wait for request on this connection
  I $G(HTTPREQ("header","expect"))="100-continue" W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
- I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""S"")" ; Stream mode
- I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $$LOW^VPRJRUT($G(HTTPREQ("header","transfer-encoding")))="chunked" D
  . D RDCHNKS ; TODO: handle chunked input
  . I HTTPLOG>2 ; log array of chunks
@@ -98,8 +99,8 @@ WAIT ; wait for request on this connection
  ; TODO: restore HTTPLOG if necessary
  ;
  ; -- write out the response (error if HTTPERR>0)
- I $$UP^VPRJRUT($ZV)["CACHE" X "U $P:(::""S"")" ; Stream mode
- I $$UP^VPRJRUT($ZV)["GT.M" X "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $G(HTTPERR) D RSPERROR^VPRJRSP ; switch to error response
  I HTTPLOG>2 D LOGRSP
  D SENDATA^VPRJRSP
@@ -107,10 +108,10 @@ WAIT ; wait for request on this connection
  ; -- exit on Connection: Close
  I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  Q
  . K ^TMP($J),^TMP("HTTPERR",$J)
- . C $P
+ . C $P ; This halts the GT.M process.
  ;
  ; -- otherwise get ready for the next request
- I $$UP^VPRJRUT($ZV)["GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
+ I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
  G NEXT
  ;
 RDCRLF() ; read a header line
@@ -172,11 +173,17 @@ ETCODE ; error trap when calling out to routines
  ; for the next HTTP request (goto NEXT).
  S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT"
  Q
+ETDC ; error trap for client disconnect ; not a true M trap
+ D LOGDC
+ K ^TMP($J),^TMP("HTTPERR",$J)
+ C $P  ; This kills the GT.M process; Cache will loop around to the next request
+ QUIT
+ ;
 ETBAIL ; error trap of error traps
  U $P
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
- C $P H 1
  K ^TMP($J),^TMP("HTTPERR",$J)
+ C $P H 1
  HALT  ; exit because we can't recover
  ;
 INCRLOG ; get unique log id for each request
@@ -218,6 +225,12 @@ LOGRSP ; log the response before sending
  I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
  E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
  Q
+LOGDC ; log client disconnection; VEN/SMH
+ N DT,ID
+ S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ S ^VPRHTTP("log",DT,$J,ID,"disconnect")=$$HTE^VPRJRUT($H)
+ QUIT
+ ;
 LOGERR ; log error information
  N %D,%I
  S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
