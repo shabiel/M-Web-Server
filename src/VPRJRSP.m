@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-04-05  9:48 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-05-07  9:14 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -9,8 +9,8 @@ RESPOND ; find entry point to handle request and call it
  ; TODO: check cache of HEAD requests first and return that if there?
  K ^TMP($J)
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
- D MATCH(.ROUTINE,.HTTPARGS) I $G(HTTPERR) QUIT
- D QSPLIT(.HTTPARGS) I $G(HTTPERR) QUIT
+ D MATCH(.ROUTINE,.HTTPARGS) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
+ D QSPLIT(.HTTPARGS) I $G(HTTPERR) QUIT          ; Split the query string
  S HTTPREQ("paging")=$G(HTTPARGS("start"),0)_":"_$G(HTTPARGS("limit"),999999)
  S HTTPREQ("store")=$S($$LOW^VPRJRUT($E(HTTPREQ("path"),2,4))="vpr":"vpr",1:"data")
  I "PUT,POST"[HTTPREQ("method") D
@@ -30,6 +30,7 @@ QSPLIT(QUERY) ; parses and decodes query fragment into array
  . I $L(NAME) S QUERY($$LOW^VPRJRUT(NAME))=VALUE
  Q
 MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
+ ; Also does authentication and authorization
  ; TODO: this needs some work so that it will accomodate patterns shorter than the path
  ; expects HTTPREQ to contain "path" and "method" nodes
  ; ROUTINE contains the TAG^ROUTINE to execute for this path, otherwise empty
@@ -39,6 +40,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  N DONE S DONE=0
  N PATH S PATH=HTTPREQ("path")
  N PATHOK S PATHOK=0
+ N AUTHNODE ; Authentication and Authorization node
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
@@ -66,9 +68,10 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . . . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL  ; run pattern match
  . . . . S ARGS(ARGUMENT)=PATHSEG  ; if pattern matches, put into arguments hopper.
  . . . . S DONE=1,PATHOK=1
- . ; ZSHOW "*":^KBANSAM
  . Q:PATH1'=$E(PATTERN,1,$L(PATH1))
  . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
+ . N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
+ . S AUTHNODE=$G(^%W(17.6001,IEN,"AUTH"))
  ;
  ;
  ; Using built-in table
@@ -91,7 +94,43 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ;
  I PATHOK,ROUTINE="" D SETERROR^VPRJRUT(405,"Method Not Allowed") QUIT
  I ROUTINE="" D SETERROR^VPRJRUT(404,"Not Found") QUIT
- Q
+ ;
+ ;
+ ;
+ I +$G(AUTHNODE) D  ; Web Service has authorization node
+ . ;
+ . ; If there is no File 200, forget the whole thing. Pretend it didn't happen.
+ . I '$D(^VA(200)) QUIT
+ . ;
+ . ; First, user must authenticate
+ . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
+ . N AUTHEN S AUTHEN=$$AUTHEN($G(HTTPREQ("header","authorization"))) ; Try to authenticate
+ . I 'AUTHEN D SETERROR^VPRJRUT(401) QUIT ; Unauthoirzed
+ . ;
+ . ; DEBUG.ASSERT that DUZ is greater than 0
+ . I $G(DUZ)'>0 S $EC=",U1,"
+ . ;
+ . ; Then user must have security key
+ . N KEY S KEY=$P(AUTHNODE,"^",2)    ; Get Key pointer
+ . I KEY S KEY=$P($G(^DIC(19.1,KEY,0)),"^") ; Get Key name from Security Key file
+ . I $L(KEY),'$D(^XUSEC(KEY,DUZ)) D SETERROR^VPRJRUT(405,"Missing security key "_KEY) QUIT ; Method not allowed
+ . K KEY
+ . ;
+ . ; And not have reverse security key
+ . N RKEY S RKEY=$P(AUTHNODE,"^",3)  ; Get Key pointer
+ . I RKEY S RKEY=$P($G(^DIC(19.1,RKEY,0)),"^") ; Get Reverse Key name from Security Key file
+ . I $L(RKEY),$D(^XUSEC(RKEY,DUZ)) D SETERROR^VPRJRUT(405,"Holding exclusive key "_RKEY) QUIT ; Method not allowed
+ . K RKEY
+ . ;
+ . ; And have access to the menu option indicated
+ . N OPTION S OPTION=$P(AUTHNODE,"^",4)  ; Get Option pointer
+ . I OPTION N OPTIONNM S OPTIONNM=$P($G(^DIC(19,OPTION,0)),"^") ; Get Option name from Option file
+ . I OPTION,$L($T(ACCESS^XQCHK)),'$$ACCESS^XQCHK(DUZ,OPTION) D SETERROR^VPRJRUT(405,"No access to option "_OPTIONNM) ; Method not allowed
+ . K OPTION,OPTIONNM
+ QUIT
+ ;
+ ;
+ ;
 SENDATA ; write out the data as an HTTP response
  ; expects HTTPERR to contain the HTTP error code, if any
  ; RSPTYPE=1  local variable
@@ -109,10 +148,11 @@ SENDATA ; write out the data as an HTTP response
  ;       (put HTTPRSP in ^XTMP and return appropriate header)
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
- W $$RSPLINE(),$C(13,10)
- W "Date: "_$$GMT^VPRJRUT_$C(13,10)
- I $D(HTTPREQ("location")) W "Location: "_HTTPREQ("location")_$C(13,10)
- I $D(HTTPRSP("mime")) W "Content-Type: "_HTTPRSP("mime")_$C(13,10) K HTTPRSP("mime")
+ W $$RSPLINE(),$C(13,10) ; Status Line (200, 404, etc)
+ W "Date: "_$$GMT^VPRJRUT_$C(13,10) ; RFC 1123 date
+ I $D(HTTPREQ("location")) W "Location: "_HTTPREQ("location")_$C(13,10)  ; ?? Request location; TODO: Check this. Should be Response.
+ I $D(HTTPRSP("auth")) W "WWW-Authenticate: "_HTTPRSP("auth"),$C(13,10) K HTTPRSP("auth") ; Authentication
+ I $D(HTTPRSP("mime")) W "Content-Type: "_HTTPRSP("mime")_$C(13,10) K HTTPRSP("mime") ; Mime-type
  E  W "Content-Type: application/json; charset=utf-8"_$C(13,10)
  W "Content-Length: ",SIZE,$C(13,10)_$C(13,10)
  I 'SIZE W $C(13,10),! Q  ; flush buffer and quit
@@ -171,15 +211,17 @@ RSPERROR ; set response to be an error response
  K HTTPRSP("pageable")
  Q
 RSPLINE() ; writes out a response line based on HTTPERR
+ ; VEN/SMH: TODO: There ought to be a simpler way to do this!!!
  I '$G(HTTPERR),'$D(HTTPREQ("location")) Q "HTTP/1.1 200 OK"
  I '$G(HTTPERR),$D(HTTPREQ("location")) Q "HTTP/1.1 201 Created"
  I $G(HTTPERR)=400 Q "HTTP/1.1 400 Bad Request"
+ I $G(HTTPERR)=401 Q "HTTP/1.1 401 Unauthorized"
  I $G(HTTPERR)=404 Q "HTTP/1.1 404 Not Found"
  I $G(HTTPERR)=405 Q "HTTP/1.1 405 Method Not Allowed"
  Q "HTTP/1.1 500 Internal Server Error"
  ;
 PING(RESULT,ARGS) ; writes out a ping response
- S RESULT="{""status"":""running""}"
+ S RESULT="{""status"":"""_$J_" running""}"
  Q
 XML(RESULT,ARGS) ; text XML
  S HTTPRSP("mime")="text/xml"
@@ -239,3 +281,23 @@ URLMAP ; map URLs to entry points (HTTP methods handled within entry point)
  ;;GET ping PING^VPRJRSP
  ;;zzzzz
  Q
+AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
+ ;
+ ; We only support Basic authentication right now
+ N P1,P2 S P1=$P(HTTPAUTH," "),P2=$P(HTTPAUTH," ",2)
+ I $$UP^VPRJRUT(P1)'="BASIC" Q 0 ; We don't support that authentication
+ ;
+ ; Decode Base64 encoded un:pwd
+ N ACVC S ACVC=$$DECODE64^VPRJRUT(P2)
+ S ACVC=$TR(ACVC,":",";") ; switch the : so that it's now ac;vc
+ ;
+ ; Sign-on
+ N IO S IO=$P
+ D SETUP^XUSRB() ; Only partition set-up; No single sign-on or CAPRI
+ N RTN D VALIDAV^XUSRB(.RTN,$$ENCRYP^XUSRB1(ACVC)) ; sign-on call
+ I RTN(0)>0,'RTN(2) Q 1 ; Sign on successful!
+ I RTN(0)=0,RTN(2) Q 0  ; Verify Code must be changed NOW!
+ I $L(RTN(3)) Q 0  ; Error Message
+ ;
+ ; TODO: Division Selection
+ QUIT 0

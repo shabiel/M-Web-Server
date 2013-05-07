@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-04-05  11:02 PM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-05-07  12:29 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -143,6 +143,7 @@ SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
  I ERRCODE=216 S ERRNAME="Incomplete deletion of collection"
  ; HTTP errors
  I ERRCODE=400 S ERRNAME="Bad Request"
+ I ERRCODE=401 S ERRNAME="Unauthorized" ; VEN/SMH
  I ERRCODE=404 S ERRNAME="Not Found"
  I ERRCODE=405 S ERRNAME="Method Not Allowed"
  ; system errors (500-599)
@@ -402,4 +403,28 @@ UNKARGS(ARGS,LIST) ; returns true if any argument is unknown
  . S UNKNOWN=1
  . D SETERROR^VPRJRUT(111,X)
  Q UNKNOWN
-
+ ;
+ENCODE64(X) ;
+ N RGZ,RGZ1,RGZ2,RGZ3,RGZ4,RGZ5,RGZ6
+ S RGZ=$$INIT64,RGZ1=""
+ F RGZ2=1:3:$L(X) D
+ .S RGZ3=0,RGZ6=""
+ .F RGZ4=0:1:2 D
+ ..S RGZ5=$A(X,RGZ2+RGZ4),RGZ3=RGZ3*256+$S(RGZ5<0:0,1:RGZ5)
+ .F RGZ4=1:1:4 S RGZ6=$E(RGZ,RGZ3#64+2)_RGZ6,RGZ3=RGZ3\64
+ .S RGZ1=RGZ1_RGZ6
+ S RGZ2=$L(X)#3
+ S:RGZ2 RGZ3=$L(RGZ1),$E(RGZ1,RGZ3-2+RGZ2,RGZ3)=$E("==",RGZ2,2)
+ Q RGZ1
+DECODE64(X) ;
+ N RGZ,RGZ1,RGZ2,RGZ3,RGZ4,RGZ5,RGZ6
+ S RGZ=$$INIT64,RGZ1=""
+ F RGZ2=1:4:$L(X) D
+ .S RGZ3=0,RGZ6=""
+ .F RGZ4=0:1:3 D
+ ..S RGZ5=$F(RGZ,$E(X,RGZ2+RGZ4))-3
+ ..S RGZ3=RGZ3*64+$S(RGZ5<0:0,1:RGZ5)
+ .F RGZ4=0:1:2 S RGZ6=$C(RGZ3#256)_RGZ6,RGZ3=RGZ3\256
+ .S RGZ1=RGZ1_RGZ6
+ Q $E(RGZ1,1,$L(RGZ1)-$L(X,"=")+1)
+INIT64() Q "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

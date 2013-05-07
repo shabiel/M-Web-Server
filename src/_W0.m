@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-04-05  11:04 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-07  11:01 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -75,3 +75,50 @@ MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
  I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Post box location not found") Q ""
  ; D ADDCRLF^VPRJRUT(.RESULT)
  Q "/mocha/"_TYPE
+ ;
+RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles rpc/{rpc}
+ ; Very simple... no security checking
+ N RP S RP=$G(ARGS("rpc"))
+ I '$L(RP) D SETERROR^VPRJRUT("400","Remote procedure not specified") Q ""
+ ;
+ N DIQUIET S DIQUIET=1 D DT^DICRW ; Set up "^" as U
+ ;
+ N XWB
+ S XWB(2,"RPC")=RP
+ N % S %=$$RPC^XWBPRS()
+ I % D SETERROR^VPRJRUT("404","Remote procedure not found") Q ""
+ ;
+ N PARAMS,%WERR
+ I $D(BODY) D DECODE^VPRJSON($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ I $D(%WERR) D SETERROR^VPRJRUT("400","Input parameters not correct")
+ ;
+ ; Loop through the PARAMS and construct an argument list
+ ; TODO: Two uncommonly used types are global and reference parameter. Need to do if we want to emulate broker completely.
+ N ARGLIST S ARGLIST=""  ; Argument list, starting empty
+ ;
+ I $D(PARAMS) F I=1:1:$O(PARAMS(""),-1) N @("A"_I)  ; New parameter variables, stored in A1,A2,A3 etc.
+ D:$D(PARAMS)
+ . N I F I=0:0 S I=$O(PARAMS(I)) Q:'I  D
+ . . I $D(PARAMS(I))[0 D  ; Reference Parameter
+ . . . M @("A"_I)=PARAMS(I) S ARGLIST=ARGLIST_".A"_I_","
+ . . E  D  ; Literal Param
+ . . . S @("A"_I)=PARAMS(I),ARGLIST=ARGLIST_"A"_I_","
+ ;
+ S ARGLIST=$E(ARGLIST,1,$L(ARGLIST)-1) ; Remove trailing comma
+ ;
+ N %WCALL 
+ I $L(ARGLIST) S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RESULT,"_ARGLIST_")" ; Routine call with arguments
+ E  S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RESULT)" ; Routine call with no arguments
+ ;
+ X %WCALL ; Action!
+ ;
+ D ADDCRLF^VPRJRUT(.RESULT) ; Add CRLF to each line
+ ;
+ ; debug
+ K ^KBANRPC 
+ M ^KBANRPC=BODY,^KBANRPC=RP
+ ZSHOW "V":^KBANRPC
+ ; debug
+ ;
+ S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return
+ Q "/rpc/"_RP
