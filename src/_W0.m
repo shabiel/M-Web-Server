@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-07  11:01 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-10  9:09 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -76,7 +76,7 @@ MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
  ; D ADDCRLF^VPRJRUT(.RESULT)
  Q "/mocha/"_TYPE
  ;
-RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles rpc/{rpc}
+RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
  ; Very simple... no security checking
  N RP S RP=$G(ARGS("rpc"))
  I '$L(RP) D SETERROR^VPRJRUT("400","Remote procedure not specified") Q ""
@@ -122,3 +122,26 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles rpc/{rpc
  ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return
  Q "/rpc/"_RP
+ ;
+RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
+ ; Very simple... no security checking
+ N RP S RP=$G(ARGS("rpc"))
+ I '$L(RP) D SETERROR^VPRJRUT("400","Remote procedure not specified") Q
+ ;
+ N RPIEN S RPIEN=$$FIND1^DIC(8994,,"QX",RP,"B") ; Find eXact, Quick (no transforms) in B index
+ I 'RPIEN D SETERROR^VPRJRUT("404","Remote procedure not found") Q
+ ;
+ ;
+ N %WRTN,%WERR
+ D GETS^DIQ(8994,RPIEN,"**","RN",$NA(%WRTN)) ; Get all fields; resolve to external names and omit nulls
+ N ROU,TAG S ROU=%WRTN(8994,RPIEN_",","ROUTINE"),TAG=%WRTN(8994,RPIEN_",","TAG")
+ I $L($T(@(TAG_"^"_ROU))) S %WRTN(8994,RPIEN_",","FORMALLINE")=$T(@(TAG_"^"_ROU))
+ D ENCODE^VPRJSON($NA(%WRTN(8994,RPIEN_",")),$NA(RESULT),$NA(%WERR))
+ ; debug
+ K ^KBANRPC 
+ S ^KBANRPC=RP
+ ZSHOW "V":^KBANRPC
+ ; debug
+ I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
+ ;
+ QUIT
