@@ -1,5 +1,5 @@
-VPRJSONE ;SLC/KCM -- Encode JSON
- ;;1.0;VIRTUAL PATIENT RECORD;**2**;Sep 01, 2011;Build 50
+VPRJSONE ;SLC/KCM -- Encode JSON;2013-05-10  9:04 PM
+ ;;1.0;VIRTUAL PATIENT RECORD;**2,%W**;Sep 01, 2011;Build 50
  ;
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ;
@@ -32,7 +32,7 @@ SEROBJ(VVROOT) ; Serialize into a JSON object
  . ; if this is a value, serialize it
  . I $$ISVALUE(VVROOT,VVSUB) D SERVAL(VVROOT,VVSUB) Q
  . ; otherwise navigate to the next child object or array
- . I $D(@VVROOT@(VVSUB))=10 S VVNXT=$O(@VVROOT@(VVSUB,"")) D  Q
+ . I $D(@VVROOT@(VVSUB))>9 S VVNXT=$O(@VVROOT@(VVSUB,"")) D  Q  ; VEN/SMH Changed $D from =10 to >9 to capture 11 as well
  . . I +VVNXT D SERARY($NA(@VVROOT@(VVSUB))) I 1
  . . E  D SEROBJ($NA(@VVROOT@(VVSUB)))
  . D ERRX("SOB",VVSUB)  ; should quit loop before here
@@ -81,6 +81,7 @@ CONCAT ; come here to concatenate to JSON string
  S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_VVX
  Q
 ISVALUE(VVROOT,VVSUB) ; Return true if this is a value node
+ I $D(@VVROOT@(VVSUB))#2,$NA(@VVROOT@(VVSUB))=@VVROOT@(VVSUB) Q 0  ; VEN/SMH ; Global node for multiples in Fileman
  I $D(@VVROOT@(VVSUB))#2 Q 1
  N VVX S VVX=$O(@VVROOT@(VVSUB,""))
  Q:VVX="\" 1
