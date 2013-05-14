@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-05-07  9:14 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-05-14  12:04 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -67,7 +67,9 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . . . . N ARGUMENT,TEXT S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2) ; get pattern match
  . . . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL  ; run pattern match
  . . . . S ARGS(ARGUMENT)=PATHSEG  ; if pattern matches, put into arguments hopper.
- . . . . S DONE=1,PATHOK=1
+ . . . ;
+ . . . ; At this point, none of the stuff failed. We can tell the initial loop that we are done.
+ . . . S DONE=1,PATHOK=1
  . Q:PATH1'=$E(PATTERN,1,$L(PATH1))
  . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
  . N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
