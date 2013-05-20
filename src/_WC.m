@@ -1,4 +1,4 @@
-%WC ; Web Services Client;2013-04-03  11:30 PM
+%WC ; Web Services Client;2013-05-14  9:34 AM
  ;
 POST(RETURN,URL,PAYLOAD,MIME) ; Post
  ;D EWD(.RETURN,URL,.PAYLOAD,MIME)
@@ -14,6 +14,7 @@ CURL(RETURN,URL,PAYLOAD,MIME) ; Post using CURL
  ; Write payload to File in shared memory
  N F S F="/dev/shm/"_$R(987987234)_$J_".DAT"
  O F:(NEWVERSION) U F
+ I $D(PAYLOAD)#2 W PAYLOAD,!
  F I=0:0 S I=$O(PAYLOAD(I)) Q:'I  W PAYLOAD(I),!
  C F
  ;
