@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-10  9:09 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-20  6:44 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -29,7 +29,7 @@ SAVE(RN)	;Save a routine
  ;C %N
  U %I
  Q
-FV(RESULTS,ARGS) ; Get fileman field value.
+FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
  I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser
  N FILE S FILE=$G(ARGS("file")) ; se
@@ -41,6 +41,23 @@ FV(RESULTS,ARGS) ; Get fileman field value.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
  I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
  ;ZSHOW "D":^KBANDEV
+ QUIT
+ ;
+F(RESULT,ARGS) ; handles fileman/{file}/{iens}
+ I $$UNKARGS^VPRJRUT(.ARGS,"file,iens") Q  ; Is any of these not passed?
+ N FILE S FILE=$G(ARGS("file")) ; se
+ N IENS S IENS=$G(ARGS("iens")) ; se
+ N %WRTN,%WERR
+ N DIERR
+ D GETS^DIQ(FILE,IENS,"*","RN",$NA(%WRTN),$NA(%WERR))
+ I $D(DIERR) D SETERROR^VPRJRUT("500","Error in GETS^DIQ Selection") Q
+ N %WERR
+ D ENCODE^VPRJSON($NA(%WRTN(FILE,IENS_",")),$NA(RESULT),$NA(%WERR))
+ ; debug
+ K ^KBANRPC 
+ ZSHOW "V":^KBANRPC
+ ; debug
+ I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
  QUIT
  ;
 MOCHA(RESULTS,ARGS) ;
@@ -65,16 +82,17 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  Q RESULT
  ;
-MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/{type}
- N TYPE S TYPE=$G(ARGS("type"))
+MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/ordercheck
+ ; N TYPE S TYPE=$G(ARGS("type"))
  N PARSEDTEXT D PARSE10^VPRJRUT(.BODY,.PARSEDTEXT)
  K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
  ; ZSHOW "*":^KBANPARSED
  S RESULT("mime")="text/xml; charset=utf-8"
- D GETXRSP^KBAIT1(.RESULT,TYPE)
- I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Post box location not found") Q ""
+ ; D GETXRSP^KBAIT1(.RESULT,TYPE)
+ D GETXRSP^KBAIT1(.RESULT,"ping")
+ I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Response Not found") Q ""
  ; D ADDCRLF^VPRJRUT(.RESULT)
- Q "/mocha/"_TYPE
+ Q ""
  ;
 RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
  ; Very simple... no security checking
