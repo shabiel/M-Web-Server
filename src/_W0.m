@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-05-20  6:44 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-06-06  10:26 PM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -12,7 +12,6 @@ R(RESULT,ARGS) ; GET Mumps Routine
  ;
 PR(ARGS,BODY,RESULT) ; PUT Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
- S RESULT="/r/"_ARGS("routine") ; Stored URL
  N PARSED ; Parsed array which stores each line on a separate node.
  D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
  N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
@@ -82,16 +81,29 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  Q RESULT
  ;
-MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles mocha/ordercheck
+MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles MOCHA/ordercheck
  ; N TYPE S TYPE=$G(ARGS("type"))
+ N DIQUIET S DIQUIET=1 D DT^DICRW
  N PARSEDTEXT D PARSE10^VPRJRUT(.BODY,.PARSEDTEXT)
- K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
- ; ZSHOW "*":^KBANPARSED
- S RESULT("mime")="text/xml; charset=utf-8"
+ ; K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
  ; D GETXRSP^KBAIT1(.RESULT,TYPE)
- D GETXRSP^KBAIT1(.RESULT,"ping")
- I '$D(RESULT(1)) K RESULT("mime") D SETERROR^VPRJRUT("404","Response Not found") Q ""
- ; D ADDCRLF^VPRJRUT(.RESULT)
+ ;
+ ; Put the parsed XML in a global
+ N R S R=$NA(^TMP($J,"MOCHA","ORDERCHECK"))
+ K @R 
+ M @R=PARSEDTEXT
+ ;
+ ; Parse it
+ N DOCHANDLE S DOCHANDLE=$$EN^MXMLDOM(R,"W")
+ I 'DOCHANDLE D SETERROR^VPRJRUT("500","XML not parsable") Q ""
+ ;
+ ; Process it
+ D EN^KBANMOCHA(.RESULT,DOCHANDLE)
+ ; ZSHOW "*":^KBANPARSED
+ ;
+ ; Clean-up
+ D DELETE^MXMLDOM(DOCHANDLE)
+ K @R
  Q ""
  ;
 RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
