@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-05-14  12:04 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-06-28  12:24 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -150,14 +150,15 @@ SENDATA ; write out the data as an HTTP response
  ;       (put HTTPRSP in ^XTMP and return appropriate header)
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
- W $$RSPLINE(),$C(13,10) ; Status Line (200, 404, etc)
+ W $$RSPLINE()_$C(13,10) ; Status Line (200, 404, etc)
+ ;W "HTTP/1.1 200 OK"_$C(13,10) ; Status Line (200, 404, etc)
  W "Date: "_$$GMT^VPRJRUT_$C(13,10) ; RFC 1123 date
  I $D(HTTPREQ("location")) W "Location: "_HTTPREQ("location")_$C(13,10)  ; ?? Request location; TODO: Check this. Should be Response.
- I $D(HTTPRSP("auth")) W "WWW-Authenticate: "_HTTPRSP("auth"),$C(13,10) K HTTPRSP("auth") ; Authentication
+ I $D(HTTPRSP("auth")) W "WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("mime")) W "Content-Type: "_HTTPRSP("mime")_$C(13,10) K HTTPRSP("mime") ; Mime-type
  E  W "Content-Type: application/json; charset=utf-8"_$C(13,10)
- W "Content-Length: ",SIZE,$C(13,10)_$C(13,10)
- I 'SIZE W $C(13,10),! Q  ; flush buffer and quit
+ W "Content-Length: "_SIZE_$C(13,10)_$C(13,10)
+ I 'SIZE W ! Q  ; flush buffer and quit
  ;
  N I,J
  I RSPTYPE=1 D            ; write out local variable
@@ -173,7 +174,8 @@ SENDATA ; write out the data as an HTTP response
  . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J)
  . W "]}}"
  . K @HTTPRSP@($J)
- W $C(13,10),!  ; flush buffer
+ W ! ; flush buffer
+ ; W $C(13,10),!  ; flush buffer ; ****VEN/SMH NOT INCLUDED IN THE SIZE!!!
  I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
  Q
 UPDCACHE ; update the cache for this query
@@ -292,6 +294,7 @@ AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Heade
  ; Decode Base64 encoded un:pwd
  N ACVC S ACVC=$$DECODE64^VPRJRUT(P2)
  S ACVC=$TR(ACVC,":",";") ; switch the : so that it's now ac;vc
+ ; TODO: Check if there is more than one colon in the ACVC
  ;
  ; Sign-on
  N IO S IO=$P
