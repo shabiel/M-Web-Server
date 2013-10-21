@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-06-06  10:26 PM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM
  ;;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -29,17 +29,109 @@ SAVE(RN)	;Save a routine
  U %I
  Q
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
- I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field") Q  ; Is any of these not passed?
+ I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser
  N FILE S FILE=$G(ARGS("file")) ; se
  N IENS S IENS=$G(ARGS("iens")) ; se
  N FIELD S FIELD=$G(ARGS("field")) ; se
+ I IENS?1A.AN D LISTER(.RESULTS,.ARGS) QUIT
  S RESULTS=$$GET1^DIQ(FILE,IENS,FIELD,,$NA(^TMP($J))) ; double trouble.
  I $D(^TMP("DIERR",$J)) D SETERROR^VPRJRUT(404,"File or field not found") QUIT
  ; if results is a regular field, that's the value we will get.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
  I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
  ;ZSHOW "D":^KBANDEV
+ QUIT
+ ;
+LISTER(RESULTS,ARGS) ; FV divergence in case an index is requested.
+ K RESULTS("mime")
+ N FILE S FILE=$G(ARGS("file"))
+ N INDEX S INDEX=$G(ARGS("iens"))
+ N FROM S FROM=$G(ARGS("field"))
+ ; I $L(FROM) D 
+ ; . I +FROM'=FROM S FROM=$E(FROM,1,$L(FROM)-1)_"              " ; backtrack in index alpha style
+ ; . E  S FROM=FROM-1   ; backtrack numeric style
+ ;
+ N SCREEN S SCREEN=$G(ARGS("screen"))
+ I $L(SCREEN) D
+ . N Q S Q=""""
+ . N FLD,VAL
+ . S FLD=$P(SCREEN,":")
+ . S VAL=$P(SCREEN,":",2)
+ . I VAL'=+VAL S VAL=Q_VAL_Q ; Quote literal values
+ . N FLDNUM S FLDNUM=$O(^DD(FILE,"B",FLD,""))
+ . Q:'FLDNUM
+ . N GL S GL=$P(^DD(FILE,FLDNUM,0),U,4)
+ . N GLN S GLN=$P(GL,";")
+ . I GLN'=+GLN S GLN=Q_GLN_Q ; Quote literal nodes
+ . N GLP S GLP=$P(GL,";",2)
+ . I $E(GLP)="E" D
+ . . N START S START=$P(GLP,","),START=$E(GLP,2,99)
+ . . N END S END=$P(GLP,",",2)
+ . . S SCREEN="I $E(^("_GLN_"),"_START_","_END_")="_VAL
+ . E  D
+ . . S SCREEN="I $P(^("_GLN_"),U,"_GLP_")="_VAL
+ ;
+ N FLAGS S FLAGS="QP" ; Default flag
+ ; 
+ ; TODO: if index is not compound, don't apply matching below; send X flag to finder instead.
+ ; I $G(ARGS("match"))="exact" S FLAGS=FLAGS_"X"
+ N %WRES,%WERR
+ ; %WRES("DILIST",0)="200^200^1^"
+ ; %WRES("DILIST",0,"MAP")="IEN^IX(1)^.01^FID(.12)^FID(.13)^FID(.14)"
+ ; %WRES("DILIST",1,0)="8870^CA - CALCIUM^1895^SNOMEDCT^SY^5540006"
+ ; %WRES("DILIST",2,0)="60527^CA - CHOLIC ACID^20969^SNOMEDCT^SY^17147002"
+ ; %WRES("DILIST",3,0)="606334^CA 1000/MAGNESIUM 400/ZINC 15M^810433^VANDF^AB^40252
+ D FIND^DIC(FILE,,"IX;FID",FLAGS,FROM,200,INDEX,SCREEN,"",$NA(%WRES),$NA(%WERR))
+ ;
+ ; 
+ ; Filter only for exact matches if requested. 
+ ; Get IX(1) entries and make sure they are the same as the original values.
+ I $G(ARGS("match"))="exact" D
+ . ; I looper to set IX(1) piece location
+ . N I F I=1:1:$L(%WRES("DILIST",0,"MAP"),U) Q:$P(%WRES("DILIST",0,"MAP"),U,I)="IX(1)"
+ . N IX1P S IX1P=I ; IX(1) piece location
+ . N I S I=0 F  S I=$O(%WRES("DILIST",I)) Q:'I  D  ; Remove IX(1)'s that don't match
+ . . I $P(%WRES("DILIST",I,0),U,IX1P)'=FROM K %WRES("DILIST",I,0)
+ ;
+ ;
+ K ^KBANRPC ZSHOW "*":^KBANRPC
+ ;
+ ;
+ I $D(DIERR) D SETERROR^VPRJRUT("500","Lister error") Q
+ N MAP S MAP=%WRES("DILIST",0,"MAP")
+ S MAP=$$REMAP(MAP,FILE)
+ N %WRES2
+ N I S I=0
+ F  S I=$O(%WRES("DILIST",I)) Q:'I  D
+ . N IEN
+ . S NODE=%WRES("DILIST",I,0)
+ . N P F P=1:1:$L(MAP,U) I $P(MAP,U,P)["IEN" S IEN=$P(NODE,U,P)
+ . N P F P=1:1:$L(MAP,U) S %WRES2(IEN,$P(MAP,U,P))=$P(NODE,U,P)
+ . K %WRES("DILIST",I,0)
+ K %WRES("DILIST",0)
+ N %WJSON,%WERR
+ D ENCODE^VPRJSON($NA(%WRES2),$NA(%WJSON),$NA(%WERR))
+ I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
+ M RESULTS=%WJSON
+ QUIT
+ ;
+REMAP(MAP,FILE) ; Private $$ - Remap the map from the lister
+ N NEWMAP
+ N I F I=1:1:$L(MAP,U) D
+ . N P S P=$P(MAP,U,I)
+ . I P["IX(" S P="INDEX VALUE "_+$P(P,"IX(",2)
+ . I $E(P,1,3)=".01" S P="#"_P_" "_$$GET1^DID(FILE,.01,"","LABEL")
+ . I P["FID(" N FLD S FLD=+$P(P,"FID(",2),P="#"_FLD_" "_$$GET1^DID(FILE,FLD,"","LABEL")
+ . I P="IEN" S P="#.001 IEN"
+ . S $P(NEWMAP,U,I)=P
+ Q NEWMAP
+ ;
+LISTERT
+ N ARGS S ARGS("file")=176.001,ARGS("iens")="STR",ARGS("field")="CA"
+ D LISTER(,.ARGS)
+ N ARGS S ARGS("file")=176.005,ARGS("iens")="B",ARGS("field")="87795"
+ D LISTER(,.ARGS)
  QUIT
  ;
 F(RESULT,ARGS) ; handles fileman/{file}/{iens}
@@ -174,4 +266,26 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ; debug
  I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
  ;
+ QUIT
+ ;
+FILESYS(RESULT,ARGS) ; Handle filesystem/* ; this currently only works on GT.M
+ N PATH S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
+ I $P(PATH,"/",$L(PATH,"/"))[".htm" S RESULT("mime")="text/html"
+ I $E(PATH,$L(PATH)-2,$L(PATH))=".js" S RESULT("mime")="application/javascript"
+ N $ET S $ET="G FILESYSE"
+ O PATH:(REWIND:READONLY)
+ U PATH
+ N C S C=1
+ N CRLF S CRLF=$C(13,10)
+ N X F  R X:0 Q:$ZEOF  S RESULT(C)=X_CRLF,C=C+1
+ C PATH
+ K ^KBANRPC
+ ZSHOW "V":^KBANRPC
+ QUIT
+ ;
+FILESYSE ; 500
+ S $EC=""
+ K ^KBANRPC
+ ZSHOW "*":^KBANRPC
+ D SETERROR^VPRJRUT("500",$ZS)
  QUIT
