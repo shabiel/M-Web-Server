@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-02  12:50 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Listener Process ---------------------------------------
@@ -20,12 +20,6 @@ LOOP ; wait for connection, spawn process to handle it
  I $ZA\8196#2=1 W *-2 ;job failed to clear bit
  G LOOP
  ;
-GTMSTL(PORT) ; GT.M single threaded listener - VEN/SMH; but this won't work as below uses $P.
- S ^VPRHTTP(0,"listener")="running"
- N EXITRULE S EXITRULE="I $E(^VPRHTTP(0,""listener"",1,4)=""stop"") S ZISQUIT=1,^VPRHTTP(0,""listener"")=""stopped"""
- D LISTEN^%ZISTCP($G(PORT,9080),"CHILD^VPRJREQ",EXITRULE)
- QUIT
-
 GTMLNX	;From Linux xinetd script; $P is the main stream
  S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)""")
  X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
@@ -71,7 +65,7 @@ WAIT ; wait for request on this connection
  S HTTPREQ("method")=$P(TCPX," ")
  S HTTPREQ("path")=$P($P(TCPX," ",2),"?")
  S HTTPREQ("query")=$P($P(TCPX," ",2),"?",2,999)
- ; TODO: time out connection after N minutes of wait 
+ ; TODO: time out connection after N minutes of wait
  ; TODO: check format of TCPX and raise error if not correct
  I $E($P(TCPX," ",3),1,4)'="HTTP" G NEXT
  ;
@@ -79,7 +73,7 @@ WAIT ; wait for request on this connection
  F  S TCPX=$$RDCRLF() Q:'$L(TCPX)  D ADDHEAD(TCPX)
  ;
  ; -- Handle Contiuation Request - VEN/SMH
- I $G(HTTPREQ("header","expect"))="100-continue" W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
+ I $G(HTTPREQ("header","expect"))="100-continue" D LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
  X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
@@ -106,9 +100,9 @@ WAIT ; wait for request on this connection
  D SENDATA^VPRJRSP
  ;
  ; -- exit on Connection: Close
- I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  Q
+ I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  HALT
  . K ^TMP($J),^TMP("HTTPERR",$J)
- . C $P ; This halts the GT.M process.
+ . C $P
  ;
  ; -- otherwise get ready for the next request
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
@@ -156,7 +150,7 @@ ADDHEAD(LINE) ; add header name and header value
  ;
 ETSOCK ; error trap when handling socket (i.e., client closes connection)
  D LOGERR
- C $P H 2
+ C $P
  HALT  ; exit because connection has been closed
  ;
 ETCODE ; error trap when calling out to routines
@@ -176,14 +170,14 @@ ETCODE ; error trap when calling out to routines
 ETDC ; error trap for client disconnect ; not a true M trap
  D LOGDC
  K ^TMP($J),^TMP("HTTPERR",$J)
- C $P  ; This kills the GT.M process; Cache will loop around to the next request
- QUIT
+ C $P  
+ HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
  U $P
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
  K ^TMP($J),^TMP("HTTPERR",$J)
- C $P H 1
+ C $P
  HALT  ; exit because we can't recover
  ;
 INCRLOG ; get unique log id for each request
@@ -225,6 +219,11 @@ LOGRSP ; log the response before sending
  I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
  E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
  Q
+LOGCN ; log continue
+ N DT,ID
+ S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ S ^VPRHTTP("log",DT,$J,ID,"continue")="HTTP/1.1 100 Continue"
+ QUIT
 LOGDC ; log client disconnection; VEN/SMH
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
@@ -245,6 +244,9 @@ LOGERR ; log error information
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
  Q
  ;
+SIGNON ; TODO: VISTA SIGN-ON
+ ;
+SIGNOFF ; TODO: VISTA SIGN-OFF
  ;
  ; Deprecated -- use VPRJ
  ;
