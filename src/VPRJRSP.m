@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-06-28  12:24 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-10-18  6:37 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -36,68 +36,18 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ; ROUTINE contains the TAG^ROUTINE to execute for this path, otherwise empty
  ; .ARGS will contain an array of resolved path arguments
  ;
- N SEQ,PATH,DONE,METHOD
- N DONE S DONE=0
- N PATH S PATH=HTTPREQ("path")
- N PATHOK S PATHOK=0
  N AUTHNODE ; Authentication and Authorization node
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
- S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  ;
+ ; If we have the %W file for mapping...
+ IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.AUTHNODE) 
  ;
- IF $D(^%W(17.6001)) DO  ; If we have the %W file for mapping...
- . ; ^%W(17.6001,"B","GET","xml"
- . N PATH1 S PATH1=$$URLDEC^VPRJRUT($P(PATH,"/",1),1) ; get first / piece of path; and decode.
- . N PATTERN S PATTERN=PATH1  ; looper variable; start at first piece of path.
- . I $D(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
- . . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
- . . S PATHOK=1
- . E  D
- . . ; Loop through patterns. Start with first piece of path. quit if $order took us off the deep end.
- . . F  S PATTERN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
- . . . I $L(PATTERN,"/")'=$L(PATH,"/") QUIT  ; not the same number of pieces; quit.
- . . . K ARGS
- . . . N FAIL S FAIL=0
- . . . N I F I=2:1:$L(PATH,"/") D  Q:FAIL  ; we have matched the first piece; now, do every piece after that.
- . . . . N PATHSEG S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)  ; Path Segment url-decoded
- . . . . N PATTSEG S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
- . . . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q  ; if not mumps pattern, just string equality
- . . . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; else, extract pattern by getting rid of curly braces
- . . . . N ARGUMENT,TEXT S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2) ; get pattern match
- . . . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL  ; run pattern match
- . . . . S ARGS(ARGUMENT)=PATHSEG  ; if pattern matches, put into arguments hopper.
- . . . ;
- . . . ; At this point, none of the stuff failed. We can tell the initial loop that we are done.
- . . . S DONE=1,PATHOK=1
- . Q:PATH1'=$E(PATTERN,1,$L(PATH1))
- . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
- . N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
- . S AUTHNODE=$G(^%W(17.6001,IEN,"AUTH"))
+ ; Using built-in table if routine is still empty.
+ I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
  ;
- ;
- ; Using built-in table
- I ROUTINE="" F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ),";;",2,99) Q:PATTERN="zzzzz"  D  Q:DONE
- . K ARGS
- . S ROUTINE=$P(PATTERN," ",3),METHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
- . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
- . F I=1:1:$L(PATH,"/") D  Q:FAIL
- . . S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)
- . . S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1)
- . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q
- . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; get rid of curly braces
- . . S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2)
- . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL
- . . S ARGS(ARGUMENT)=PATHSEG
- . I 'FAIL S PATHOK=1 I METHOD'=HTTPREQ("method") S FAIL=1
- . S:FAIL ROUTINE="" S:'FAIL DONE=1
- ;
- ;
- ;
- I PATHOK,ROUTINE="" D SETERROR^VPRJRUT(405,"Method Not Allowed") QUIT
+ ; Okay. Do we have a routine to execute?
  I ROUTINE="" D SETERROR^VPRJRUT(404,"Not Found") QUIT
- ;
- ;
  ;
  I +$G(AUTHNODE) D  ; Web Service has authorization node
  . ;
@@ -110,25 +60,92 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . I 'AUTHEN D SETERROR^VPRJRUT(401) QUIT ; Unauthoirzed
  . ;
  . ; DEBUG.ASSERT that DUZ is greater than 0
- . I $G(DUZ)'>0 S $EC=",U1,"
+ . I $G(DUZ)'>0 S $EC=",U-NO-DUZ,"
  . ;
  . ; Then user must have security key
  . N KEY S KEY=$P(AUTHNODE,"^",2)    ; Get Key pointer
  . I KEY S KEY=$P($G(^DIC(19.1,KEY,0)),"^") ; Get Key name from Security Key file
- . I $L(KEY),'$D(^XUSEC(KEY,DUZ)) D SETERROR^VPRJRUT(405,"Missing security key "_KEY) QUIT ; Method not allowed
+ . I $L(KEY),'$D(^XUSEC(KEY,DUZ)) D SETERROR^VPRJRUT(405,"Missing security key "_KEY) QUIT  ; Method not allowed
  . K KEY
  . ;
  . ; And not have reverse security key
  . N RKEY S RKEY=$P(AUTHNODE,"^",3)  ; Get Key pointer
  . I RKEY S RKEY=$P($G(^DIC(19.1,RKEY,0)),"^") ; Get Reverse Key name from Security Key file
- . I $L(RKEY),$D(^XUSEC(RKEY,DUZ)) D SETERROR^VPRJRUT(405,"Holding exclusive key "_RKEY) QUIT ; Method not allowed
+ . I $L(RKEY),$D(^XUSEC(RKEY,DUZ)) D SETERROR^VPRJRUT(405,"Holding exclusive key "_RKEY) QUIT  ; Method not allowed
  . K RKEY
  . ;
  . ; And have access to the menu option indicated
  . N OPTION S OPTION=$P(AUTHNODE,"^",4)  ; Get Option pointer
  . I OPTION N OPTIONNM S OPTIONNM=$P($G(^DIC(19,OPTION,0)),"^") ; Get Option name from Option file
- . I OPTION,$L($T(ACCESS^XQCHK)),'$$ACCESS^XQCHK(DUZ,OPTION) D SETERROR^VPRJRUT(405,"No access to option "_OPTIONNM) ; Method not allowed
+ . I OPTION,$L($T(ACCESS^XQCHK)),'$$ACCESS^XQCHK(DUZ,OPTION) D SETERROR^VPRJRUT(405,"No access to option "_OPTIONNM)  ; Method not allowed
  . K OPTION,OPTIONNM
+ QUIT
+ ;
+ ;
+MATCHF(ROUTINE,ARGS,AUTHNODE) ; Match against a file...
+ ; ^%W(17.6001,"B","GET","xml"
+ N PATH S PATH=HTTPREQ("path")
+ S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
+ ;
+ N DONE S DONE=0
+ N PATH1 S PATH1=$$URLDEC^VPRJRUT($P(PATH,"/",1),1) ; get first / piece of path; and decode.
+ N PATTERN S PATTERN=PATH1  ; looper variable; start at first piece of path.
+ I $D(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
+ . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
+ E  D
+ . ; Loop through patterns. Start with first piece of path. quit if $order took us off the deep end.
+ . F  S PATTERN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
+ . . ;
+ . . ; TODO: only matches 1st piece then *. Second piece can be different.
+ . . N I F I=2:1:$L(PATTERN,"/") D
+ . . . N PATTSEG S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
+ . . . I PATTSEG="*" S ARGS("*")=$P(PATH,"/",I,999) QUIT
+ . . ;
+ . . I $D(ARGS("*")) S DONE=1 QUIT  ; We are done if we found the *
+ . . ;
+ . . I $L(PATTERN,"/")'=$L(PATH,"/") QUIT  ; not the same number of pieces; quit.
+ . . K ARGS
+ . . N FAIL S FAIL=0
+ . . N I F I=2:1:$L(PATH,"/") D  Q:FAIL  ; we have matched the first piece; now, do every piece after that.
+ . . . N PATHSEG S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)  ; Path Segment url-decoded
+ . . . N PATTSEG S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
+ . . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q  ; if not mumps pattern, just string equality
+ . . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; else, extract pattern by getting rid of curly braces
+ . . . N ARGUMENT,TEXT S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2) ; get pattern match
+ . . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL  ; run pattern match
+ . . . S ARGS(ARGUMENT)=PATHSEG  ; if pattern matches, put into arguments hopper.
+ . . ;
+ . . Q:FAIL  ; last loop failed to find a match
+ . . ;
+ . . ; At this point, none of the stuff failed. We can tell the initial loop that we are done.
+ . . S DONE=1
+ Q:PATH1'=$E(PATTERN,1,$L(PATH1))
+ S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
+ N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
+ S AUTHNODE=$G(^%W(17.6001,IEN,"AUTH"))
+ QUIT
+ ;
+ ;
+ ;
+MATCHR(ROUTINE,ARGS) ; Match against this routine
+ N PATH S PATH=HTTPREQ("path")
+ S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
+ N SEQ,METHOD
+ N DONE S DONE=0
+ F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ),";;",2,99) Q:PATTERN="zzzzz"  D  Q:DONE
+ . K ARGS
+ . S ROUTINE=$P(PATTERN," ",3),METHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
+ . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
+ . F I=1:1:$L(PATH,"/") D  Q:FAIL
+ . . S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)
+ . . S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1)
+ . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q
+ . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; get rid of curly braces
+ . . S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2)
+ . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL
+ . . S ARGS(ARGUMENT)=PATHSEG
+ . I 'FAIL I METHOD'=HTTPREQ("method") S FAIL=1
+ . S:FAIL ROUTINE="" S:'FAIL DONE=1
  QUIT
  ;
  ;
