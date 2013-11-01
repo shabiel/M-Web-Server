@@ -1,4 +1,4 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2013-10-18  9:34 AM
+%WC ; VEN/SMH - Web Services Client using cURL ;2013-10-31  6:18 PM
  ; See accompanying License for terms of use.
  ;
 %(RETURN,METHOD,URL,PAYLOAD,MIME,TO,HEADERS) ; General call for any type
@@ -13,16 +13,14 @@
  I +TO=0 S TO=30 ; Default timeout
  ;
  ; Write payload to File in shared memory
- N F S F="/dev/shm/"_$R(987987234)_$J_".DAT"
- O F:(NEWVERSION) U F
- I $D(PAYLOAD)#2 W PAYLOAD,!
- N I F I=0:0 S I=$O(PAYLOAD(I)) Q:'I  W PAYLOAD(I),!
- C F
+ I $D(PAYLOAD) N F D
+ . S F="/dev/shm/"_$R(987987234)_$J_".DAT"
+ . O F:(NEWVERSION) U F
+ . I $D(PAYLOAD)#2 W PAYLOAD,!
+ . N I F I=0:0 S I=$O(PAYLOAD(I)) Q:'I  W PAYLOAD(I),!
+ . C F
  ;
- ; Flags: -s : Silent; -X: HTTP POST; -k : Ignore certificate validation.
- ; --connect-timeout: try only for this long; -m: max time to try. Both in sec.
- ; -i: Print headers out in response.
- N CMD S CMD="curl -si -X"_METHOD_" --connect-timeout "_TO_" -m "_TO_" -k "_URL_" --header 'Content-Type:"_MIME_"'"_" --data-binary @"_F
+ N CMD S CMD="curl -K -" ; Read options from stdin; GT.M cannot handle a command longer than 255 characters.
  ;
  ; DEBUG ; See if we can get an error if curl isn't found on the Operating System.
  ;N CMD S CMD="curly -si -XPOST --connect-timeout "_TO_" -m "_TO_" -k "_URL_" --header 'Content-Type:"_MIME_"'"_" --data-binary @"_F
@@ -41,6 +39,20 @@
  N D S D="cURLDevice"
  O D:(shell="/bin/sh":command=CMD:PARSE)::"PIPE" U D
  ;
+ ; Write what to do for curl -K -
+ ; TODO: not bullet proof. Some characters may need to be escaped.
+ N Q S Q=""""
+ W "url = ",Q_URL_Q,!
+ W "request = ",METHOD,!
+ W "connect-timeout = ",TO,!
+ W "max-time = ",TO,!
+ W "insecure",!
+ W "silent",!
+ W "include",!
+ I $D(MIME)#2 W "header = "_Q_"Content-Type: "_MIME_Q,!
+ I $D(PAYLOAD) W "data-binary = "_Q_"@"_F_Q,!
+ W /EOF
+ ;
  ; Flag to indicate whether a line we are getting a header or not. We are getting headers first, so it's true.
  ; A la State machine.
  N ISHEADER S ISHEADER=1 
@@ -58,7 +70,7 @@
  C D
  
  ; Delete the file a la %ZISH
- O F C F:(DELETE)
+ I $D(PAYLOAD) O F C F:(DELETE)
  ;
  ; Comment the zwrites out to see the return vales from the function
  ;DEBUG
@@ -100,6 +112,7 @@ CURL(RETURN,URL,PAYLOAD,MIME,TO,HEADERS) ; Post using CURL
  ; -i: Print headers out in response.
  N CMD S CMD="curl -si -XPOST --connect-timeout "_TO_" -m "_TO_" -k "_URL_" --header 'Content-Type:"_MIME_"'"_" --data-binary @"_F
  ;
+ ;
  ; DEBUG ; See if we can get an error if curl isn't found on the Operating System.
  ;N CMD S CMD="curly -si -XPOST --connect-timeout "_TO_" -m "_TO_" -k "_URL_" --header 'Content-Type:"_MIME_"'"_" --data-binary @"_F
  ; DEBUG
@@ -116,6 +129,7 @@ CURL(RETURN,URL,PAYLOAD,MIME,TO,HEADERS) ; Post using CURL
  ; Execute and read back
  N D S D="cURLDevice"
  O D:(shell="/bin/sh":command=CMD:PARSE)::"PIPE" U D
+ ;
  ;
  ; Flag to indicate whether a line we are getting a header or not. We are getting headers first, so it's true.
  ; A la State machine.
@@ -156,3 +170,22 @@ TRIM(%X,%F,%V) ;Trim spaces\char from front(left)/back(right) of string
  Q $E(%X,%L,%R)
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ ;
+TEST ; Unit Tests
+ ; Test Get
+ N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/DIC",,"application/text",5,.H)
+ I H("STATUS")'=200 WRITE "FAIL FAIL FAIL",!
+ ;
+ ; Test Put
+ N PAYLOAD,RTN,H
+ N R S R=$R(123423421234)
+ S PAYLOAD(1)="KBANTEST ; VEN/SMH - Test routine for Sam ;"_R
+ S PAYLOAD(2)=" QUIT"
+ D %(.RTN,"PUT","https://thebes.smh101.com/r/KBANTEST",.PAYLOAD,"application/text",5,.H)
+ I H("STATUS")'=201 WRITE "FAIL FAIL FAIL",!
+ ;
+ ; Test Get with no mime and no headers to return
+ N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/KBANTEST")
+ I $P(@$Q(RTN),";",3)'=R W "FAIL FAIL FAIL",!
+ ;
+ QUIT
