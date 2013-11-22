@@ -1,15 +1,18 @@
 VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM
- ;;1.0;JSON DATA STORE;;Sep 01, 2012
+ ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
  ; Mods by VEN/SMH for GT.M support: Labels GTMSTL, GTMLNX, 2-3 changes for Use command
+JOB(TCPPORT)  ;ENTRY POINT FOR JOBBING
+ J START^VPRJREQ(TCPPORT)::5
+ QUIT
  ;
 START(TCPPORT) ; set up listening for connections
  S ^VPRHTTP(0,"listener")="running"
  ;
  S TCPPORT=$G(TCPPORT,9080)
  S TCPIO="|TCP|"_TCPPORT
- O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error" Q
+ O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
  U TCPIO
 LOOP ; wait for connection, spawn process to handle it
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
@@ -20,7 +23,7 @@ LOOP ; wait for connection, spawn process to handle it
  I $ZA\8196#2=1 W *-2 ;job failed to clear bit
  G LOOP
  ;
-GTMLNX	;From Linux xinetd script; $P is the main stream
+GTMLNX  ;From Linux xinetd script; $P is the main stream
  S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)""")
  X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
  S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
