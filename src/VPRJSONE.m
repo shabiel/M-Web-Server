@@ -1,4 +1,4 @@
-VPRJSONE ;SLC/KCM -- Encode JSON;2013-05-10  9:04 PM
+VPRJSONE ;SLC/KCM -- Encode JSON;2013-10-25  1:48 AM
  ;;1.0;VIRTUAL PATIENT RECORD;**2,%W**;Sep 01, 2011;Build 50
  ;
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
@@ -46,8 +46,9 @@ SERARY(VVROOT) ; Serialize into a JSON array
  . S:'VVFIRST @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"," S VVFIRST=0
  . I $$ISVALUE(VVROOT,VVI) D SERVAL(VVROOT,VVI) Q  ; write value
  . I $D(@VVROOT@(VVI))=10 S VVNXT=$O(@VVROOT@(VVI,"")) D  Q
- . . I +VVNXT D SERARY($NA(@VVROOT@(VVI))) I 1
- . . E  D SEROBJ($NA(@VVROOT@(VVI)))
+ . . ; I +VVNXT D SERARY($NA(@VVROOT@(VVI))) I 1  ; VEN/SMH - this isn't cutting it for me...
+ . . I +VVNXT=VVNXT D SERARY($NA(@VVROOT@(VVI))) I 1  ; If numeric... another array inside array
+ . . E  D SEROBJ($NA(@VVROOT@(VVI))) ; otherwise, it's an object
  . D ERRX("SAR",VVI)  ; should quit loop before here
  S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"]"
  Q
