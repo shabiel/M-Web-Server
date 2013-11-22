@@ -1,12 +1,13 @@
 %W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM
- ;;
+ ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
+ ;
 R(RESULT,ARGS) ; GET Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
  S RESULT=$NA(^TMP($J))
  K @RESULT
  N RTN S RTN=$G(ARGS("routine"))
  N OFF,I
- I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN=$T(@OFF^@RTN) Q:LN=""  S @RESULT@(I)=LN_$C(13,10)
+ I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S @RESULT@(I)=LN_$C(13,10)
  E  K RESULT("mime") D SETERROR^VPRJRUT(404,"Routine not found")
  QUIT
  ;
@@ -17,7 +18,7 @@ PR(ARGS,BODY,RESULT) ; PUT Mumps Routine
  N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
  Q RESULT
  ;
-SAVE(RN)	;Save a routine
+SAVE(RN)        ;Save a routine
  N %,%F,%I,%N,SP,$ETRAP
  S $ETRAP="S $ECODE="""" Q"
  S %I=$I,SP=" ",%F=$$RTNDIR^%ZOSV()_$TR(RN,"%","_")_".m"
@@ -145,8 +146,8 @@ F(RESULT,ARGS) ; handles fileman/{file}/{iens}
  N %WERR
  D ENCODE^VPRJSON($NA(%WRTN(FILE,IENS_",")),$NA(RESULT),$NA(%WERR))
  ; debug
- K ^KBANRPC 
- ZSHOW "V":^KBANRPC
+ ;K ^KBANRPC 
+ ;ZSHOW "V":^KBANRPC
  ; debug
  I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
  QUIT
@@ -237,9 +238,9 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  D ADDCRLF^VPRJRUT(.RESULT) ; Add CRLF to each line
  ;
  ; debug
- K ^KBANRPC 
- M ^KBANRPC=BODY,^KBANRPC=RP
- ZSHOW "V":^KBANRPC
+ ;K ^KBANRPC 
+ ;M ^KBANRPC=BODY,^KBANRPC=RP
+ ;ZSHOW "V":^KBANRPC
  ; debug
  ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return
@@ -260,9 +261,9 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  I $L($T(@(TAG_"^"_ROU))) S %WRTN(8994,RPIEN_",","FORMALLINE")=$T(@(TAG_"^"_ROU))
  D ENCODE^VPRJSON($NA(%WRTN(8994,RPIEN_",")),$NA(RESULT),$NA(%WERR))
  ; debug
- K ^KBANRPC 
- S ^KBANRPC=RP
- ZSHOW "V":^KBANRPC
+ ;K ^KBANRPC 
+ ;S ^KBANRPC=RP
+ ;ZSHOW "V":^KBANRPC
  ; debug
  I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
  ;
