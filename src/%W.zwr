@@ -1,6 +1,6 @@
-GT.M MUPIP EXTRACT
-10-MAY-2013  23:33:47 ZWR
-^%W(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S^9^9"
+WEB SERVICE URL HANDLER Nov-22-2013 update
+GT.M 22-NOV-2013 19:40:39 ZWR
+^%W(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S^13^13"
 ^%W(17.6001,1,0)="GET"
 ^%W(17.6001,1,1)="xml"
 ^%W(17.6001,1,2)="XML^VPRJRSP"
@@ -21,7 +21,7 @@ GT.M MUPIP EXTRACT
 ^%W(17.6001,6,1)="xmlpost"
 ^%W(17.6001,6,2)="POSTTEST^%W0"
 ^%W(17.6001,7,0)="POST"
-^%W(17.6001,7,1)="mocha/{type}"
+^%W(17.6001,7,1)="MOCHA/ordercheck"
 ^%W(17.6001,7,2)="MOCHAP^%W0"
 ^%W(17.6001,8,0)="POST"
 ^%W(17.6001,8,1)="rpc/{rpc}"
@@ -29,12 +29,33 @@ GT.M MUPIP EXTRACT
 ^%W(17.6001,9,0)="OPTIONS"
 ^%W(17.6001,9,1)="rpc/{rpc}"
 ^%W(17.6001,9,2)="RPCO^%W0"
+^%W(17.6001,10,0)="GET"
+^%W(17.6001,10,1)="fileman/{file}/{iens}"
+^%W(17.6001,10,2)="F^%W0"
+^%W(17.6001,11,0)="GET"
+^%W(17.6001,11,1)="filesystem/*"
+^%W(17.6001,11,2)="FILESYS^%W0"
+^%W(17.6001,11,"AUTH")=1
+^%W(17.6001,12,0)="GET"
+^%W(17.6001,12,1)="fileman/dd/{fields}"
+^%W(17.6001,12,2)="DD^DDWC001"
+^%W(17.6001,12,"AUTH")=1
+^%W(17.6001,13,0)="POST"
+^%W(17.6001,13,1)="fileman/vals"
+^%W(17.6001,13,2)="VALS^DDWC001"
+^%W(17.6001,13,"AUTH")=1
+^%W(17.6001,"B","GET","fileman/dd/{fields}","DD^DDWC001",12)=""
+^%W(17.6001,"B","GET","fileman/{file}/{iens}","F^%W0",10)=""
 ^%W(17.6001,"B","GET","fileman/{file}/{iens}/{field}","FV^%W0",4)=""
+^%W(17.6001,"B","GET","filesystem/*","FILESYS^%W0",11)=""
 ^%W(17.6001,"B","GET","mocha/{type}","MOCHA^%W0",3)=""
 ^%W(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%W0",2)=""
 ^%W(17.6001,"B","GET","xml","XML^VPRJRSP",1)=""
 ^%W(17.6001,"B","OPTIONS","rpc/{rpc}","RPCO^%W0",9)=""
-^%W(17.6001,"B","POST","mocha/{type}","MOCHAP^%W0",7)=""
+^%W(17.6001,"B","POST","MOCHA/ordercheck","MOCHAP^%W0",7)=""
+^%W(17.6001,"B","POST","fileman/vals","VALS^DDWC001",13)=""
 ^%W(17.6001,"B","POST","rpc/{rpc}","RPC^%W0",8)=""
 ^%W(17.6001,"B","POST","xmlpost","POSTTEST^%W0",6)=""
 ^%W(17.6001,"B","PUT","r/{routine?.1""%25"".32AN}","PR^%W0",5)=""
+
+
