@@ -9,6 +9,7 @@ RESPOND ; find entry point to handle request and call it
  ; TODO: check cache of HEAD requests first and return that if there?
  K ^TMP($J)
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
+ I HTTPREQ("path")="/",HTTPREQ("method")="GET" D EN^%WHOME(.HTTPRSP) QUIT  ; Home page requested.
  D MATCH(.ROUTINE,.HTTPARGS) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
  D QSPLIT(.HTTPARGS) I $G(HTTPERR) QUIT          ; Split the query string
  S HTTPREQ("paging")=$G(HTTPARGS("start"),0)_":"_$G(HTTPARGS("limit"),999999)
@@ -57,7 +58,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . ; First, user must authenticate
  . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
  . N AUTHEN S AUTHEN=$$AUTHEN($G(HTTPREQ("header","authorization"))) ; Try to authenticate
- . I 'AUTHEN D SETERROR^VPRJRUT(401) QUIT ; Unauthoirzed
+ . I 'AUTHEN D SETERROR^VPRJRUT(401) QUIT  ; Unauthoirzed
  . ;
  . ; DEBUG.ASSERT that DUZ is greater than 0
  . I $G(DUZ)'>0 S $EC=",U-NO-DUZ,"
