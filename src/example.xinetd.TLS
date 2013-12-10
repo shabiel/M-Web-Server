@@ -1,15 +1,16 @@
-service VPRJ-9281-TLS
+service %W
 {
-        port        = 9281
+        port        = 443
         socket_type = stream
         protocol    = tcp
         type        = UNLISTED
-        user        = vista
+        user        = sam
         groups      = yes
-        server      = /usr/bin/stunnel
-        server_args = -p /etc/stunnel/stunnel.pem -l /home/vista/bin/VPRJ.sh
-        env         = USER=vista
-        env        += HOME=/home/vista
+        server      = /usr/bin/stunnel4
+	server_args = /etc/stunnel/stunnel.conf3
+	#server_args = -p /etc/stunnel/ssl.crt -A /etc/stunnel/ca-certs.crt -l /home/sam/www/%W.sh
+        env         = USER=sam
+        env        += HOME=/home/sam
         wait        = no
         disable     = no
         per_source  = UNLIMITED
