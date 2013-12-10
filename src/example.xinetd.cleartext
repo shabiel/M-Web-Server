@@ -1,0 +1,16 @@
+service %W
+{
+        port        = 80
+        socket_type = stream
+        protocol    = tcp
+        type        = UNLISTED
+        user        = sam
+        groups      = yes
+        server      = /home/sam/www/%W.sh
+        env         = USER=sam
+        env        += HOME=/home/sam
+        wait        = no
+        disable     = no
+        per_source  = UNLIMITED
+        instances   = UNLIMITED
+}
