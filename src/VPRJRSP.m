@@ -156,6 +156,9 @@ SENDATA ; write out the data as an HTTP response
  ; RSPTYPE=1  local variable
  ; RSPTYPE=2  data in ^TMP($J)
  ; RSPTYPE=3  pageable data in ^TMP($J,"data") or ^VPRTMP(hash,"data")
+ ;
+ N %WBUFF S %WBUFF="" ; Write Buffer
+ ;
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
  I RSPTYPE=1 S SIZE=$$VARSIZE^VPRJRUT(.HTTPRSP)
@@ -168,34 +171,104 @@ SENDATA ; write out the data as an HTTP response
  ;       (put HTTPRSP in ^XTMP and return appropriate header)
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
- W $$RSPLINE()_$C(13,10) ; Status Line (200, 404, etc)
- ;W "HTTP/1.1 200 OK"_$C(13,10) ; Status Line (200, 404, etc)
- W "Date: "_$$GMT^VPRJRUT_$C(13,10) ; RFC 1123 date
- I $D(HTTPREQ("location")) W "Location: "_HTTPREQ("location")_$C(13,10)  ; ?? Request location; TODO: Check this. Should be Response.
- I $D(HTTPRSP("auth")) W "WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10) K HTTPRSP("auth") ; Authentication
- I $D(HTTPRSP("mime")) W "Content-Type: "_HTTPRSP("mime")_$C(13,10) K HTTPRSP("mime") ; Mime-type
- E  W "Content-Type: application/json; charset=utf-8"_$C(13,10)
- W "Content-Length: "_SIZE_$C(13,10)_$C(13,10)
- I 'SIZE W ! Q  ; flush buffer and quit
+ D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
+ D W("Date: "_$$GMT^VPRJRUT_$C(13,10)) ; RFC 1123 date
+ I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; ?? Request location; TODO: Check this. Should be Response.
+ I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
+ I $D(HTTPRSP("mime")) D  ; Stack $TEST for the ELSE below
+ . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
+ E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
+ ;
+ ; I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" D GZIP QUIT  ; If on GT.M, and we can zip, let's do that!
+ ;
+ D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
+ I 'SIZE D FLUSH Q  ; flush buffer and quit if empty
  ;
  N I,J
  I RSPTYPE=1 D            ; write out local variable
- . I $D(HTTPRSP)#2 W HTTPRSP
- . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  W HTTPRSP(I)
+ . I $D(HTTPRSP)#2 D W(HTTPRSP)
+ . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  D W(HTTPRSP(I))
  I RSPTYPE=2 D            ; write out global using indirection
- . I $D(@HTTPRSP)#2 W @HTTPRSP
- . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I)
+ . I $D(@HTTPRSP)#2 D W(@HTTPRSP)
+ . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
  I RSPTYPE=3 D            ; write out pageable records
  . W PREAMBLE
  . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
- . . I I>START W "," ; separate items with a comma
- . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J)
- . W "]}}"
+ . . I I>START D W(",") ; separate items with a comma
+ . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  D W(@HTTPRSP@($J,I,J))
+ . D W("]}}")
  . K @HTTPRSP@($J)
- W ! ; flush buffer
+ D FLUSH ; flush buffer
  ; W $C(13,10),!  ; flush buffer ; ****VEN/SMH NOT INCLUDED IN THE SIZE!!!
  I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
  Q
+W(DATA) ; EP to write data
+ ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
+ S %WBUFF=%WBUFF_DATA
+ I $L(%WBUFF)>32000 D FLUSH
+ QUIT
+ ;
+FLUSH ; EP to flush written data
+ ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
+ W %WBUFF,!
+ S %WBUFF=""
+ QUIT
+ ;
+GZIP ; EP to write gzipped content -- unstable right now...
+ ;
+ ; Nothing to write?
+ I 'SIZE D  QUIT  ; nothing to write!
+ . W "Content-Length: 0"_$C(13,10,13,10)
+ . W ! ; flush buffer
+ ;
+ ; zip away - Open gzip and write to it, then read back the zipped file.
+ N OLDIO S OLDIO=$IO
+ ; NB: Must have wrap,fixed,chset="M" for GT.M to read the data back as binary.
+ O "D":(shell="/bin/sh":command="gzip -f":parse:wrap:fixed:chset="M")::"pipe" 
+ U "D"
+ ;
+ ; Write out data
+ N ZIPPED,C S C=1
+ N I,J
+ I RSPTYPE=1 D            ; write out local variable
+ . I $D(HTTPRSP)#2 W HTTPRSP ; R ZIPPED(C):0 I  S C=C+1
+ . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  W HTTPRSP(I) R ZIPPED(C)#32767:0 S C=C+1
+ I RSPTYPE=2 D            ; write out global using indirection
+ . I $D(@HTTPRSP)#2 W @HTTPRSP ; R ZIPPED(C):0 I  S C=C+1
+ . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I) ; R ZIPPED(C):0 I  S C=C+1
+ I RSPTYPE=3 D            ; write out pageable records
+ . W PREAMBLE
+ . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
+ . . I I>START W "," ; R ZIPPED(C):0 I  S C=C+1 ; separate items with a comma
+ . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J) ; R ZIPPED(C):0 I  S C=C+1
+ . W "]}}" ; R ZIPPED(C):0 I  S C=C+1
+ . K @HTTPRSP@($J)
+ ;
+ ZSHOW "V":^KBANRPC1
+ ; Tell gzip we are done.
+ W /EOF
+ ;
+ ; Read back
+ F  R ZIPPED(C)#32767 Q:$ZEOF  S C=C+1
+ ;
+ ; Close
+ U OLDIO C "D"
+ ; 
+ ; Calculate new size (reset SIZE first)
+ S SIZE=0 
+ N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  S SIZE=SIZE+$L(ZIPPED(I))
+ ;
+ ; Write out the content headings for gzipped file.
+ W "Content-Encoding: gzip"_$C(13,10)
+ W "Content-Length: "_SIZE_$C(13,10)_$C(13,10)
+ N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  W ZIPPED(I)
+ W !
+ ;
+ ZSHOW "V":^KBANRPC2
+ ; House keeping.
+ I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
+ QUIT
+ ;
 UPDCACHE ; update the cache for this query
  I HTTPREQ("store")="data" G UPD4DATA
 UPD4VPR ;
