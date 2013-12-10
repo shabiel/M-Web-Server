@@ -19,6 +19,7 @@ PR(ARGS,BODY,RESULT) ; PUT Mumps Routine
  Q RESULT
  ;
 SAVE(RN)        ;Save a routine
+ Q:$E(RN,1,4)'="KBAN"  ; Just for this server, don't do this.
  N %,%F,%I,%N,SP,$ETRAP
  S $ETRAP="S $ECODE="""" Q"
  S %I=$I,SP=" ",%F=$$RTNDIR^%ZOSV()_$TR(RN,"%","_")_".m"
@@ -270,23 +271,22 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  QUIT
  ;
 FILESYS(RESULT,ARGS) ; Handle filesystem/* ; this currently only works on GT.M
+ ; TODO: For whomever cares, make this work on Cache.
  N PATH S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
- I $P(PATH,"/",$L(PATH,"/"))[".htm" S RESULT("mime")="text/html"
- I $E(PATH,$L(PATH)-2,$L(PATH))=".js" S RESULT("mime")="application/javascript"
+ N EXT S EXT=$P(PATH,".",$L(PATH,"."))
+ I $E(EXT,1,3)="htm" S RESULT("mime")="text/html"
+ I EXT="js" S RESULT("mime")="application/javascript"
+ I EXT="css" S RESULT("mime")="text/css"
+ I EXT="pdf" S RESULT("mime")="application/pdf"
  N $ET S $ET="G FILESYSE"
- O PATH:(REWIND:READONLY)
+ O PATH:(REWIND:READONLY:FIXED:CHSET="M") ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
  U PATH
  N C S C=1
- N CRLF S CRLF=$C(13,10)
- N X F  R X:0 Q:$ZEOF  S RESULT(C)=X_CRLF,C=C+1
+ N X F  R X#4079:0 S RESULT(C)=X,C=C+1 Q:$ZEOF
  C PATH
- K ^KBANRPC
- ZSHOW "V":^KBANRPC
  QUIT
  ;
 FILESYSE ; 500
  S $EC=""
- K ^KBANRPC
- ZSHOW "*":^KBANRPC
  D SETERROR^VPRJRUT("500",$ZS)
  QUIT
