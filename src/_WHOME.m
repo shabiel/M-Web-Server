@@ -2,7 +2,7 @@
  ;;
  ;
 EN(RESULT) ; PEP
- S RESULT("mime")="Content-Type: text/html; charset=utf-8"
+ S RESULT("mime")="text/html; charset=utf-8"
  N CRLF S CRLF=$C(13,10)
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D
  . I RESULT(I)["<%TABLEDATA%>" D
@@ -38,7 +38,7 @@ HTML ; HTML to Write out
  ;;<!doctype html>
  ;;<html>
  ;;<head>
- ;;<title>Mumps Restful Web-Services Portal</title>
+ ;;<title>MUMPS Restful Web-Services Portal</title>
  ;;<style>
  ;; body {
  ;;     margin: 0 0 0 0;
@@ -93,11 +93,11 @@ HTML ; HTML to Write out
  ;;</head>
  ;;<body>
  ;;<header>
- ;; <span>Mumps Restful Web-Services Portal</span>
+ ;; <span>MUMPS Restful Web-Services Portal</span>
  ;;</header>
  ;;<main>
  ;;<p>
- ;; Welcome to the Mumps Advanced Shell Web Services.
+ ;; Welcome to the MUMPS Advanced Shell Web Services.
  ;;</p>
  ;;<p>
  ;; Here is a list of web services configured on this server.
