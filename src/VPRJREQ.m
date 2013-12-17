@@ -23,8 +23,12 @@ LOOP ; wait for connection, spawn process to handle it
  I $ZA\8196#2=1 W *-2 ;job failed to clear bit
  G LOOP
  ;
+JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
+ ZSHOW "*":^VPRHTTP("processlog",+$H,$P($H,",",2),$J)
+ QUIT 1
+ ;
 GTMLNX  ;From Linux xinetd script; $P is the main stream
- S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)""")
+ S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
  X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
  S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
  G CHILD
