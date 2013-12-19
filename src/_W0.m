@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM
+%W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM ; 12/18/13 3:25pm
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; GET Mumps Routine
@@ -129,7 +129,7 @@ REMAP(MAP,FILE) ; Private $$ - Remap the map from the lister
  . S $P(NEWMAP,U,I)=P
  Q NEWMAP
  ;
-LISTERT
+LISTERT 
  N ARGS S ARGS("file")=176.001,ARGS("iens")="STR",ARGS("field")="CA"
  D LISTER(,.ARGS)
  N ARGS S ARGS("file")=176.005,ARGS("iens")="B",ARGS("field")="87795"
@@ -270,16 +270,36 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ;
  QUIT
  ;
-FILESYS(RESULT,ARGS) ; Handle filesystem/* ; this currently only works on GT.M
- ; TODO: For whomever cares, make this work on Cache.
- N PATH S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
+FILESYS(RESULT,ARGS) ; Handle filesystem/*
+ N PATH
+ ;
+ ; Vhere is our home? If any home!
+ I $D(^%WHOME)#2 D
+ . I +$SY=47 S $ZD=^%WHOME ; GT.M
+ . I +$SY=0 N % S %=$ZU(168,^%WHOME) ; Cache
+ ;
+ ; Ok, get the actual path
+ I +$SY=47 S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
+ I +$SY=0 S PATH=$ZU(168)_ARGS("*") ; Cache Only!
+ ;
+ ; GT.M errors out on FNF; Cache blocks. Need timeout and else.
+ N $ET S $ET="G FILESYSE"
+ I +$SY=47 O PATH:(REWIND:READONLY:FIXED:CHSET="M") ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
+ I +$SY=0 O PATH:("RU"):0  ; Cache must have a timeout; U = undefined.
+ E  G FILESYSE
+ ;
+ ; Prevent End of file Errors. Set DSM mode for that.
+ I +$SY=0 D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
+ ;
+ ; Get mime type
+ ; TODO: Really really needs to be in a file
  N EXT S EXT=$P(PATH,".",$L(PATH,"."))
  I $E(EXT,1,3)="htm" S RESULT("mime")="text/html"
  I EXT="js" S RESULT("mime")="application/javascript"
  I EXT="css" S RESULT("mime")="text/css"
  I EXT="pdf" S RESULT("mime")="application/pdf"
- N $ET S $ET="G FILESYSE"
- O PATH:(REWIND:READONLY:FIXED:CHSET="M") ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
+ ;
+ ; Read operation
  U PATH
  N C S C=1
  N X F  R X#4079:0 S RESULT(C)=X,C=C+1 Q:$ZEOF
@@ -288,5 +308,5 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/* ; this currently only works on GT.M
  ;
 FILESYSE ; 500
  S $EC=""
- D SETERROR^VPRJRUT("500",$ZS)
+ D SETERROR^VPRJRUT("500",$S(+$SY=47:$ZS,1:$ZE))
  QUIT
