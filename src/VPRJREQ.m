@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM ; 12/18/13 3:49pm
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -17,7 +17,6 @@ START(TCPPORT) ; set up listening for connections
 LOOP ; wait for connection, spawn process to handle it
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
  R *X:10 I '$T G LOOP
- I '$$LCLHOST^VPRJRUT() W *-2 G LOOP ; reject & close port if not localhost
  ; 
  J CHILD:(:4:TCPIO:TCPIO):10
  I $ZA\8196#2=1 W *-2 ;job failed to clear bit
