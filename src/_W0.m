@@ -284,11 +284,15 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
  ; GT.M errors out on FNF; Cache blocks. Need timeout and else.
  N $ET S $ET="G FILESYSE"
- I +$SY=47 O PATH:(REWIND:READONLY:FIXED:CHSET="M") ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
- I +$SY=0 O PATH:("RU"):0  ; Cache must have a timeout; U = undefined.
- E  G FILESYSE
+ ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
+ I +$SY=47 O PATH:(REWIND:READONLY:FIXED:CHSET="M") 
  ;
- ; Prevent End of file Errors. Set DSM mode for that.
+ ; This mess for Cache!
+ N POP S POP=0
+ I +$SY=0 O PATH:("RU"):0  E  S POP=1  ; Cache must have a timeout; U = undefined.
+ I POP G FILESYSE
+ ;
+ ; Prevent End of file Errors for Cache. Set DSM mode for that.
  I +$SY=0 D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
  ;
  ; Get mime type
