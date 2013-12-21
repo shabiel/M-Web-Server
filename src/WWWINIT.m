@@ -1,6 +1,8 @@
 WWWINIT ; VEN/SMH - Initialize %W namespaces for Cache ; 12/18/13 12:08pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
+ I +$SYSTEM'=0 QUIT  ; Only Cache!
+ ;
  ; Get current namespace
  N NMSP S NMSP=$ZU(5)
  ;
