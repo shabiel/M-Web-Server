@@ -1,21 +1,58 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;1:43 PM  25 Dec 2013; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  2:15 PM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
- ; Map %W
- I +$SYSTEM=0 DO CACHEMAP  ; Only Cache!
+ ; Map %W on Cache
+ I +$SYSTEM=0 DO CACHEMAP
  ;
  ; Set-up TLS on Cache
  I +$SYSTEM=0 DO CACHETLS
  ;
- ; Download the files from Github
+ ; Get current directory (GT.M may need it to write routines later)
+ N PWD S PWD=$$PWD()
+ ;
+ ; Change to temporary directory (a bit complex for Windows)
+ D CDTMPDIR
+ ;
+ ; Get temp dir
+ N TMPDIR S TMPDIR=$$PWD()
+ ;
+ ; Download the files from Github into temp directory
  D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.0/dist/MWS.RSA")
  ;
- ; Silently install RSA (we changed the default directory already)
- I +$SYSTEM=0 DO RICACHE($ZU(168)_"MWS.RSA")
- I +$SYSTEM=47 DO RIGTM($ZD_"MWS.RSA")
+ ; Go back to the old directory
+ D CD(PWD)
+ ;
+ ; Silently install RSA -- fur GT.M pass the GTM directory in case we need it.
+ I +$SYSTEM=0 DO RICACHE(TMPDIR_"MWS.RSA")
+ I +$SYSTEM=47 DO RIGTM(TMPDIR_"MWS.RSA",,PWD)
  ;
  ; If fileman is installed, do an init for the %W(17.001 file
  I $D(^DD) D ^%WINIT
+ QUIT
+ ;
+PWD() ; $$ - Get current directory
+ Q:+$SY=0 $ZU(168)
+ Q:+$SY=47 $ZD
+ S $EC=",U-NOT-IMPLEMENTED,"
+ QUIT
+ ;
+CDTMPDIR ; Proc - Change to temporary directory
+ I +$SY=47 S $ZD="/tmp/" QUIT  ; GT.M
+ I +$SY=0 DO  QUIT
+ . new OS set OS=$zversion(1)
+ . if OS=1 S $EC=",U-VMS-NOT-SUPPORTED,"
+ . if OS=2 D  ; windows
+ . . open "|CPIPE|WWW1":("chdir %temp%":"R"):1
+ . . use "|CPIPE|WWW1"
+ . . close "|CPIPE|WWW1"
+ . if OS=3 D  ; UNIX
+ . . N % S %=$ZU(168,"/tmp/")
+ S $EC=",U-NOT-IMPLEMENTED,"
+ QUIT
+ ;
+CD(DIR) ; Proc - Change to the old directory
+ I +$SY=0 N % S %=$ZU(168,DIR) QUIT
+ I +$SY=47 S $ZD=DIR QUIT
  QUIT
  ;
 CACHEMAP ; Map %W* Globals and Routines away from %SYS in Cache
@@ -65,16 +102,6 @@ DOWNLOAD(URL) ; Download the files from Github
  QUIT
  ;
 DOWNCACH(URL) ; Download for Cache
- ; Change directory to temp directory
- new OS set OS=$zversion(1)
- if OS=1 S $EC=",U-VMS-NOT-SUPPORTED,"
- if OS=2 D  ; windows
- . open "|CPIPE|WWW1":("chdir %temp%":"R"):1
- . use "|CPIPE|WWW1"
- . close "|CPIPE|WWW1"
- if OS=3 D  ; UNIX
- . N % S %=$ZU(168,"/tmp/")
- ;
  ; Download and save
  set httprequest=##class(%Net.HttpRequest).%New()
  if $e(URL,1,5)="https" do
@@ -96,15 +123,15 @@ DOWNCACH(URL) ; Download for Cache
  QUIT
  ;
 DOWNGTM(URL) ; Download for GT.M
- S $ZD="/tmp/"
  N CMD S CMD="curl -s -L -O "_URL
  O "pipe":(shell="/bin/sh":command=CMD)::"pipe"
  U "pipe" C "pipe"
  QUIT
  ;
-RIGTM(ROPATH,FF) ; Silent Routine Input for GT.M
+RIGTM(ROPATH,FF,GTMDIR) ; Silent Routine Input for GT.M
  ; ROPATH = full path to routine archive
  ; FF = Form Feed 1 = Yes 0 = No. Optional.
+ ; GTMDIR = GTM directory in case gtmroutines is relative to current dir
  ;
  ; Check inputs
  I $ZPARSE(ROPATH)="" S $EC=",U-NO-SUCH-FILE,"
@@ -121,6 +148,9 @@ RIGTM(ROPATH,FF) ; Silent Routine Input for GT.M
  ; Get output directory
  N D D PARSEZRO(.D,$ZROUTINES)
  N OUTDIR S OUTDIR=$$ZRO1ST(.D)
+ ;
+ ; If output directory is relative, append GTM directory to it.
+ I $E(OUTDIR)'="/" S OUTDIR=GTMDIR_OUTDIR
  ;
  ; Open use RO/RSA
  O ROPATH:(readonly:block=2048:record=2044:rewind):0 E  S $EC=",U-ERR-OPEN-FILE,"
