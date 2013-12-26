@@ -8,11 +8,16 @@ WWWINIT ; VEN/SMH - Initialize Web Server;1:43 PM  25 Dec 2013; 12/25/13 1:03pm
  I +$SYSTEM=0 DO CACHETLS
  ;
  ; Download the files from Github
- D DOWNLOAD
+ D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.0/dist/MWS.RSA")
+ ;
+ ; Silently install RSA (we changed the default directory already)
+ I +$SYSTEM=0 DO RICACHE($ZU(168)_"MWS.RSA")
+ I +$SYSTEM=47 DO RIGTM($ZD_"MWS.RSA")
  ;
  ; If fileman is installed, do an init for the %W(17.001 file
  I $D(^DD) D ^%WINIT
- 
+ QUIT
+ ;
 CACHEMAP ; Map %W* Globals and Routines away from %SYS in Cache
  ; Get current namespace
  N NMSP S NMSP=$NAMESPACE
@@ -54,8 +59,7 @@ CACHETLS ; Create a client SSL/TLS config on Cache
  ZN NMSP
  QUIT
  ;
-DOWNLOAD ; Download the files from Github
- N URL S URL="https://github.com/shabiel/M-Web-Server/archive/master.zip"
+DOWNLOAD(URL) ; Download the files from Github
  D:+$SY=0 DOWNCACH(URL)
  D:+$SY=47 DOWNGTM(URL)
  QUIT
