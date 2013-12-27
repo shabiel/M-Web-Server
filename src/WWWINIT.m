@@ -1,4 +1,4 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  4:22 PM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  5:28 PM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -33,8 +33,8 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  4:22 PM; 12/25/13 1:03pm
  D LOADHAND
  ; 
  ; Set the home directory for the server
- W "Enter the home directory where you will store the html, js, and css files",!!
- W "Make sure this is a directory where you have write permissions.",!!
+ D HOMEDIR
+ ;
  QUIT
  ;
 PWD() ; $$ - Get current directory
@@ -249,6 +249,10 @@ RICACHE(ROPATH) ; Silent Routine Input for Cache
  ;
  QUIT  ; Done
  ;
+TESTD(DIR) ; $$ ; Can I write to this directory?
+ Q:(+$SY=0) $$TESTD00(DIR)
+ Q:(+$SY=47) $$TESTD47(DIR)
+ ;
 TESTD00(DIR) ; $$ ; Can I write to this directory in Cache?
  N $ET S $ET="G TESTDET"
  O DIR_"test.txt":"NWS":0
@@ -267,7 +271,7 @@ TESTD47(DIR) ; $$ ; Can I write to this directory in GT.M?
  C DIR_"test.txt":(delete)
  QUIT 1
  ;
-TESTDET ; Open Error handler
+TESTDET ; Open File Error handler
  S $EC="" 
  QUIT 0
  ;
@@ -302,6 +306,36 @@ LH ;; START
  ;;^%W(17.6001,"B","GET","filesystem/*","FILESYS^%W0",IEN)=""
  ;;
 ENDLOAD
+ ;
+HOMEDIR ; Set ^%WHOME
+ W "Enter the home directory where you will store the html, js, and css files"
+ W !!
+ W "Make sure this is a directory where you have write permissions.",!!
+ ;
+ W "To help you, I am going to try to test various directories I think",!
+ W "may work",!!
+ ;
+ N D F D=$$PWD(),"/var/www/","C:\Inetpub\www\" D
+ . W D,?50,$S($$TESTD(D):"[OK]",1:"[NOT OK]"),!
+ ;
+ N DIR
+AGAIN ; Try again
+ W !,"Enter Directory: ",$$PWD(),"// "
+ R DIR:30
+ I $L(DIR),DIR["/",$E(DIR,$L(DIR))'="/" S $E(DIR,$L(DIR)+1)="/"
+ I $L(DIR),DIR["\",$E(DIR,$L(DIR))'="\" S $E(DIR,$L(DIR)+1)="\"
+ S ^%WHOME=$S($L(DIR):DIR,1:$$PWD())
+ I '$$TESTD(^%WHOME) WRITE "Sorry, I can't write to this directory" G AGAIN
+ ;
+ ; Create www directory; D = delimiter
+ N D S D=$S(^%WHOME["/":"/",1:"\")
+ I $P(^%WHOME,D,$L(^%WHOME,D)-1)'="www" D MKDIR(^%WHOME_"www") S ^%WHOME=^%WHOME_"www"_D
+ QUIT
+ ;
+MKDIR(DIR)
+ I +$SY=0 N % S %=$ZF(-1,"mkdir "_DIR)
+ I +$SY=47 o "p":(shell="/bin/sh":command="mkdir "_DIR)::"pipe" U "p" C "p"
+ QUIT
  ;
 TEST D EN^XTMUNIT($T(+0),1) QUIT
 GTMRITST ; @TEST - Test GT.M Routine Input
