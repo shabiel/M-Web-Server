@@ -1,4 +1,4 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  2:15 PM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  4:22 PM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -28,6 +28,13 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  2:15 PM; 12/25/13 1:03pm
  ;
  ; If fileman is installed, do an init for the %W(17.001 file
  I $D(^DD) D ^%WINIT
+ ;
+ ; Load the URLs
+ D LOADHAND
+ ; 
+ ; Set the home directory for the server
+ W "Enter the home directory where you will store the html, js, and css files",!!
+ W "Make sure this is a directory where you have write permissions.",!!
  QUIT
  ;
 PWD() ; $$ - Get current directory
@@ -242,10 +249,65 @@ RICACHE(ROPATH) ; Silent Routine Input for Cache
  ;
  QUIT  ; Done
  ;
+TESTD00(DIR) ; $$ ; Can I write to this directory in Cache?
+ N $ET S $ET="G TESTDET"
+ O DIR_"test.txt":"NWS":0
+ E  Q 0
+ U DIR_"test.txt"
+ WRITE "TEST"
+ C DIR_"test.txt":"D"
+ QUIT 1
+ ;
+TESTD47(DIR) ; $$ ; Can I write to this directory in GT.M?
+ N $ET S $ET="G TESTDET"
+ O DIR_"test.txt":(newversion):0
+ E  Q 0
+ U DIR_"test.txt"
+ WRITE "TEST"
+ C DIR_"test.txt":(delete)
+ QUIT 1
+ ;
+TESTDET ; Open Error handler
+ S $EC="" 
+ QUIT 0
+ ;
+ ; Load URL handler
+LOADHAND N I F I=1:1 N LN S LN=$P($T(LH+I),";;",2,99) Q:LN=""  D  ; Read inline
+ . N NREF S NREF=$P(LN,"=") ; variable name reference
+ . I $E(NREF)="^" S NREF=$NA(@NREF) ; convert IEN to actual value
+ . N TESTNODE S TESTNODE="" ; for $DATA testing
+ . I $QS(NREF,2)="B" S TESTNODE=$NA(@NREF,5) ; Get all subs b4 IEN
+ . I $L(TESTNODE),$D(@TESTNODE) DO  QUIT  ; If node exists in B index
+ . . WRITE TESTNODE_" ALREADY INSTALLEED",!  ; say so
+ . . KILL ^%W(17.6001,IEN) ; and delete the stuff we entered
+ . S @LN  ; okay to set.
+ QUIT
+LH ;; START
+ ;;^%W(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S"
+ ;;IEN=$O(^%W(17.6001," "),-1)+1
+ ;;^%W(17.6001,IEN,0)="GET"
+ ;;^%W(17.6001,IEN,1)="xml"
+ ;;^%W(17.6001,IEN,2)="XML^VPRJRSP"
+ ;;^%W(17.6001,"B","GET","xml","XML^VPRJRSP",IEN)=""
+ ;;IEN=IEN+1
+ ;;^%W(17.6001,IEN,0)="GET"
+ ;;^%W(17.6001,IEN,1)="r/{routine?.1""%25"".32AN}"
+ ;;^%W(17.6001,IEN,2)="R^%W0"
+ ;;^%W(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%W0",IEN)=""
+ ;;IEN=IEN+1
+ ;;^%W(17.6001,IEN,0)="GET"
+ ;;^%W(17.6001,IEN,1)="filesystem/*"
+ ;;^%W(17.6001,IEN,2)="FILESYS^%W0"
+ ;;^%W(17.6001,IEN,"AUTH")="1"
+ ;;^%W(17.6001,"B","GET","filesystem/*","FILESYS^%W0",IEN)=""
+ ;;
+ENDLOAD
+ ;
 TEST D EN^XTMUNIT($T(+0),1) QUIT
 GTMRITST ; @TEST - Test GT.M Routine Input
  ; Use VPE's RSA file to test.
  Q:+$SY'=47
+ N OLDDIR S OLDDIR=$$PWD()
  D DELRGTM("%ZV*"),DELRGTM("ZV*")
  D SILENT^%RSEL("%ZV*")
  D CHKEQ^XTMUNIT(%ZR,0)
@@ -257,8 +319,9 @@ GTMRITST ; @TEST - Test GT.M Routine Input
  S CMD="unzip -o /tmp/VPE_12.zip"
  O "p":(shell="/bin/sh":command=CMD:parse)::"pipe"
  U "p" C "p"
+ S $ZD=OLDDIR
  N PATH S PATH="/tmp/VPE_12_Rtns.MGR"
- D RIGTM(PATH)
+ D RIGTM(PATH,,OLDDIR)
  D SILENT^%RSEL("%ZV*")
  D CHKTF^XTMUNIT(%ZR>0)
  QUIT
@@ -289,4 +352,30 @@ DELRCACH(NMSP) ; Delete routines for Cache - yahoo again
  N R S R=NMSP
  D:$D(^$R(R))  F  S R=$O(^$R(R)) Q:R=""  Q:($P(R,NMSP,2)="")  D
  . X "ZR  ZS @R"
+ QUIT
+ ;
+LHTEST ; @TEST - Load hander test... make sure it loads okay even multiple times
+ N I F I=1:1:30 D LOADHAND
+ D CHKTF^XTMUNIT($O(^%W(17.6001," "),-1)<20) ; Should have just 3 entries
+ D CHKTF^XTMUNIT($D(^%W(17.6001,"B","GET","xml","XML^VPRJRSP"))) ; Must be loaded
+ QUIT
+ ;
+WDTESTY ; @TEST - Successful write to a directory!
+ N OUT
+ I +$SY=0 S OUT=$$TESTD00("/tmp/")
+ I +$SY=47 S OUT=$$TESTD47("/tmp/")
+ D CHKTF^XTMUNIT(OUT)
+ QUIT
+ ;
+WDTESTN0 ; @TEST - Try to write to a directory with no permissions
+ N OUT
+ I +$SY=0 S OUT=$$TESTD00("/root/")
+ I +$SY=47 S OUT=$$TESTD47("/root/")
+ D CHKTF^XTMUNIT(OUT=0)
+ QUIT
+WDTESTN1 ; @TEST - Try to write to a directory that doesn't exist
+ N OUT
+ I +$SY=0 S OUT=$$TESTD00("/lkjasdf/lkasjdflka/lakjdfs/")
+ I +$SY=47 S OUT=$$TESTD47("/lkjasdf/lkasjdflka/lakjdfs/")
+ D CHKTF^XTMUNIT(OUT=0)
  QUIT
