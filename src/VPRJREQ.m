@@ -1,26 +1,69 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM ; 12/18/13 3:49pm
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-12-27  6:45 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
- ; Mods by VEN/SMH for GT.M support: Labels GTMSTL, GTMLNX, 2-3 changes for Use command
-JOB(TCPPORT)  ;ENTRY POINT FOR JOBBING
- J START^VPRJREQ(TCPPORT)::5
- QUIT
+ ; Mods by VEN/SMH for GT.M support.
+ ;
+GO ; start up REST listener with defaults
+ N PORT
+ S PORT=$G(^VPRHTTP(0,"port"),9080)
+ J START^VPRJREQ(PORT)
+ Q
+ ;
+ ; Convenience entry point
+JOB(PORT) J START^VPRJREQ(PORT) QUIT
  ;
 START(TCPPORT) ; set up listening for connections
- S ^VPRHTTP(0,"listener")="running"
+ N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ I %WOS="GT.M" S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
  ;
  S TCPPORT=$G(TCPPORT,9080)
- S TCPIO="|TCP|"_TCPPORT
- O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
+ ;
+ ; Device ID
+ I %WOS="CACHE" S TCPIO="|TCP|"_TCPPORT
+ I %WOS="GT.M" S TCPIO="SCK$"_TCPPORT
+ ;
+ ; Open Code
+ I %WOS="CACHE" O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
+ I %WOS="GT.M" O TCPIO:(ZLISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
+ ;
+ ; K. Now we are really really listening.
+ S ^VPRHTTP(0,"listener")="running"
+ ;
+ ; This is the same for GT.M and Cache
  U TCPIO
-LOOP ; wait for connection, spawn process to handle it
+ ;
+ I %WOS="GT.M" W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
+ ;
+LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
- R *X:10 I '$T G LOOP
+ ;
+ I %WOS="CACHE" D  G LOOP
+ . R *X:10
+ . E  QUIT  ; Loop back again when listening and nobody on the line
+ . J CHILD:(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
+ . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
+ ;
+ ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
+ N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests
+ I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
+ . ;
+ . ; Wait until we have a connection. Quit also if the listener asked us to stop.
+ . FOR  W /WAIT(10) Q:$KEY]""  Q:($E(^VPRHTTP(0,"listener"),1,4)="stop")
+ . ;
+ . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
+ . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
+ . ; 
+ . ; If we are at the connect stage, loop around and wait for reads
+ . I $P($KEY,"|")="CONNECT" QUIT
+ . ;
+ . ; Use the incoming socket; close the server, and restart it and goto CHILD
+ . USE TCPIO:(SOCKET=$P($KEY,"|",2))
+ . CLOSE TCPIO:(SOCKET="server")
+ . JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ . SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
  ; 
- J CHILD:(:4:TCPIO:TCPIO):10
- I $ZA\8196#2=1 W *-2 ;job failed to clear bit
- G LOOP
+ QUIT
  ;
 JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
  ZSHOW "*":^VPRHTTP("processlog",+$H,$P($H,",",2),$J)
@@ -49,6 +92,7 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
+ N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
@@ -59,9 +103,9 @@ NEXT ; begin next request
  K ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
 WAIT ; wait for request on this connection
- I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C $P Q
- X:%WOS="CACHE" "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
- X:%WOS="GT.M" "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
+ I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C %WTCP Q
+ X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
+ X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;
@@ -82,8 +126,8 @@ WAIT ; wait for request on this connection
  I $G(HTTPREQ("header","expect"))="100-continue" D LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
- X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
- X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U %WTCP:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U %WTCP:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $$LOW^VPRJRUT($G(HTTPREQ("header","transfer-encoding")))="chunked" D
  . D RDCHNKS ; TODO: handle chunked input
  . I HTTPLOG>2 ; log array of chunks
@@ -99,8 +143,8 @@ WAIT ; wait for request on this connection
  ; TODO: restore HTTPLOG if necessary
  ;
  ; -- write out the response (error if HTTPERR>0)
- X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
- X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U %WTCP:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U %WTCP:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $G(HTTPERR) D RSPERROR^VPRJRSP ; switch to error response
  I HTTPLOG>2 D LOGRSP
  D SENDATA^VPRJRSP
@@ -108,7 +152,7 @@ WAIT ; wait for request on this connection
  ; -- exit on Connection: Close
  I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  HALT
  . K ^TMP($J),^TMP("HTTPERR",$J)
- . C $P
+ . C %WTCP
  ;
  ; -- otherwise get ready for the next request
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
@@ -156,7 +200,7 @@ ADDHEAD(LINE) ; add header name and header value
  ;
 ETSOCK ; error trap when handling socket (i.e., client closes connection)
  D LOGERR
- C $P
+ C %WTCP
  HALT  ; exit because connection has been closed
  ;
 ETCODE ; error trap when calling out to routines
@@ -180,10 +224,10 @@ ETDC ; error trap for client disconnect ; not a true M trap
  HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
- U $P
+ U %WTCP
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
  K ^TMP($J),^TMP("HTTPERR",$J)
- C $P
+ C %WTCP
  HALT  ; exit because we can't recover
  ;
 INCRLOG ; get unique log id for each request
@@ -195,7 +239,7 @@ INCRLOG ; get unique log id for each request
  L -^VPRHTTP("log",DT)
  S HTTPLOG("ID")=ID
  Q:'HTTPLOG
- S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_$P_"  $STACK:"_$STACK
+ S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
  Q
 LOGRAW(X) ; log raw lines read in
  N DT,ID,LN
@@ -256,11 +300,6 @@ SIGNOFF ; TODO: VISTA SIGN-OFF
  ;
  ; Deprecated -- use VPRJ
  ;
-GO ; start up REST listener with defaults
- N PORT
- S PORT=$G(^VPRHTTP(0,"port"),9080)
- J START^VPRJREQ(PORT)
- Q
 STOP ; tell the listener to stop running
  S ^VPRHTTP(0,"listener")="stopped"
  Q
