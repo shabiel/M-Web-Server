@@ -1,4 +1,4 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  5:28 PM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-27  4:05 PM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -35,6 +35,19 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-26  5:28 PM; 12/25/13 1:03pm
  ; Set the home directory for the server
  D HOMEDIR
  ;
+ ; Set start port
+ N PORT S PORT=$$PORT()
+ ;
+ ; Start Server
+ D JOB^VPRJREQ(PORT)
+ ;
+ W !!,"Mumps Web Services is now listening to port "_PORT,!
+ N SERVER S SERVER="http://localhost:"_PORT_"/"
+ W "Visit "_SERVER_" to see the home page.",!
+ W "Also, try the sample web services...",!
+ W " - "_SERVER_"xml",!
+ W " - "_SERVER_"ping",!
+ ;
  QUIT
  ;
 PWD() ; $$ - Get current directory
@@ -49,9 +62,7 @@ CDTMPDIR ; Proc - Change to temporary directory
  . new OS set OS=$zversion(1)
  . if OS=1 S $EC=",U-VMS-NOT-SUPPORTED,"
  . if OS=2 D  ; windows
- . . open "|CPIPE|WWW1":("chdir %temp%":"R"):1
- . . use "|CPIPE|WWW1"
- . . close "|CPIPE|WWW1"
+ . . N % S %=$ZU(168,"C:\TEMP\")
  . if OS=3 D  ; UNIX
  . . N % S %=$ZU(168,"/tmp/")
  S $EC=",U-NOT-IMPLEMENTED,"
@@ -282,7 +293,7 @@ LOADHAND N I F I=1:1 N LN S LN=$P($T(LH+I),";;",2,99) Q:LN=""  D  ; Read inline
  . N TESTNODE S TESTNODE="" ; for $DATA testing
  . I $QS(NREF,2)="B" S TESTNODE=$NA(@NREF,5) ; Get all subs b4 IEN
  . I $L(TESTNODE),$D(@TESTNODE) DO  QUIT  ; If node exists in B index
- . . WRITE TESTNODE_" ALREADY INSTALLEED",!  ; say so
+ . . WRITE TESTNODE_" ALREADY INSTALLED",!  ; say so
  . . KILL ^%W(17.6001,IEN) ; and delete the stuff we entered
  . S @LN  ; okay to set.
  QUIT
@@ -332,10 +343,48 @@ AGAIN ; Try again
  I $P(^%WHOME,D,$L(^%WHOME,D)-1)'="www" D MKDIR(^%WHOME_"www") S ^%WHOME=^%WHOME_"www"_D
  QUIT
  ;
-MKDIR(DIR)
+MKDIR(DIR) ; Proc; Make directory; does not create parents
  I +$SY=0 N % S %=$ZF(-1,"mkdir "_DIR)
  I +$SY=47 o "p":(shell="/bin/sh":command="mkdir "_DIR)::"pipe" U "p" C "p"
  QUIT
+ ;
+PORT() ; $$; select a port
+ N PORT,PORTOK
+ S PORT="",PORTOK=0
+ F  D  Q:((PORT>1023)&(PORT<65536)&(PORTOK))
+ . R !,"Enter a port number between 1024 and 65535: 9080// ",PORT:30
+ . I PORT="" S PORT=9080
+ . Q:'((PORT>1023)&(PORT<65536)) ; De Morgan's law exit
+ . S PORTOK=$$PORTOK(PORT)
+ . I 'PORTOK W !,"Couldn't open this port... try another one"
+ QUIT PORT
+ ;
+PORTOK(PORT) ; $$; Is this port okay?
+ N OKAY
+ N $ET,$ES S $ET="G PORTOKER"
+ ;
+ ; Cache
+ I +$SY=0 DO  QUIT OKAY
+ . N TCPIO S TCPIO="|TCP|"_PORT
+ . O TCPIO:(:PORT:"ACT"):2
+ . I  S OKAY=1
+ . E  S OKAY=0
+ . C TCPIO
+ ;
+ ; GT.M
+ I +$SY=47 DO  QUIT OKAY
+ . N TCPIO S TCPIO="server$"_PORT
+ . O TCPIO:(ZLISTEN=PORT_":TCP":delim=$c(10,13):attach="server"):2:"socket"
+ . I  S OKAY=1
+ . E  S OKAY=0
+ . C TCPIO
+ ;
+ S $EC=",U-NOT-IMPLEMENTED,"
+ QUIT
+PORTOKER ; Error handler for open port
+ I $ES QUIT
+ S $EC=""
+ QUIT 0
  ;
 TEST D EN^XTMUNIT($T(+0),1) QUIT
 GTMRITST ; @TEST - Test GT.M Routine Input
@@ -371,11 +420,21 @@ CACHERIT ; @TEST - Test Cache Routine Input
  Q:+$SY'=0
  D DELRCACH("%ZV*"),DELRCACH("ZV*")
  D CHKTF^XTMUNIT('$D(^$R("%ZVEMD")))
+ N OLD S OLD=$$PWD()
+ D CDTMPDIR
  N URL S URL="http://hardhats.org/tools/vpe/VPE_12.zip"
  D DOWNCACH(URL)
- S %=$ZF(-1,"unzip -o /tmp/VPE_12.zip")
- N PATH S PATH="/tmp/VPE_12_Rtns.MGR"
+ S %=$ZF(-1,"unzip -o VPE_12.zip")
+ N PATH S PATH="VPE_12_Rtns.MGR"
+ N %,A
+ ; Fur VPE
+ N NS S NS=$NAMESPACE
+ ZN "%SYS"
+ S %=##class(Config.Configuration).AddGlobalMapping(NS,"%Z*","",NS,NS)
+ S A("Database")=NS S %=##Class(Config.MapRoutines).Create(NS,"%Z*",.A)
+ ZN NS
  D RICACHE(PATH)
+ D CD(OLD)
  D CHKTF^XTMUNIT($D(^$R("%ZVEMD")))
  QUIT
  ;
@@ -396,9 +455,13 @@ LHTEST ; @TEST - Load hander test... make sure it loads okay even multiple times
  ;
 WDTESTY ; @TEST - Successful write to a directory!
  N OUT
- I +$SY=0 S OUT=$$TESTD00("/tmp/")
- I +$SY=47 S OUT=$$TESTD47("/tmp/")
+ N OLD S OLD=$$PWD()
+ D CDTMPDIR
+ N D S D=$$PWD()
+ I +$SY=0 S OUT=$$TESTD00(D)
+ I +$SY=47 S OUT=$$TESTD47(D)
  D CHKTF^XTMUNIT(OUT)
+ D CD(OLD)
  QUIT
  ;
 WDTESTN0 ; @TEST - Try to write to a directory with no permissions
@@ -412,4 +475,8 @@ WDTESTN1 ; @TEST - Try to write to a directory that doesn't exist
  I +$SY=0 S OUT=$$TESTD00("/lkjasdf/lkasjdflka/lakjdfs/")
  I +$SY=47 S OUT=$$TESTD47("/lkjasdf/lkasjdflka/lakjdfs/")
  D CHKTF^XTMUNIT(OUT=0)
+ QUIT
+PORTOKT ; @TEST - Test Port Okay
+ D CHKEQ^XTMUNIT($$PORTOK(135),0)
+ D CHKEQ^XTMUNIT($$PORTOK(61232),1)
  QUIT
