@@ -3,6 +3,17 @@
 While installation is intended to be mostly automatic, you need to download
 the boostrap routine that will automate all of this first.
 
+In addition the bootstrap routine will ask you a couple of questions for which
+it has default answers. The questions are:
+
+	Enter Directory: <default guess based on your configuration>// 
+	Enter a port number between 1024 and 65535: 9080//
+
+The directory will contain your web pages, stylesheets, javascript, and other
+web resources. The port (defaulting to 9080) is the port number on which to
+start listening. Once you are done, you can visit http://localhost:port/ to
+see the home page.
+
 ## Installation for GT.M
 Use cURL to download the bootstrap routine.
 
