@@ -1,5 +1,5 @@
-Mumps Web Services Routine Archive
-GT.M 26-DEC-2013 14:05:48
+v 0.1.1 of MWS.RSA
+GT.M 01-JAN-2014 14:00:50
 %W0
 %W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM ; 12/18/13 3:25pm
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
@@ -799,11 +799,12 @@ IXF ;;;1
 %WINIT1 ; ; 22-NOV-2013
  ;;0.2;MASH WEB SERVER;;NOV 22, 2013
  ; LOADS AND INDEXES DD'S
+ ; Modified to be silent by VEN/SMH
  ;
  K DIF,DIK,D,DDF,DDT,DTO,D0,DLAYGO,DIC,DIDUZ,DIR,DA,DFR,DTN,DIX,DZ D DT^DICRW S %=1,U="^",DSEC=1
  S NO=$P("I 0^I $D(@X)#2,X[U",U,%) I %<1 K DIFQ Q
-ASK I %=1,$D(DIFQ(0)) W !,"SHALL I WRITE OVER FILE SECURITY CODES" S %=2 D YN^DICN S DSEC=%=1 I %<1 K DIFQ Q
- Q:'$D(DIFQ)  S %=2 W !!,"ARE YOU SURE EVERYTHING'S OK" D YN^DICN I %-1 K DIFQ Q
+ASK ; I %=1,$D(DIFQ(0)) W !,"SHALL I WRITE OVER FILE SECURITY CODES" S %=2 D YN^DICN S DSEC=%=1 I %<1 K DIFQ Q
+ Q:'$D(DIFQ)  ; S %=2 W !!,"ARE YOU SURE EVERYTHING'S OK" D YN^DICN I %-1 K DIFQ Q
  I $D(DIFKEP) F DIDIU=0:0 S DIDIU=$O(DIFKEP(DIDIU)) Q:DIDIU'>0  S DIU=DIDIU,DIU(0)=DIFKEP(DIDIU) D EN^DIU2
  D DT^DICRW K ^UTILITY(U,$J),^UTILITY("DIK",$J) D WAIT^DICD
  S DN="^%WINI" F R=1:1:3 D @(DN_$$B36(R)) W "."
@@ -988,29 +989,72 @@ IXF ;;
  ;;
 
 VPRJREQ
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-05-24  8:26 PM ; 12/18/13 3:49pm
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-12-27  6:45 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
- ; Mods by VEN/SMH for GT.M support: Labels GTMSTL, GTMLNX, 2-3 changes for Use command
-JOB(TCPPORT)  ;ENTRY POINT FOR JOBBING
- J START^VPRJREQ(TCPPORT)::5
- QUIT
+ ; Mods by VEN/SMH for GT.M support.
+ ;
+GO ; start up REST listener with defaults
+ N PORT
+ S PORT=$G(^VPRHTTP(0,"port"),9080)
+ J START^VPRJREQ(PORT)
+ Q
+ ;
+ ; Convenience entry point
+JOB(PORT) J START^VPRJREQ(PORT) QUIT
  ;
 START(TCPPORT) ; set up listening for connections
- S ^VPRHTTP(0,"listener")="running"
+ N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ I %WOS="GT.M" S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
  ;
  S TCPPORT=$G(TCPPORT,9080)
- S TCPIO="|TCP|"_TCPPORT
- O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
+ ;
+ ; Device ID
+ I %WOS="CACHE" S TCPIO="|TCP|"_TCPPORT
+ I %WOS="GT.M" S TCPIO="SCK$"_TCPPORT
+ ;
+ ; Open Code
+ I %WOS="CACHE" O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
+ I %WOS="GT.M" O TCPIO:(ZLISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
+ ;
+ ; K. Now we are really really listening.
+ S ^VPRHTTP(0,"listener")="running"
+ ;
+ ; This is the same for GT.M and Cache
  U TCPIO
-LOOP ; wait for connection, spawn process to handle it
+ ;
+ I %WOS="GT.M" W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
+ ;
+LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
- R *X:10 I '$T G LOOP
+ ;
+ I %WOS="CACHE" D  G LOOP
+ . R *X:10
+ . E  QUIT  ; Loop back again when listening and nobody on the line
+ . J CHILD:(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
+ . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
+ ;
+ ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
+ N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests
+ I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
+ . ;
+ . ; Wait until we have a connection. Quit also if the listener asked us to stop.
+ . FOR  W /WAIT(10) Q:$KEY]""  Q:($E(^VPRHTTP(0,"listener"),1,4)="stop")
+ . ;
+ . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
+ . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
+ . ; 
+ . ; If we are at the connect stage, loop around and wait for reads
+ . I $P($KEY,"|")="CONNECT" QUIT
+ . ;
+ . ; Use the incoming socket; close the server, and restart it and goto CHILD
+ . USE TCPIO:(SOCKET=$P($KEY,"|",2))
+ . CLOSE TCPIO:(SOCKET="server")
+ . JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ . SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
  ; 
- J CHILD:(:4:TCPIO:TCPIO):10
- I $ZA\8196#2=1 W *-2 ;job failed to clear bit
- G LOOP
+ QUIT
  ;
 JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
  ZSHOW "*":^VPRHTTP("processlog",+$H,$P($H,",",2),$J)
@@ -1039,6 +1083,7 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
+ N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
@@ -1049,9 +1094,9 @@ NEXT ; begin next request
  K ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
 WAIT ; wait for request on this connection
- I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C $P Q
- X:%WOS="CACHE" "U $P:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
- X:%WOS="GT.M" "U $P:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
+ I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C %WTCP Q
+ X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
+ X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;
@@ -1072,8 +1117,8 @@ WAIT ; wait for request on this connection
  I $G(HTTPREQ("header","expect"))="100-continue" D LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
- X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
- X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U %WTCP:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U %WTCP:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $$LOW^VPRJRUT($G(HTTPREQ("header","transfer-encoding")))="chunked" D
  . D RDCHNKS ; TODO: handle chunked input
  . I HTTPLOG>2 ; log array of chunks
@@ -1089,8 +1134,8 @@ WAIT ; wait for request on this connection
  ; TODO: restore HTTPLOG if necessary
  ;
  ; -- write out the response (error if HTTPERR>0)
- X:%WOS="CACHE" "U $P:(::""S"")" ; Stream mode
- X:%WOS="GT.M" "U $P:(nodelim)" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="CACHE" "U %WTCP:(::""S"")" ; Stream mode
+ X:%WOS="GT.M" "U %WTCP:(nodelim)" ; VEN/SMH - GT.M Delimiters
  I $G(HTTPERR) D RSPERROR^VPRJRSP ; switch to error response
  I HTTPLOG>2 D LOGRSP
  D SENDATA^VPRJRSP
@@ -1098,7 +1143,7 @@ WAIT ; wait for request on this connection
  ; -- exit on Connection: Close
  I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  HALT
  . K ^TMP($J),^TMP("HTTPERR",$J)
- . C $P
+ . C %WTCP
  ;
  ; -- otherwise get ready for the next request
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
@@ -1146,7 +1191,7 @@ ADDHEAD(LINE) ; add header name and header value
  ;
 ETSOCK ; error trap when handling socket (i.e., client closes connection)
  D LOGERR
- C $P
+ C %WTCP
  HALT  ; exit because connection has been closed
  ;
 ETCODE ; error trap when calling out to routines
@@ -1170,10 +1215,10 @@ ETDC ; error trap for client disconnect ; not a true M trap
  HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
- U $P
+ U %WTCP
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
  K ^TMP($J),^TMP("HTTPERR",$J)
- C $P
+ C %WTCP
  HALT  ; exit because we can't recover
  ;
 INCRLOG ; get unique log id for each request
@@ -1185,7 +1230,7 @@ INCRLOG ; get unique log id for each request
  L -^VPRHTTP("log",DT)
  S HTTPLOG("ID")=ID
  Q:'HTTPLOG
- S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_$P_"  $STACK:"_$STACK
+ S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
  Q
 LOGRAW(X) ; log raw lines read in
  N DT,ID,LN
@@ -1246,11 +1291,6 @@ SIGNOFF ; TODO: VISTA SIGN-OFF
  ;
  ; Deprecated -- use VPRJ
  ;
-GO ; start up REST listener with defaults
- N PORT
- S PORT=$G(^VPRHTTP(0,"port"),9080)
- J START^VPRJREQ(PORT)
- Q
 STOP ; tell the listener to stop running
  S ^VPRHTTP(0,"listener")="stopped"
  Q
@@ -3240,6 +3280,505 @@ EX4IN ;; JSON.org example #4
  ;;Y("web-app","taglib","taglib-location")="/WEB-INF/tlds/cofax.tld"
  ;;Y("web-app","taglib","taglib-uri")="cofax.tld"
  ;;zzzzz
+
+XTMUNIT
+XTMUNIT ;OAKLAND OIFO/JLI - MUNIT UNIT TESTING FOR M ROUTINES ;2013-11-27  1:56 PM
+        ;;7.3;TOOLKIT;**81**;Apr 25, 1995;Build 24
+    ;
+    ; Original by Dr. Joel Ivey
+    ; Contributions by Dr. Sam Habiel
+    ; 
+        ; 100622 JLI - corrected typo in comments where XTMUINPT was listed as XTMUINP
+        ; 100622 JLI - removed a comment which indicated data could potentially be returned from the called routine
+        ;              in the XTMUINPT array.
+        ; 100622 JLI - added code to handle STARTUP and SHUTDOWN from GUI app
+        ; 110719 JLI - modified separators in GUI handling from ^ to ~~^~~
+        ;              in the variable XTGUISEP if using a newer version of the
+        ;              GUI app (otherwise, it is simply set to ^) since results
+        ;              with a series of ^ embedded disturbed the output reported
+        ; 130726 SMH - Fixed SETUP and TEARDOWN so that they run before/after each
+        ;              test rather than once. General refactoring.
+    ; 130726 SMH - SETUT initialized IO in case it's not there to $P. Inits vars
+    ;              using DT^DICRW.
+    ; 131217 SMH - Change call in SETUP to S U="^" instead of DT^DICRW
+    ; 131218 SMH - Any checks to $ZE will also check $ZS for GT.M.
+    ; 131218 SMH - Remove calls to %ZISUTL to manage devices to prevent dependence on VISTA.
+    ;              Use XTMUNIT("DEV","OLD") for old devices
+        Q
+        ;
+EN(XTMURNAM,XTMUVERB)   ; .SR Entry point with primary test routine name, optional 1 for verbose output
+        N XTMULIST,XTMUROU,XTMUNIT
+        I $G(XTMUVERB)'=1 S XTMUVERB=0
+        S XTMULIST=1,XTMUROU(XTMULIST)=XTMURNAM
+        D SETUT
+        D EN1(.XTMUROU,XTMULIST)
+        Q
+        ;
+SETUT   ;
+        ; VEN/SMH 26JUL2013
+        I '$D(IO) S IO=$P
+    S U="^"
+        ; VEN/SMH 26JUL2013 END
+        ;
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        S XTMUNIT("IO")=IO,XTMUNIT("DEV")="",XTMUNIT("DEVN")="" F  S XTMUNIT("DEVN")=$O(^TMP("XUDEVICE",$J,XTMUNIT("DEVN"))) Q:XTMUNIT("DEVN")=""  I $G(^(XTMUNIT("DEVN"),"IO"))=IO S XTMUNIT("DEV")=^(0) Q
+        I XTMUNIT("DEV")="" S XTMUNIT("DEV")="XTMUNIT DEVICE"
+        S XTMUNIT=1 ; set to identify unit test being run check with $$ISUTEST^XTMUNIT()
+        Q
+        ;
+EN1(XTMUROU,XTMULIST)   ;
+        ; VEN/SMH 26JUL2013 - This block is refactored to fix problems with 
+        ; SETUP and TEARDOWN not happening at the right time
+        N XTMUERRL,XTMUK,XTMUI,XTMUJ,OLDIO,OLDIOFLG,OLDIONAM,XTMUSTRT
+        ; ZEXCEPT: XTMUVERB   -- ARGUMENT TO EN
+        ; ZEXCEPT: XTMUGUI      -- CONDITIONALLY DEFINED BY GUINEXT
+        ; ZEXCEPT: XTMUNIT  -- NEWED IN EN
+        ;
+        ; Structure map for XTMUNIT
+        ; -- CURR = Counter for routine number. Used as sub in XTMUROU
+        ; -- ECNT = Entry point count in loop (cf. NERT); VEN/SMH - Needed?
+        ; -- FAIL = Number of failures
+        ; -- CHK  = Number of checks ran (TF/EQ/FAIL)
+        ; -- NENT = Number of entry points ran
+        ; -- ERRN = Number of errors
+        S XTMUNIT("CURR")=0,XTMUNIT("ECNT")=0,XTMUNIT("FAIL")=0,XTMUNIT("CHK")=0,XTMUNIT("NENT")=0,XTMUNIT("ERRN")=0
+        ;
+        ; -- GET LIST OF ROUTINES --
+        ; first get any tree of routines from this one
+        D GETTREE^XTMUNIT1(.XTMUROU,.XTMULIST)
+        ;
+        ; -- STARTUP --
+        ; 070224 - following code added to allow one overall STARTUP code JLI
+        F  S XTMUNIT("CURR")=XTMUNIT("CURR")+1 Q:'$D(XTMUROU(XTMUNIT("CURR")))  D  I $G(XTMUSTRT)'="" D @XTMUSTRT Q
+        . I $T(@("STARTUP^"_XTMUROU(XTMUNIT("CURR"))))'="" S XTMUSTRT="STARTUP^"_XTMUROU(XTMUNIT("CURR"))
+        . Q
+        ; 070224 - end of addition JLI
+        ;
+        ;
+        ; Now process each routine that has been referenced
+        S XTMUNIT("CURR")=0
+        F  S XTMUNIT("CURR")=XTMUNIT("CURR")+1 Q:'$D(XTMUROU(XTMUNIT("CURR")))  D
+        . N XTMUETRY ; Test list to run
+        . ; 
+        . ; Collect Test list.
+        . D CHEKTEST^XTMUNIT1(XTMUROU(XTMUNIT("CURR")),.XTMUNIT,.XTMUETRY)
+        . ;
+        . ; if a SETUP entry point exists, save it off in XTMUNIT
+        . N XTMSETUP S XTMSETUP="SETUP^"_XTMUROU(XTMUNIT("CURR"))
+        . S XTMUNIT("LINE")=$T(@XTMSETUP) I XTMUNIT("LINE")'="" S XTMUNIT("SETUP")=XTMSETUP
+        . K XTMSETUP ; we're done!
+        . ;
+        . ; if a TEARDOWN entry point exists, ditto
+        . N XTMTEARDOWN S XTMTEARDOWN="TEARDOWN^"_XTMUROU(XTMUNIT("CURR"))
+        . S XTMUNIT("LINE")=$T(@XTMTEARDOWN) I XTMUNIT("LINE")'="" S XTMUNIT("TEARDOWN")=XTMTEARDOWN
+        . K XTMTEARDOWN ; done here.
+        . ;
+        . ; VEN/SMH 26JUL2013 - this block changed to correct running of setup and teardown
+        . ; run each of the specified entry points
+        . ;
+        . ; == THIS FOR/DO BLOCK IS THE CENTRAL TEST RUNNER ==
+        . S XTMUI=0
+        . F  S XTMUI=$O(XTMUETRY(XTMUI)) Q:XTMUI'>0  S XTMUNIT("ENUM")=XTMUNIT("ERRN")+XTMUNIT("FAIL") D  I XTMUVERB,'$D(XTMUGUI),XTMUNIT("ENUM")=(XTMUNIT("ERRN")+XTMUNIT("FAIL")) D VERBOSE(.XTMUETRY,XTMUI)
+        . . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . . ; 
+        . . ; Run Set-up Code (only if present)
+        . . S XTMUNIT("ENT")=$G(XTMUNIT("SETUP")) ; Current entry
+        . . S XTMUNIT("NAME")="Set-up Code"
+        . . D:XTMUNIT("ENT")]"" @XTMUNIT("ENT")
+        . . ;
+        . . ; Run actual test
+        . . S XTMUNIT("ECNT")=XTMUNIT("ECNT")+1
+        . . S XTMUNIT("NAME")=XTMUETRY(XTMUI,"NAME")
+        . . S XTMUNIT("ENT")=XTMUETRY(XTMUI)_"^"_XTMUROU(XTMUNIT("CURR"))
+        . . D @XTMUNIT("ENT")
+        . . ;
+        . . ; Run Teardown Code (only if present)
+        . . S XTMUNIT("ENT")=$G(XTMUNIT("TEARDOWN"))
+        . . S XTMUNIT("NAME")="Teardown Code"
+        . . D:XTMUNIT("ENT")]"" @XTMUNIT("ENT")
+        . ;
+        . ;
+        . ; keep a XTMUCNT of number of entry points executed across all routines
+        . S XTMUNIT("NENT")=XTMUNIT("NENT")+XTMUNIT("ENTN")
+        . Q
+        ;
+        ; -- SHUTDOWN --
+        ; 070224 - following code added to allow one overall SHUTDOWN code JLI
+        N XTFINISH
+        S XTMUNIT("CURR")=0
+        F  S XTMUNIT("CURR")=XTMUNIT("CURR")+1 Q:'$D(XTMUROU(XTMUNIT("CURR")))  D  I $G(XTFINISH)'="" D @XTFINISH Q
+        . I $T(@("SHUTDOWN^"_XTMUROU(XTMUNIT("CURR"))))'="" S XTFINISH="SHUTDOWN^"_XTMUROU(XTMUNIT("CURR"))
+        . Q
+        ; 070224 - End of addition JLI
+        ;
+        S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        W !!,"Ran ",XTMULIST," Routine",$S(XTMULIST>1:"s",1:""),", ",XTMUNIT("NENT")," Entry Tag",$S(XTMUNIT("NENT")>1:"s",1:"")
+        W !,"Checked ",XTMUNIT("CHK")," test",$S(XTMUNIT("CHK")>1:"s",1:""),", with ",XTMUNIT("FAIL")," failure",$S(XTMUNIT("FAIL")'=1:"s",1:"")," and encountered ",XTMUNIT("ERRN")," error",$S(XTMUNIT("ERRN")'=1:"s",1:""),"."
+        I OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        Q
+        ; -- end EN1
+VERBOSE(XTMUETRY,XTMUI) ;
+        N OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUNIT - NEWED IN EN
+        S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        W !,"OK - ",XTMUETRY(XTMUI) I $G(XTMUETRY(XTMUI,"NAME"))'="" W " - ",XTMUETRY(XTMUI,"NAME")
+        IF OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        Q
+        ;
+CHKTF(XTSTVAL,XTERMSG)  ; Entry point for checking True or False values
+        N OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUERRL,XTMUGUI - CREATED IN SETUP, KILLED IN END
+        ; ZEXCEPT: XTMUNIT - NEWED IN EN
+        I $G(XTSTVAL)="" D NVLDARG Q
+        I $G(XTERMSG)="" S XTERMSG="no failure message provided"
+        S XTMUNIT("CHK")=$G(XTMUNIT("CHK"))+1
+        I '$D(XTMUGUI) D
+        . S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        . I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        . I 'XTSTVAL W !,XTMUNIT("ENT")," - " W:XTMUNIT("NAME")'="" XTMUNIT("NAME")," - " D
+        . . W XTERMSG,! S XTMUNIT("FAIL")=XTMUNIT("FAIL")+1,XTMUERRL(XTMUNIT("FAIL"))=XTMUNIT("NAME"),XTMUERRL(XTMUNIT("FAIL"),"MSG")=XTERMSG,XTMUERRL(XTMUNIT("FAIL"),"ENTRY")=XTMUNIT("ENT")
+        . . Q
+        . E  W "."
+        . I OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        . Q
+        I $D(XTMUGUI),'XTSTVAL S XTMUNIT("CNT")=XTMUNIT("CNT")+1,@XTMUNIT("RSLT")@(XTMUNIT("CNT"))=XTMUNIT("LOC")_XTGUISEP_"FAILURE"_XTGUISEP_XTERMSG
+        Q
+        ;
+CHKEQ(XTEXPECT,XTACTUAL,XTERMSG)        ; Entry point for checking values to see if they are EQUAL
+        N FAILMSG,OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUERRL,XTMUGUI -CREATED IN SETUP, KILLED IN END
+        ; ZEXCEPT: XTMUNIT  -- NEWED IN EN
+        I '$D(XTEXPECT),'$D(XTACTUAL) D NVLDARG Q
+        S XTACTUAL=$G(XTACTUAL),XTEXPECT=$G(XTEXPECT)
+        I $G(XTERMSG)="" S XTERMSG="no failure message provided"
+        S XTMUNIT("CHK")=XTMUNIT("CHK")+1
+        I XTEXPECT'=XTACTUAL S FAILMSG="<"_XTEXPECT_"> vs <"_XTACTUAL_"> - "
+        I '$D(XTMUGUI) D
+        . S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        . I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        . I XTEXPECT'=XTACTUAL W !,XTMUNIT("ENT")," - " W:XTMUNIT("NAME")'="" XTMUNIT("NAME")," - " W FAILMSG,XTERMSG,! D
+        . . S XTMUNIT("FAIL")=XTMUNIT("FAIL")+1,XTMUERRL(XTMUNIT("FAIL"))=XTMUNIT("NAME"),XTMUERRL(XTMUNIT("FAIL"),"MSG")=XTERMSG,XTMUERRL(XTMUNIT("FAIL"),"ENTRY")=XTMUNIT("ENT")
+        . . Q
+        . E  W "."
+        . I OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        . Q
+        I $D(XTMUGUI),XTEXPECT'=XTACTUAL S XTMUNIT("CNT")=XTMUNIT("CNT")+1,@XTMUNIT("RSLT")@(XTMUNIT("CNT"))=XTMUNIT("LOC")_XTGUISEP_"FAILURE"_XTGUISEP_FAILMSG_XTERMSG
+        Q
+        ;
+FAIL(XTERMSG)   ; Entry point for generating a failure message
+        N OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUERRL,XTMUGUI -CREATED IN SETUP, KILLED IN END
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        I $G(XTERMSG)="" S XTERMSG="no failure message provided"
+        S XTMUNIT("CHK")=XTMUNIT("CHK")+1
+        I '$D(XTMUGUI) D
+        . S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        . I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        . W !,XTMUNIT("ENT")," - " W:XTMUNIT("NAME")'="" XTMUNIT("NAME")," - " W XTERMSG,! D
+        . . S XTMUNIT("FAIL")=XTMUNIT("FAIL")+1,XTMUERRL(XTMUNIT("FAIL"))=XTMUNIT("NAME"),XTMUERRL(XTMUNIT("FAIL"),"MSG")=XTERMSG,XTMUERRL(XTMUNIT("FAIL"),"ENTRY")=XTMUNIT("ENT")
+        . . Q
+        . I OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        . Q
+        I $D(XTMUGUI) S XTMUNIT("CNT")=XTMUNIT("CNT")+1,@XTMUNIT("RSLT")@(XTMUNIT("CNT"))=XTMUNIT("LOC")_XTGUISEP_"FAILURE"_XTGUISEP_XTERMSG
+        Q
+        ;
+CHKLEAKS(XTMUCODE,XTMULOC,XTMUINPT)     ; functionality to check for variable leaks on executing a section of code
+        ; XTMUCODE - A string that specifies the code that is to be XECUTED and checked for leaks.
+        ;            this should be a complete piece of code (e.g., "S X=$$NEW^XLFDT()" or "D EN^XTMUNIT(""ROUNAME"")")
+        ; XTMULOC  - A string that is used to indicate the code tested for variable leaks
+        ; XTMUINPT - An optional variable which may be passed by reference.  This may
+        ;           be used to pass any variable values, etc. into the code to be
+        ;           XECUTED.  In this case, set the subscript to the variable name and the
+        ;           value of the subscripted variable to the desired value of the subscript.
+        ;              e.g., (using NAME as my current namespace)
+        ;                   S CODE="S XTMUINPT=$$ENTRY^ROUTINE(ZZVALUE1,ZZVALUE2)"
+        ;                   S NAMELOC="ENTRY^ROUTINE leak test"   (or simply "ENTRY^ROUTINE")
+        ;                   S NAMEINPT("ZZVALUE1")=ZZVALUE1
+        ;                   S NAMEINPT("ZZVALUE2")=ZZVALUE2
+        ;                   D CHKLEAKS^XTMUNIT(CODE,NAMELOC,.NAMEINPT)
+        ;
+        ;           If part of a unit test, any leaked variables in ENTRY^ROUTINE which result
+        ;           from running the code with the variables indicated will be shown as FAILUREs.
+        ;
+        ;           If called outside of a unit test, any leaked variables will be printed to the
+        ;           current device.
+        ;
+        N (XTMUCODE,XTMULOC,XTMUINPT,DUZ,IO,U,XTMUERRL,XTMUNIT,XTMUGUI,XTMUI,XTMUJ,XTMUK,XTMULIST,XTMUROU,XTMUSTRT)
+        ; ZEXCEPT: XTMUNIT - part of exclusive NEW TESTS FOR EXISTENCE ONLY
+        ; ZEXCEPT: XTMUVAR - handled by exclusive NEW
+        ;
+        ; ACTIVATE ANY VARIABLES PASSED AS SUBSCRIPTS TO XTMUINPT TO THEIR VALUES
+        S XTMUVAR=" " F  S XTMUVAR=$O(XTMUINPT(XTMUVAR)) Q:XTMUVAR=""  S (@XTMUVAR)=XTMUINPT(XTMUVAR)
+        X XTMUCODE
+        N ZZUTVAR S ZZUTVAR="%"
+        I $G(XTMUNIT)=1 D
+        . I $D(@ZZUTVAR),'$D(XTMUINPT(ZZUTVAR)) D FAIL^XTMUNIT(XTMULOC_" VARIABLE LEAK: "_ZZUTVAR)
+        . F  S ZZUTVAR=$O(@ZZUTVAR) Q:ZZUTVAR=""  I $E(ZZUTVAR,1,4)'="XTMU",'$D(XTMUINPT(ZZUTVAR)),",DUZ,IO,U,DTIME,ZZUTVAR,DT,"'[(","_ZZUTVAR_",") D FAIL^XTMUNIT(XTMULOC_" VARIABLE LEAK: "_ZZUTVAR)
+        . Q
+        I '($G(XTMUNIT)=1) D
+        . I $D(@ZZUTVAR),'$D(XTMUINPT(ZZUTVAR)) W !,XTMULOC_" VARIABLE LEAK: "_ZZUTVAR
+        . F  S ZZUTVAR=$O(@ZZUTVAR) Q:ZZUTVAR=""  I $E(ZZUTVAR,1,4)'="XTMU",'$D(XTMUINPT(ZZUTVAR)),",DUZ,IO,U,DTIME,ZZUTVAR,DT,"'[(","_ZZUTVAR_",") W !,XTMULOC_" VARIABLE LEAK: "_ZZUTVAR
+        . Q
+        Q
+        ;
+NVLDARG ; generate message for invalid arguments to test
+        N XTERMSG,OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        ; ZEXCEPT: XTMUERRL,XTMUGUI -CREATED IN SETUP, KILLED IN END
+        S XTERMSG="NO VALUES INPUT TO CHKEQ^XTMUNIT - no evaluation possible"
+        I '$D(XTMUGUI) D
+        . S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        . I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        . W !,XTMUNIT("ENT")," - " W:XTMUNIT("NAME")'="" XTMUNIT("NAME")," - " W XTERMSG,! D
+        . . S XTMUNIT("FAIL")=XTMUNIT("FAIL")+1,XTMUERRL(XTMUNIT("FAIL"))=XTMUNIT("NAME"),XTMUERRL(XTMUNIT("FAIL"),"MSG")=XTERMSG,XTMUERRL(XTMUNIT("FAIL"),"ENTRY")=XTMUNIT("ENT")
+        . . Q
+        . I OLDIO'=IO D RESETIO(OLDIOFLG,OLDIONAM)
+        . Q
+        I $D(XTMUGUI) S XTMUNIT("CNT")=XTMUNIT("CNT")+1,@XTMUNIT("RSLT")@(XTMUNIT("CNT"))=XTMUNIT("LOC")_XTGUISEP_"FAILURE"_XTGUISEP_XTERMSG
+        Q
+        ;
+ERROR   ; record errors
+        ; ZEXCEPT: XTMUERRL,XTMUGUI,XTMUERR -CREATED IN SETUP, KILLED IN END
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        S XTMUNIT("CHK")=XTMUNIT("CHK")+1
+        I '$D(XTMUGUI) D ERROR1
+        I $D(XTMUGUI) D
+        . S XTMUNIT("CNT")=XTMUNIT("CNT")+1
+        . S XTMUERR=XTMUERR+1
+        . S @XTMUNIT("RSLT")@(XTMUNIT("CNT"))=XTMUNIT("LOC")_XTGUISEP_"ERROR"_XTGUISEP_$S(+$SY=47:$ZS,1:$ZE)
+        . Q
+        S @($S(+$SY=47:"$ZS",1:"$ZE")_"="_""""""),$EC=""
+        Q
+        ;
+ERROR1  ;
+        N OLDIO,OLDIOFLG,OLDIONAM
+        ; ZEXCEPT: XTMUERRL -CREATED IN SETUP, KILLED IN END
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        S OLDIO=IO,OLDIOFLG=0,OLDIONAM=""
+        I IO'=XTMUNIT("IO") D SETIO(.OLDIOFLG,.OLDIONAM)
+        W !,XTMUNIT("ENT")," - " W:XTMUNIT("NAME")'="" XTMUNIT("NAME")," - Error: " W $S(+$SY=47:$ZS,1:$ZE),! D
+        . S XTMUNIT("ERRN")=XTMUNIT("ERRN")+1,XTMUERRL(XTMUNIT("ERRN"))=XTMUNIT("NAME"),XTMUERRL(XTMUNIT("FAIL"),"MSG")=$S(+$SY=47:$ZS,1:$ZE),XTMUERRL(XTMUNIT("FAIL"),"ENTRY")=XTMUNIT("ENT")
+        . Q
+        I IO'=OLDIO D RESETIO(OLDIOFLG,OLDIONAM)
+        Q
+SETIO(OLDIOFLG,OLDIONAM)        ; BOTH PASSED BY REFERENCE
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        N OLDION S OLDION="" F  S OLDION=$O(^TMP("XUDEVICE",$J,OLDION)) Q:OLDION=""  I $G(^(OLDION,"IO"))=IO S OLDIONAM=^(0),OLDIOFLG=1
+        ;I 'OLDIOFLG S OLDIONAM="OLD MUNIT DEV" D SAVDEV^%ZISUTL(OLDIONAM)
+    I 'OLDIOFLG S XTMUNIT("DEV","OLD")=OLDIONAM
+        USE XTMUNIT("DEV")
+        Q
+        ;
+RESETIO(OLDIOFLG,OLDIONAM)      ;
+        ;D USE^%ZISUTL(OLDIONAM) I 'OLDIOFLG D RMDEV^%ZISUTL(OLDIONAM)
+    USE OLDIONAM I 'OLDIOFLG K XTMUNIT("DEV","OLD")
+        Q
+        ;
+ISUTEST()       ; .SUPPORTED API TO DETERMINE IF CURRENTLY IN UNIT TEST
+        ; ZEXCEPT: XTMUNIT  -- NEWED ON ENTRY
+        Q $G(XTMUNIT)=1
+        ;
+PICKSET ; .OPT Interactive selection of MUnit Test Group
+        N DIC,Y,XTMUROU,XTMULIST,DIR
+        S DIC=8992.8,DIC(0)="AEQM" D ^DIC Q:Y'>0  W !
+        D GETSET(+Y,.XTMUROU,.XTMULIST)
+        N DIC,Y,XTMUNIT
+        D SETUT
+        D EN1(.XTMUROU,XTMULIST)
+        S DIR(0)="EA",DIR("A")="Enter RETURN to continue:" D ^DIR K DIR
+        Q
+        ;
+RUNSET(SETNAME) ; .SR Run with Specified Selection of MUnit Test Group
+        N Y,XTMUROU,XTMULIST
+        Q:$G(SETNAME)=""
+        S Y=+$$FIND1^DIC(8992.8,"","X",SETNAME) Q:Y'>0
+        D GETSET(Y,.XTMUROU,.XTMULIST)
+        N Y,SETNAME,XTMUNIT
+        D SETUT
+        D EN1(.XTMUROU,XTMULIST)
+        Q
+        ;
+DOSET(IEN)      ;
+        N XTMUROU,XTMULIST
+        S XTMULIST=0
+        D GETSET($G(IEN),.XTMUROU,.XTMULIST)
+        I XTMULIST>0  N IEN,XTMUNIT D SETUT,EN1(.XTMUROU,XTMULIST)
+        Q
+        ;
+GETSET(IEN,XTMUROU,XTMULIST)    ;
+        N IENS,XTMROOT
+        S IENS=IEN_"," D GETS^DIQ(8992.8,IENS,"1*","","XTMROOT")
+        S XTMULIST=0,IENS="" F  S IENS=$O(XTMROOT(8992.81,IENS)) Q:IENS=""  S XTMULIST=XTMULIST+1,XTMUROU(XTMULIST)=XTMROOT(8992.81,IENS,.01)
+        Q
+        ;
+GUISET(XTMURSLT,XTSET)  ; Entry point for GUI start with selected Test Set IEN
+        N XTMUROU,XTMULIST,XTMUNIT
+        D SETUT
+        S XTMUNIT("RSLT")=$NA(^TMP("MUNIT-XTMURSLT",$J)) K @XTMUNIT("RSLT")
+        D GETSET(XTSET,.XTMUROU,.XTMULIST)
+        D GETLIST(.XTMUROU,XTMULIST,XTMUNIT("RSLT"))
+        S @XTMUNIT("RSLT")@(1)=(@XTMUNIT("RSLT")@(1))_"^1" ; 110719 mark as new version
+        S XTMURSLT=XTMUNIT("RSLT")
+        Q
+        ;
+GUILOAD(XTMURSLT,XTMUROUN)      ; Entry point for GUI start with XTMUROUN containing primary routine name
+        N XTMUROU,XTMUNIT
+        D SETUT
+        S XTMUNIT("RSLT")=$NA(^TMP("MUNIT-XTMURSLT",$J)) K @XTMUNIT("RSLT")
+        S XTMUROU(1)=XTMUROUN
+        D GETLIST(.XTMUROU,1,XTMUNIT("RSLT"))
+        S @XTMUNIT("RSLT")@(1)=(@XTMUNIT("RSLT")@(1))_"^1" ; 110719 mark as new version
+        S XTMURSLT=XTMUNIT("RSLT")
+        Q
+        ;
+GETLIST(XTMUROU,XTMULIST,XTMURSLT)      ;
+        N I,XTMUROUL,XTMUROUN,XTMUNIT,XTCOMNT,XTVALUE,XTMUCNT
+        S XTVALUE=$NA(^TMP("GUI-MUNIT",$J)) K @XTVALUE
+        S XTMUCNT=0,XTCOMNT=""
+        D GETTREE^XTMUNIT1(.XTMUROU,XTMULIST)
+        F I=1:1 Q:'$D(XTMUROU(I))  S XTMUROUL(XTMUROU(I))=""
+        S XTMUROUN="" F  S XTMUROUN=$O(XTMUROUL(XTMUROUN)) Q:XTMUROUN=""  D LOAD(XTMUROUN,.XTMUCNT,XTVALUE,XTCOMNT,.XTMUROUL)
+        M @XTMURSLT=@XTVALUE
+        K @XTMURSLT@("SHUTDOWN")
+        K @XTMURSLT@("STARTUP")
+        S @XTVALUE@("LASTROU")="" ; Use this to keep track of place in routines
+        Q
+        ;
+        ; generate list of unit test routines, entry points and comments on test for entry point
+LOAD(XTMUROUN,XTMUNCNT,XTVALUE,XTCOMNT,XTMUROUL)        ;
+        I $T(@("^"_XTMUROUN))="" S XTMUNCNT=XTMUNCNT+1,@XTVALUE@(XTMUNCNT)=XTMUROUN_"^^*** ERROR - ROUTINE NAME NOT FOUND" Q
+        S XTMUNCNT=XTMUNCNT+1,@XTVALUE@(XTMUNCNT)=XTMUROUN_U_U_XTCOMNT
+        N XTMUI,XTX1,XTX2,LINE
+        ; 100622 JLI added code to identify STARTUP and TEARDOWN
+        I $T(@("STARTUP^"_XTMUROUN))'="",'$D(@XTVALUE@("STARTUP")) S @XTVALUE@("STARTUP")="STARTUP^"_XTMUROUN
+        I $T(@("SHUTDOWN^"_XTMUROUN))'="",'$D(@XTVALUE@("SHUTDOWN")) S @XTVALUE@("SHUTDOWN")="SHUTDOWN^"_XTMUROUN
+        F XTMUI=1:1 S LINE=$T(@("XTENT+"_XTMUI_"^"_XTMUROUN)) S XTX1=$P(LINE,";",3) Q:XTX1=""  S XTX2=$P(LINE,";",4),XTMUNCNT=XTMUNCNT+1,@XTVALUE@(XTMUNCNT)=XTMUROUN_U_XTX1_U_XTX2
+        F XTMUI=1:1 S LINE=$T(@("XTROU+"_XTMUI_"^"_XTMUROUN)) S XTX1=$P(LINE,";",3) Q:XTX1=""  S XTCOMNT=$P(LINE,";",4) I '$D(XTMUROUL(XTX1)) S XTMUROUL(XTX1)="" D LOAD(XTX1,.XTMUNCNT,XTVALUE,XTCOMNT,.XTMUROUL)
+        Q
+        ;
+GUINEXT(XTMURSLT,XTMULOC,XTGUISEP)      ; Entry point for GUI execute next test
+        ; XTGUISEP - added 110719 to provide for changing separator for GUI
+        ;            return from ^ to another value ~~^~~  so that data returned
+        ;            is not affected by ^ values in the data - if not present
+        ;            sets value to default ^
+        N XTMUETRY,XTMUROUT,XTOLROU,XTVALUE,XTMUERR,XTMUGUI
+        N XTMUNIT
+        I $G(XTGUISEP)="" S XTGUISEP="^"
+        D SETUT
+        S XTMUNIT("CNT")=0,XTMUNIT("LOC")=XTMULOC
+        S XTVALUE=$NA(^TMP("GUI-MUNIT",$J))
+        S XTMUNIT("RSLT")=$NA(^TMP("GUINEXT",$J)) K @XTMUNIT("RSLT")
+        S XTMURSLT=XTMUNIT("RSLT")
+        S XTMUETRY=$P(XTMULOC,U),XTMUROUT=$P(XTMULOC,U,2),XTOLROU=$G(@XTVALUE@("LASTROU"))
+        S XTMUGUI=1
+        I XTMUROUT'=XTOLROU D  I XTMUROUT="" S @XTMURSLT@(1)="" K @XTVALUE Q
+        . ; 100622 JLI added code to handle STARTUP for GUI app
+        . I XTOLROU="",$D(@XTVALUE@("STARTUP")) D
+        . . S XTMUNIT("LOC")=@XTVALUE@("STARTUP")
+        . . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . . D @(@XTVALUE@("STARTUP"))
+        . . Q
+        . I XTOLROU'="" I $T(@("TEARDOWN^"_XTOLROU))'="" D
+        . . S XTMUNIT("LOC")="TEARDOWN^"_XTMUROUT
+        . . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . . D @("TEARDOWN^"_XTOLROU)
+        . . Q
+        . S @XTVALUE@("LASTROU")=XTMUROUT I XTMUROUT'="",$T(@("SETUP^"_XTMUROUT))'="" D
+        . . S XTMUNIT("LOC")="SETUP^"_XTMUROUT
+        . . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . . D @("SETUP^"_XTMUROUT)
+        . . Q
+        . ; 100622 JLI added code to handle SHUTDOWN
+        . I XTMUROUT="",$D(@XTVALUE@("SHUTDOWN")) D
+        . . S XTMUNIT("LOC")=@XTVALUE@("SHUTDOWN")
+        . . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . . D @(@XTVALUE@("SHUTDOWN"))
+        . . Q
+        . Q
+        S XTMUNIT("LOC")=XTMULOC
+        S XTMUNIT("CHK")=0,XTMUNIT("CNT")=1,XTMUERR=0
+        D  ; to limit range of error trap so we continue through other tests
+        . N $ETRAP S $ETRAP="D ERROR^XTMUNIT"
+        . D @XTMUNIT("LOC")
+        S @XTMUNIT("RSLT")@(1)=XTMUNIT("CHK")_XTGUISEP_(XTMUNIT("CNT")-1-XTMUERR)_XTGUISEP_XTMUERR
+        Q
+
+XTMUNIT1
+XTMUNIT1        ;JLI/FO-OAK-CONTINUATION OF UNIT TEST ROUTINE ; 18 DEC 2013
+        ;;7.3;TOOLKIT;**81**;APR 25 1995;Build 24
+    ;
+    ; Original by Dr. Joel Ivey
+    ; Major contributions by Dr. Sam Habiel
+    ;
+    ; Changes:
+    ; 130726 SMH - Moved test collection logic from XTMUNIT to here (multiple places)
+    ; 131218 SMH - dependence on XLFSTR removed
+    ; 131218 SMH - CHEKTEST refactored to use $TEXT instead of ^%ZOSF("LOAD")
+    ; 131218 SMH - CATCHERR now nulls out $ZS if on GT.M
+    ; 
+    ; TODO: find this routine and add to repo.
+        D EN^XTMUNIT("ZZUTXTMU")
+        Q
+        ;
+CHEKTEST(ROU,XTMUNIT,XTMUETRY)  ; Collect Test list.
+        ; XTMROU - input - Name of routine to check for tags with @TEST attribute
+        ; XTMUNIT - input/output - passed by reference
+        ; XTMUETRY - input/output - passed by reference
+        ; 
+        ; Test list collected in two ways:
+        ; - @TEST on labellines
+        ; - Offsets of XTENT
+        ;
+        ; NB: VEN/SMH - first block moved from XTMUNIT
+        S XTMUNIT("ENTN")=0 ; Number of test, sub to XTMUETRY.
+        ;
+        F XTMUI=1:1 S XTMUNIT("ELIN")=$T(@("XTENT+"_XTMUI_"^"_XTMUROU(XTMUNIT("CURR")))) Q:$P(XTMUNIT("ELIN"),";",3)=""  D
+        . S XTMUNIT("ENTN")=XTMUNIT("ENTN")+1,XTMUETRY(XTMUNIT("ENTN"))=$P(XTMUNIT("ELIN"),";",3),XTMUETRY(XTMUNIT("ENTN"),"NAME")=$P(XTMUNIT("ELIN"),";",4)
+        ; VEN/SMH - END
+        ;
+    ; VEN/SMH - block refactored to use $TEXT instead of ^%ZOSF("LOAD")
+        N I,LINE
+        S I=$L($T(@(U_ROU))) I I<0 Q "-1^Invalid Routine Name"
+        N $ETRAP S $ETRAP="D CATCHERR^XTMUNIT1"
+    ;
+    ; Complexity galore: $TEXT loops through routine
+    ; IF tab or space isn't the first character ($C(9,32)) and line contains @TEST
+    ; Load that line as a testing entry point
+        F I=1:1 S LINE=$T(@("+"_I_U_ROU)) Q:LINE=""  I $C(9,32)'[$E(LINE),$$UP(LINE)["@TEST" D
+        . N TAGNAME,CHAR,NPAREN S TAGNAME="",NPAREN=0
+        . F  Q:LINE=""  S CHAR=$E(LINE),LINE=$E(LINE,2,999) Q:CHAR=""  Q:" ("[CHAR  S TAGNAME=TAGNAME_CHAR
+        . ; should be no paren or arguments
+        . I CHAR="(" Q
+        . F  Q:LINE=""  S CHAR=$E(LINE) Q:" ;"'[CHAR  S LINE=$E(LINE,2,999)
+        . I $$UP($E(LINE,1,5))="@TEST" S LINE=$E(LINE,6,999) D
+        . . S XTMUNIT("ENTN")=XTMUNIT("ENTN")+1,XTMUETRY(XTMUNIT("ENTN"))=TAGNAME
+        . . F  Q:LINE=""  S CHAR=$E(LINE) Q:CHAR?1AN  S LINE=$E(LINE,2,999)
+        . . S XTMUETRY(XTMUNIT("ENTN"),"NAME")=LINE
+        QUIT
+        ;
+    ; VEN/SMH - Is this catch needed anymore?
+CATCHERR        ; catch error on trying to load file if it doesn't exist ; JLI 120806
+        S $ZE="",$EC=""
+    I +$SY=47 S $ZS="" ; VEN/SMH fur GT.M.
+    QUIT
+        ;
+        ; VEN/SMH 26JUL2013 - Moved GETTREE here.
+GETTREE(XTMUROU,XTMULIST)       ;
+        ; first get any other routines this one references for running subsequently
+        ; then any that they refer to as well
+        ; this builds a tree of all routines referred to by any routine including each only once
+        N XTMUK,XTMUI,XTMUJ,XTMURNAM,XTMURLIN
+        F XTMUK=1:1 Q:'$D(XTMUROU(XTMUK))  D
+        . F XTMUI=1:1 S XTMURLIN=$T(@("XTROU+"_XTMUI_"^"_XTMUROU(XTMUK))) S XTMURNAM=$P(XTMURLIN,";",3) Q:XTMURNAM=""  D
+        . . F XTMUJ=1:1:XTMULIST I XTMUROU(XTMUJ)=XTMURNAM S XTMURNAM="" Q
+        . . I XTMURNAM'="",$T(@("+1^"_XTMURNAM))="" W:'$D(XWBOS) "Referenced routine ",XTMURNAM," not found.",! Q
+        . . S:XTMURNAM'="" XTMULIST=XTMULIST+1,XTMUROU(XTMULIST)=XTMURNAM
+        QUIT
+    ;
+    ; VEN/SMH 17DEC2013 - Remove dependence on VISTA - Uppercase here instead of XLFSTR.
+UP(X)  Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
 
