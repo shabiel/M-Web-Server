@@ -13,7 +13,7 @@ This project is based off code contained in the [Health Management Platform (HMP
 JSON store](https://github.com/OSEHRA-Sandbox/Health-Management-Platform/tree/master/hmp/hmp-main/src/main/mumps/dbj).
 
 ## Install
-See (INSTALL.md)[INSTALL.md].
+See [INSTALL.md](INSTALL.md).
 
 ## Links
 * OSEHRA Homepage: http://osehra.org
