@@ -490,3 +490,5 @@ Ignore this error.
 	Also, try the sample web services...
 	 - http://localhost:9080/xml
 	 - http://localhost:9080/ping
+
+Once you are done having fun, you can stop the server using `STOP^VPRJREQ`.
