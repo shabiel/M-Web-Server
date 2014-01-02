@@ -6,7 +6,8 @@ It is maintained by OSEHRA, the Open Source Electronic Health Record Agent.
 ## Purpose
 
 This project aims to provide standardized and easy to deploy RESTful web 
-services from M and from VISTA.
+services from M and from VISTA. The software can also serve file-system based
+resources that can take advantage of the web services.
 
 This project is based off code contained in the [Health Management Platform (HMP)
 JSON store](https://github.com/OSEHRA-Sandbox/Health-Management-Platform/tree/master/hmp/hmp-main/src/main/mumps/dbj).

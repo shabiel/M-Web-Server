@@ -491,4 +491,8 @@ Ignore this error.
 	 - http://localhost:9080/xml
 	 - http://localhost:9080/ping
 
+## Starting and Stopping the Server
 Once you are done having fun, you can stop the server using `STOP^VPRJREQ`.
+
+To start it again, run `D JOB^VPRJREQ(portno)`, substituting a port number
+of your choice. If you run `D ^VPRJREQ`, it will start at port number 9080.
