@@ -1,10 +1,11 @@
 # Installation instructions
 
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
-	- [Installation for GT.M](#installation-for-gtm)
-	- [Installation on Cache/Windows](#installation-on-cachewindows)
-	- [Installation on Cache/Unix](#installation-on-cacheunix)
-	- [Starting and Stopping the Server](#starting-and-stopping-the-server)
+
+* [Installation for GT.M](#installation-for-gtm)
+* [Installation on Cache/Windows](#installation-on-cachewindows)
+* [Installation on Cache/Unix](#installation-on-cacheunix)
+* [Starting and Stopping the Server](#starting-and-stopping-the-server)
 
 While installation is intended to be mostly automatic, you need to download
 the boostrap routine that will automate all of this first.
