@@ -107,10 +107,12 @@ BLDHEAD(TOTAL,COUNT,START,LIMIT) ; Build the object header
  S X=X_"""items"":["
  Q X
  ;
-SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
+SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into ^TMP("HTTPERR",$J)
  ; causes HTTPERR system variable to be set
  ; ERRCODE:  query errors are 100-199, update errors are 200-299, M errors are 500
  ; MESSAGE:  additional explanatory material
+ ; ERRARRAY: An Array to use instead of the Message for information to the user.
+ ;
  N NEXTERR,ERRNAME,TOPMSG
  S HTTPERR=400,TOPMSG="Bad Request"
  ; query errors (100-199)
@@ -158,8 +160,9 @@ SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
  S ^TMP("HTTPERR",$J,1,"error","code")=HTTPERR
  S ^TMP("HTTPERR",$J,1,"error","message")=TOPMSG
  S ^TMP("HTTPERR",$J,1,"error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
- S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"reason")=ERRCODE
- S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
+ I $D(ERRARRAY) M ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR)=ERRARRAY  ; VEN/SMH
+ E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"reason")=ERRCODE
+ E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
  I $L($G(MESSAGE)) S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"domain")=MESSAGE
  Q
  ;
