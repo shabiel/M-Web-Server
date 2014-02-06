@@ -1,4 +1,4 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-27  4:05 PM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2014-01-23  2:27 PM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -200,6 +200,9 @@ RIGTM(ROPATH,FF,GTMDIR) ; Silent Routine Input for GT.M
  QUIT  ; Done
  ;
 PARSEZRO(DIRS,ZRO) ; Parse $zroutines properly into an array
+ ; Eat spaces
+ F  Q:($E(ZRO)'=" ")  S ZRO=$E(ZRO,2,999)
+ ;
  N PIECE
  N I
  F I=1:1:$L(ZRO," ") S PIECE(I)=$P(ZRO," ",I)
