@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-05-07  12:29 AM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2014-05-09  5:39 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -46,10 +46,15 @@ URLDEC(X,PATH) ; Decode a URL-encoded string
  ;
 REFSIZE(ROOT) ; return the size of glvn passed in ROOT
  Q:'$D(ROOT) 0 Q:'$L(ROOT) 0
+ Q:$G(ROOT)="" 0
  N SIZE,I
  S SIZE=0
+ S ROOT=$NA(@ROOT)
  I $D(@ROOT)#2 S SIZE=$L(@ROOT)
- I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
+ ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
+ N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
+ F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$L(@ROOT)
+ S ROOT=ORIG
  Q SIZE
  ;
 VARSIZE(V) ; return the size of a variable
