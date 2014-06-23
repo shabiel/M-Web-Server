@@ -38,7 +38,7 @@ in your shell. If you see anything other than a blank, you are ready to go.
 
 On the linux terminal, Use cURL to download the bootstrap routine.
 
-    curl https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
 
 Run GT.M using `$gtm_dist/mumps -dir`.
 
@@ -330,7 +330,7 @@ Then download the bootstrap file as follows:
 
 	C:\Users\VISTAEXPERTISE>cd %temp%
 
-	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -O https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA
+	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA
 
 Open the Cache Terminal from the Cache Cube, or use another method to get in. Read the routine archive in. Cache will complain that it doesn't recoginze GT.M's format. Ignore this error.
 
@@ -419,7 +419,7 @@ Open the Linux Terminal.
 
 Use cURL to download the bootstrap routine.
 
-    curl https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
 
 Open the Cache Terminal using `csession CACHE`, and switch to the appropriate
 namespace.
