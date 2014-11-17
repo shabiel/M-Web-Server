@@ -1,20 +1,26 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-16  7:59 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-17  1:58 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
  ; Mods by VEN/SMH for GT.M support.
  ;
 GO ; start up REST listener with defaults
- N PORT
- S PORT=$G(^VPRHTTP(0,"port"),9080)
+ N PORT S PORT=$G(^VPRHTTP(0,"port"),9080)
+ D JOB(PORT)
+ QUIT
+ ;
+JOB(PORT) ; Convenience entry point
  I +$SY=47 J START^VPRJREQ(PORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
  E  J START^VPRJREQ(PORT)
  QUIT
  ;
- ; Convenience entry point
-JOB(PORT) J START^VPRJREQ(PORT) QUIT
+START(TCPPORT,DEBUG) ; set up listening for connections
+ ; I hope TCPPORT needs no explanations.
  ;
-START(TCPPORT) ; set up listening for connections
+ ; DEBUG is so that we run our server in the foreground.
+ ; You can place breakpoints at CHILD+1 or anywhere else.
+ ; CTRL-C will always work
+ ;
  S ^VPRHTTP(0,"listener")="starting"
  ;
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
@@ -40,6 +46,8 @@ START(TCPPORT) ; set up listening for connections
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
  N CHILDSOCK  ; That will be set below; Child socket
  ;
+ I $G(DEBUG) G DEBUG
+ ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
  ;
@@ -51,6 +59,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
  ; ---- END CACHE CODE ----
  ;
+ ; ----- GT.M CODE ----
  ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
  ; N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests ; don't need this anymore
  ;I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
@@ -63,7 +72,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
  . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
  . ; 
- . ; If we are at the connect stage, loop around and wait for reads
+ . ; At connection, job off the new child socket to be served away.
  . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
  . I $P($KEY,"|")="CONNECT" D  ; >=6.1
  . . S CHILDSOCK=$P($KEY,"|",2)
@@ -73,12 +82,22 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . N J S J="CHILD:(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
+ . ; GT.M before 6.1:
  . ; Use the incoming socket; close the server, and restart it and goto CHILD
  . ; USE TCPIO:(SOCKET=$P($KEY,"|",2))
  . ; CLOSE TCPIO:(SOCKET="server")
  . ; JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  . ; SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
+ . ; ---- END GT.M CODE ----
  ; 
+ QUIT
+ ;
+DEBUG ; Debug continuation. We don't job off the request, rather run it now.
+ ; Stop using Ctrl-C (duh!)
+ N $ET S $ET="BREAK"
+ I %WOS="GT.M" U $I:(CENABLE:ioerror="T")
+ I %WOS="CACHE" F  R *X:10 I  G CHILD
+ I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILD
  QUIT
  ;
 JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
@@ -109,11 +128,21 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
+ D INCRLOG ; set unique request id for log
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
  N $ET S $ET="G ETSOCK^VPRJREQ"
+ ;
+TLS ; Turn on TLS?
+ ; W /TLS("server",1,"tls")
+ ; U 0
+ ; W !
+ ; W "$D: "_$DEVICE,!
+ ; W "$KEY: "_$KEY,!
+ ; W "$TEST: "_$TEST,!
+ ; U %WTCP
  ;
 NEXT ; begin next request
  K HTTPREQ,HTTPRSP,HTTPERR
@@ -127,7 +156,6 @@ WAIT ; wait for request on this connection
  I '$L(TCPX) G ETDC
  ;
  ; -- got a request and have the first line
- D INCRLOG ; set unique request id
  I HTTPLOG D LOGRAW(TCPX),LOGHDR(TCPX)
  S HTTPREQ("method")=$P(TCPX," ")
  S HTTPREQ("path")=$P($P(TCPX," ",2),"?")
