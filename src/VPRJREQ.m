@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-12-27  6:45 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-16  7:59 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -7,15 +7,18 @@ VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2013-12-27  6:45 PM
 GO ; start up REST listener with defaults
  N PORT
  S PORT=$G(^VPRHTTP(0,"port"),9080)
- J START^VPRJREQ(PORT)
- Q
+ I +$SY=47 J START^VPRJREQ(PORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
+ E  J START^VPRJREQ(PORT)
+ QUIT
  ;
  ; Convenience entry point
 JOB(PORT) J START^VPRJREQ(PORT) QUIT
  ;
 START(TCPPORT) ; set up listening for connections
+ S ^VPRHTTP(0,"listener")="starting"
+ ;
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
- I %WOS="GT.M" S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
+ I %WOS="GT.M" S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""") ; for GT.M, set interrupt.
  ;
  S TCPPORT=$G(TCPPORT,9080)
  ;
@@ -25,7 +28,7 @@ START(TCPPORT) ; set up listening for connections
  ;
  ; Open Code
  I %WOS="CACHE" O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
- I %WOS="GT.M" O TCPIO:(ZLISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
+ I %WOS="GT.M" O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
  ;
  ; K. Now we are really really listening.
  S ^VPRHTTP(0,"listener")="running"
@@ -34,34 +37,47 @@ START(TCPPORT) ; set up listening for connections
  U TCPIO
  ;
  I %WOS="GT.M" W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
+ N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
+ N CHILDSOCK  ; That will be set below; Child socket
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
  ;
+ ; ---- CACHE CODE ----
  I %WOS="CACHE" D  G LOOP
  . R *X:10
  . E  QUIT  ; Loop back again when listening and nobody on the line
  . J CHILD:(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
  . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
+ ; ---- END CACHE CODE ----
  ;
  ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
- N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests
- I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
+ ; N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests ; don't need this anymore
+ ;I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
+ I %WOS="GT.M" D  G LOOP
  . ;
- . ; Wait until we have a connection. Quit also if the listener asked us to stop.
+ . ; Wait until we have a connection (inifinte wait). 
+ . ; Stop if the listener asked us to stop.
  . FOR  W /WAIT(10) Q:$KEY]""  Q:($E(^VPRHTTP(0,"listener"),1,4)="stop")
  . ;
  . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
  . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
  . ; 
  . ; If we are at the connect stage, loop around and wait for reads
- . I $P($KEY,"|")="CONNECT" QUIT
+ . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
+ . I $P($KEY,"|")="CONNECT" D  ; >=6.1
+ . . S CHILDSOCK=$P($KEY,"|",2)
+ . . U TCPIO:(detach=CHILDSOCK)
+ . . N Q S Q=""""
+ . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
+ . . N J S J="CHILD:(input="_ARG_":output="_ARG_")"
+ . . J @J
  . ;
  . ; Use the incoming socket; close the server, and restart it and goto CHILD
- . USE TCPIO:(SOCKET=$P($KEY,"|",2))
- . CLOSE TCPIO:(SOCKET="server")
- . JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
- . SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
+ . ; USE TCPIO:(SOCKET=$P($KEY,"|",2))
+ . ; CLOSE TCPIO:(SOCKET="server")
+ . ; JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ . ; SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
  ; 
  QUIT
  ;
@@ -70,6 +86,7 @@ JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
  QUIT 1
  ;
 GTMLNX  ;From Linux xinetd script; $P is the main stream
+ S ^VPRHTTP(0,"listener")="starting"
  S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
  X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
  S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
