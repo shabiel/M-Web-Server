@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2013-10-18  6:37 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2014-05-09  6:45 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -190,7 +190,12 @@ SENDATA ; write out the data as an HTTP response
  . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  D W(HTTPRSP(I))
  I RSPTYPE=2 D            ; write out global using indirection
  . I $D(@HTTPRSP)#2 D W(@HTTPRSP)
- . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
+ . ; I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
+ . I $D(@HTTPRSP)>1 D
+ . . N ORIG,OL S ORIG=HTTPRSP,OL=$QL(HTTPRSP) ; Orig, Orig Length
+ . . ZSHOW "*":^KBANTEMP
+ . . F  S HTTPRSP=$Q(@HTTPRSP) Q:(($G(HTTPRSP)="")!($NA(@HTTPRSP,OL)'=$NA(@ORIG,OL)))  D W(@HTTPRSP)
+ . . S HTTPRSP=ORIG
  I RSPTYPE=3 D            ; write out pageable records
  . W PREAMBLE
  . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
@@ -376,6 +381,7 @@ URLMAP ; map URLs to entry points (HTTP methods handled within entry point)
  ;;GET ping PING^VPRJRSP
  ;;zzzzz
  Q
+ ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
  ;
  ; We only support Basic authentication right now

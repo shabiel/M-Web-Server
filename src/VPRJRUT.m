@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2013-05-07  12:29 AM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2014-05-09  5:39 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -46,10 +46,15 @@ URLDEC(X,PATH) ; Decode a URL-encoded string
  ;
 REFSIZE(ROOT) ; return the size of glvn passed in ROOT
  Q:'$D(ROOT) 0 Q:'$L(ROOT) 0
+ Q:$G(ROOT)="" 0
  N SIZE,I
  S SIZE=0
+ S ROOT=$NA(@ROOT)
  I $D(@ROOT)#2 S SIZE=$L(@ROOT)
- I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
+ ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
+ N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
+ F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$L(@ROOT)
+ S ROOT=ORIG
  Q SIZE
  ;
 VARSIZE(V) ; return the size of a variable
@@ -107,10 +112,12 @@ BLDHEAD(TOTAL,COUNT,START,LIMIT) ; Build the object header
  S X=X_"""items"":["
  Q X
  ;
-SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
+SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into ^TMP("HTTPERR",$J)
  ; causes HTTPERR system variable to be set
  ; ERRCODE:  query errors are 100-199, update errors are 200-299, M errors are 500
  ; MESSAGE:  additional explanatory material
+ ; ERRARRAY: An Array to use instead of the Message for information to the user.
+ ;
  N NEXTERR,ERRNAME,TOPMSG
  S HTTPERR=400,TOPMSG="Bad Request"
  ; query errors (100-199)
@@ -158,8 +165,9 @@ SETERROR(ERRCODE,MESSAGE) ; set error info into ^TMP("HTTPERR",$J)
  S ^TMP("HTTPERR",$J,1,"error","code")=HTTPERR
  S ^TMP("HTTPERR",$J,1,"error","message")=TOPMSG
  S ^TMP("HTTPERR",$J,1,"error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
- S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"reason")=ERRCODE
- S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
+ I $D(ERRARRAY) M ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR)=ERRARRAY  ; VEN/SMH
+ E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"reason")=ERRCODE
+ E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
  I $L($G(MESSAGE)) S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"domain")=MESSAGE
  Q
  ;
