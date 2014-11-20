@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-17  1:58 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-18  3:07 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -95,6 +95,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
 DEBUG ; Debug continuation. We don't job off the request, rather run it now.
  ; Stop using Ctrl-C (duh!)
  N $ET S $ET="BREAK"
+ K ^VPRHTTP("log") ; Kill log so that we can see our errors when they happen.
  I %WOS="GT.M" U $I:(CENABLE:ioerror="T")
  I %WOS="CACHE" F  R *X:10 I  G CHILD
  I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILD
@@ -128,20 +129,22 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
- D INCRLOG ; set unique request id for log
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
+ D INCRLOG ; set unique request id for log
  N $ET S $ET="G ETSOCK^VPRJREQ"
  ;
 TLS ; Turn on TLS?
- ; W /TLS("server",1,"tls")
+ W /TLS("server",1,"tls")
+ N D,K,T
+ S D=$DEVICE,K=$KEY,T=$TEST
  ; U 0
  ; W !
- ; W "$D: "_$DEVICE,!
- ; W "$KEY: "_$KEY,!
- ; W "$TEST: "_$TEST,!
+ ; W "$DEVICE: "_D,!
+ ; W "$KEY: "_K,!
+ ; W "$TEST: "_T,!
  ; U %WTCP
  ;
 NEXT ; begin next request
