@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-18  3:07 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-28  3:59 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -137,9 +137,10 @@ CHILD ; handle HTTP requests on this connection
  N $ET S $ET="G ETSOCK^VPRJREQ"
  ;
 TLS ; Turn on TLS?
- W /TLS("server",1,"tls")
- N D,K,T
- S D=$DEVICE,K=$KEY,T=$TEST
+ ; Need to do this for Cache and GT.M
+ ; W /TLS("server",1,"tls")
+ ; N D,K,T
+ ; S D=$DEVICE,K=$KEY,T=$TEST
  ; U 0
  ; W !
  ; W "$DEVICE: "_D,!
