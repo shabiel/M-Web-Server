@@ -314,6 +314,7 @@ from the VISTA kernel math functions:
 	 Q Y
 
 The the result is...
+
 	$ curl http://localhost:9081/multiply/5/8?base=2
 	101000
 
@@ -355,7 +356,7 @@ since we $query through them.
 
 Let's look at a few examples:
 
-* XML in VPRJRSP (uses a global):
+XML in VPRJRSP (uses a global):
 
 	XML(RESULT,ARGS) ; text XML
 	 S RESULT=("mime")="text/xml"
@@ -369,7 +370,7 @@ Let's look at a few examples:
 	 S ^TMP($J,7)="</note>"
 	 QUIT
 
-* Retriving a file from the File system (uses sequential numbering in `result`)
+Retriving a file from the File system (uses sequential numbering in `result`)
 
 	FILESYS(RESULT,ARGS) ; Handle filesystem/*
 	 N PATH S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
@@ -588,8 +589,7 @@ The code is not hard. There is a significant difference from the `GET` method
 though:
 
  * There are 3 arguments instead of 2.
- * arguments is the first parameter, rather than the second; and result is the
-   third.
+ * arguments is the first parameter, rather than the second; and result is the third.
  * result is both the output of the extrinsic $$post and the return value.
 
    On the last point: this is not necessary. The value of the extrinsic fucntion goes
