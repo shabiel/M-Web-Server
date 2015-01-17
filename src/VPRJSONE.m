@@ -1,4 +1,4 @@
-VPRJSONE ;SLC/KCM -- Encode JSON;2013-10-25  1:48 AM
+VPRJSONE ;SLC/KCM -- Encode JSON;2015-01-17  4:53 PM
  ;;1.0;VIRTUAL PATIENT RECORD;**2,%W**;Sep 01, 2011;Build 50
  ;
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
@@ -33,7 +33,7 @@ SEROBJ(VVROOT) ; Serialize into a JSON object
  . I $$ISVALUE(VVROOT,VVSUB) D SERVAL(VVROOT,VVSUB) Q
  . ; otherwise navigate to the next child object or array
  . I $D(@VVROOT@(VVSUB))>9 S VVNXT=$O(@VVROOT@(VVSUB,"")) D  Q  ; VEN/SMH Changed $D from =10 to >9 to capture 11 as well
- . . I +VVNXT D SERARY($NA(@VVROOT@(VVSUB))) I 1
+ . . I +VVNXT=VVNXT D SERARY($NA(@VVROOT@(VVSUB))) I 1
  . . E  D SEROBJ($NA(@VVROOT@(VVSUB)))
  . D ERRX("SOB",VVSUB)  ; should quit loop before here
  S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"}"
