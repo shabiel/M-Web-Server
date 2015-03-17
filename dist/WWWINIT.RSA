@@ -1,7 +1,7 @@
 Init routine for 0.1.1
-GT.M 01-JAN-2014 14:03:54
-WWWINIT
-WWWINIT ; VEN/SMH - Initialize Web Server;2013-12-27  4:05 PM; 12/25/13 1:03pm
+GT.M 17 Mar 2015  11:06 AM
+WWWINIT^INT^1^^0
+WWWINIT ; VEN/SMH - Initialize Web Server;17-Mar-2015 11:04
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -82,17 +82,20 @@ CACHEMAP ; Map %W* Globals and Routines away from %SYS in Cache
  ;
  ; Map %W globals away from %SYS
  ZN "%SYS" ; Go to SYS
- N % S %=##class(Config.Configuration).GetGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
- I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
+ N % S %=##class(Config.Configuration).GetGlobalMapping(NMSP,"%W","",NMSP,NMSP)
+ I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,"%W","",NMSP,NMSP)
  I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
+ D MAPIT("%W0"),MAPIT("%WC"),MAPIT("%WHOME"),MAPIT("%WINI*")
+ ZN NMSP ; Go back
+ QUIT
  ;
+MAPIT(RTN) ;
  ; Map %W routines away from %SYS
  N A S A("Database")=NMSP
- N % S %=##Class(Config.MapRoutines).Get(NMSP,"%W*",.A)
+ N % S %=##Class(Config.MapRoutines).Get(NMSP,RTN,.A)
  S A("Database")=NMSP
- I '% S %=##Class(Config.MapRoutines).Create(NMSP,"%W*",.A)
+ I '% S %=##Class(Config.MapRoutines).Create(NMSP,RTN,.A)
  I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
- ZN NMSP ; Go back
  QUIT
  ;
 CACHETLS ; Create a client SSL/TLS config on Cache
