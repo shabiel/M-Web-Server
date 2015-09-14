@@ -1457,6 +1457,13 @@ SENDATA ; write out the data as an HTTP response
  ;
  N %WBUFF S %WBUFF="" ; Write Buffer
  ;
+ ; DKM - Send raw data.
+ I $G(HTTPRSP("raw")) D  Q
+ . N ARY,X,L
+ . S ARY=$NA(@HTTPRSP),X=ARY,L=$QL(ARY)
+ . F  S X=$Q(@X) Q:'$L(X)  Q:$NA(@X,L)'=ARY  D W(@X)
+ . D FLUSH
+ . K @ARY
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
  I RSPTYPE=1 S SIZE=$$VARSIZE^VPRJRUT(.HTTPRSP)
