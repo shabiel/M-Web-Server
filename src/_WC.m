@@ -1,8 +1,41 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2013-10-31  6:18 PM
- ; See accompanying License for terms of use.
+%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-14  12:32 PM
  ;
-%(RETURN,METHOD,URL,PAYLOAD,MIME,TO,HEADERS) ; General call for any type
+ ; (c) Sam Habiel 2015
+ ; Licensed under Apache 2
  ;
+%(RETURN,METHOD,URL,PAYLOAD,MIME,TO,HEADERS,OPTIONS) ; General call for any type
+ ;
+ ; 
+ ; Output: $$ (Optional) The Status code of cURL when it exits
+ ;         .RETURN. Code does not support output into a global.
+ ;         .RETURN subscripts DO NOT START WITH 1. Use $O to go through it. E.g.
+ ;         .RETURN(11)="<!DOCTYPE html>"
+ ;         .RETURN(12)="<html>"
+ ;         .RETURN(13)="<head>"
+ ;         .RETURN(14)="<title>Welcome to nginx!</title>"
+ ;
+ ;         .HEADERS Headers for response
+ ;
+ ; Input:
+ ; -- METHOD: "GET", "POST", "PUT", "OPTIONS" or anything thing else dest supports
+ ; -- URL: The URL in a format curl understands. Just like any URL you give Firefox
+ ; -- .PAYLOAD: The data you need to send the server in a "POST" or "PUT" operation
+ ; -- MIME: If sending a payload, and the dest cares what type it is, you can
+ ;          say here what type it is. E.g. "application/json"
+ ; -- TO: Timeout. Default timeout is 30 seconds
+ ; -- .OPTIONS: Any additional options you want to pass to cURL. At this point,
+ ;              only the following are supported:
+ ;     OPTIONS("cert")     = Client Certificate Path
+ ;     OPTIONS("key")      = Client Certificate Key
+ ;     OPTIONS("password") = Client Certificate Password
+ ;     Not all of them are necessary if you are using a client cert; you may
+ ;     have a cert with the key appended, or you may have a cert without a 
+ ;     password.
+ ; 
+ ; See the tests at the bottom of this routine for examples.
+ ;
+ ; In general, a quick test is the following:
+ ; W $$%^%WC(.RTN,"GET","https://www.google.com")
  ;
  ; DEBUG; Test error trapping.
  ; N X S X=1/0
@@ -30,9 +63,6 @@
  ; W !,CMD
  ; DEBUG
  ;
- ; TODO: Check curl return status. VEN/SMH - Seems that there is no way to get that from GT.M right now.
- ; VEN/SMH - confirmed with Bhaskar that GT.M doesn't have a way check return status.
- ;
  ; VEN/SMH Okay. This the code is hard to understand. See comments.
  ;
  ; Execute and read back
@@ -51,6 +81,10 @@
  W "include",!
  I $D(MIME)#2 W "header = "_Q_"Content-Type: "_MIME_Q,!
  I $D(PAYLOAD) W "data-binary = "_Q_"@"_F_Q,!
+ I $D(OPTIONS) D
+ . I $D(OPTIONS("password")),$D(OPTIONS("cert")) S OPTIONS("cert")=OPTIONS("cert")_":"_OPTIONS("password")
+ . I $D(OPTIONS("cert")) W "cert = "_Q_OPTIONS("cert")_Q,!
+ . I $D(OPTIONS("key")) W "key = "_Q_OPTIONS("key")_Q,!
  W /EOF
  ;
  ; Flag to indicate whether a line we are getting a header or not. We are getting headers first, so it's true.
@@ -68,7 +102,9 @@
  . K:RETURN(I)="" RETURN(I) ; remove empty line
  K:RETURN(I)="" RETURN(I)  ; remove empty line (last line when $ZEOF gets hit)
  C D
- 
+ ;
+ N ZCLOSE S ZCLOSE=$ZCLOSE ; Status of command when it ended.
+ ;
  ; Delete the file a la %ZISH
  I $D(PAYLOAD) O F C F:(DELETE)
  ;
@@ -78,7 +114,7 @@
  ; ZWRITE RETURN
  ;DEBUG
  ;
- QUIT
+ QUIT:$QUIT ZCLOSE QUIT
  ;
  ;
 POST(RETURN,URL,PAYLOAD,MIME,TO,HEADERS) ; Post
@@ -172,6 +208,8 @@ TRIM(%X,%F,%V) ;Trim spaces\char from front(left)/back(right) of string
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
  ;
 TEST ; Unit Tests
+ ; NB: The server is now changed; these won't work any more.
+ QUIT
  ; Test Get
  N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/DIC",,"application/text",5,.H)
  I H("STATUS")'=200 WRITE "FAIL FAIL FAIL",!
@@ -188,4 +226,17 @@ TEST ; Unit Tests
  N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/KBANTEST")
  I $P(@$Q(RTN),";",3)'=R W "FAIL FAIL FAIL",!
  ;
+ QUIT
+ ;
+TESTCRT ; Unit Test with Client Certificate
+ N OPTIONS
+ ;S OPTIONS("cert")="/home/sam/client.pem"
+ ;S OPTIONS("key")="/home/sam/client.key"
+ ;S OPTIONS("password")="xxxxxxxxxxx"
+ S OPTIONS("cert")="/home/sam/client-nopass.pem"
+ S OPTIONS("key")="/home/sam/client-nopass.key"
+ N RTN N % S %=$$%(.RTN,"GET","https://green-sheet.smh101.com/",,,,,.OPTIONS)
+ ; ZWRITE RTN
+ I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
+ W "Exit code: ",%,!
  QUIT
