@@ -1,4 +1,4 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-14  12:32 PM
+%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-24  2:45 PM
  ;
  ; (c) Sam Habiel 2015
  ; Licensed under Apache 2
@@ -31,6 +31,11 @@
  ;     Not all of them are necessary if you are using a client cert; you may
  ;     have a cert with the key appended, or you may have a cert without a 
  ;     password.
+ ;     
+ ;     OPTIONS("header",1) = "header: value" OR "header-with-no-value;"
+ ;     OPTIONS("header",2) = "second header: value" etc
+ ;     OPTIONS("header",:)
+ ;     e.g. OPTIONS("header",1)="DNT: 1" ; Do not Track
  ; 
  ; See the tests at the bottom of this routine for examples.
  ;
@@ -85,6 +90,7 @@
  . I $D(OPTIONS("password")),$D(OPTIONS("cert")) S OPTIONS("cert")=OPTIONS("cert")_":"_OPTIONS("password")
  . I $D(OPTIONS("cert")) W "cert = "_Q_OPTIONS("cert")_Q,!
  . I $D(OPTIONS("key")) W "key = "_Q_OPTIONS("key")_Q,!
+ . N I F I=0:0 S I=$O(OPTIONS("header",I)) Q:'I  W "header = "_Q_OPTIONS("header",I)_Q,!
  W /EOF
  ;
  ; Flag to indicate whether a line we are getting a header or not. We are getting headers first, so it's true.
@@ -236,7 +242,15 @@ TESTCRT ; Unit Test with Client Certificate
  S OPTIONS("cert")="/home/sam/client-nopass.pem"
  S OPTIONS("key")="/home/sam/client-nopass.key"
  N RTN N % S %=$$%(.RTN,"GET","https://green-sheet.smh101.com/",,,,,.OPTIONS)
- ; ZWRITE RTN
+ ZWRITE RTN
+ I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
+ W "Exit code: ",%,!
+ QUIT
+TESTH ; Unit Test with headers
+ N OPTIONS
+ S OPTIONS("header",1)="DNT: 1"
+ N RTN N % S %=$$%(.RTN,"GET","http://green-sheet.smh101.com/",,,,,.OPTIONS)
+ ZWRITE RTN
  I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
  W "Exit code: ",%,!
  QUIT
