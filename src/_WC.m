@@ -1,4 +1,4 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-24  2:45 PM
+%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-25  3:43 PM
  ;
  ; (c) Sam Habiel 2015
  ; Licensed under Apache 2
@@ -36,6 +36,8 @@
  ;     OPTIONS("header",2) = "second header: value" etc
  ;     OPTIONS("header",:)
  ;     e.g. OPTIONS("header",1)="DNT: 1" ; Do not Track
+ ;
+ ;     OPTIONS("form")="filename={filename-on-destination};type={mime-type-of-form}"
  ; 
  ; See the tests at the bottom of this routine for examples.
  ;
@@ -84,13 +86,14 @@
  W "insecure",!
  W "silent",!
  W "include",!
- I $D(MIME)#2 W "header = "_Q_"Content-Type: "_MIME_Q,!
- I $D(PAYLOAD) W "data-binary = "_Q_"@"_F_Q,!
+ I $G(MIME)]"" W "header = "_Q_"Content-Type: "_MIME_Q,!
+ I $D(PAYLOAD),'$D(OPTIONS("form")) W "data-binary = "_Q_"@"_F_Q,!
  I $D(OPTIONS) D
  . I $D(OPTIONS("password")),$D(OPTIONS("cert")) S OPTIONS("cert")=OPTIONS("cert")_":"_OPTIONS("password")
  . I $D(OPTIONS("cert")) W "cert = "_Q_OPTIONS("cert")_Q,!
  . I $D(OPTIONS("key")) W "key = "_Q_OPTIONS("key")_Q,!
  . N I F I=0:0 S I=$O(OPTIONS("header",I)) Q:'I  W "header = "_Q_OPTIONS("header",I)_Q,!
+ . I $D(OPTIONS("form")),$D(PAYLOAD) W "form = "_Q_"file=@"_F_";"_OPTIONS("form")_Q,!
  W /EOF
  ;
  ; Flag to indicate whether a line we are getting a header or not. We are getting headers first, so it's true.
@@ -252,5 +255,17 @@ TESTH ; Unit Test with headers
  N RTN N % S %=$$%(.RTN,"GET","http://green-sheet.smh101.com/",,,,,.OPTIONS)
  ZWRITE RTN
  I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
+ W "Exit code: ",%,!
+ QUIT
+TESTF ; Unit Test with Form
+ N XML,H
+ S XML(1)="<xml>"
+ S XML(2)="<Book>Book 1</Book>"
+ S XML(3)="<Book>Book 2</Book>"
+ S XML(4)="<Book>Book 3</Book>"
+ S XML(5)="</xml>"
+ S OPTIONS("form")="filename=test1234.xml;type=application/xml"
+ N RTN N % S %=$$%(.RTN,"POST","http://httpbin.org/post",.XML,"",,.H,.OPTIONS)
+ ZWRITE RTN
  W "Exit code: ",%,!
  QUIT
