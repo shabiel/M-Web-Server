@@ -1,10 +1,11 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-25  3:43 PM
+%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-28  5:58 PM
  ;
  ; (c) Sam Habiel 2015
  ; Licensed under Apache 2
  ;
 %(RETURN,METHOD,URL,PAYLOAD,MIME,TO,HEADERS,OPTIONS) ; General call for any type
  ;
+ ; DEBUG=1 in the Symbol Table zwrites the returned data and headers
  ; 
  ; Output: $$ (Optional) The Status code of cURL when it exits
  ;         .RETURN. Code does not support output into a global.
@@ -118,10 +119,9 @@
  I $D(PAYLOAD) O F C F:(DELETE)
  ;
  ; Comment the zwrites out to see the return vales from the function
- ;DEBUG
- ; ZWRITE HEADERS
- ; ZWRITE RETURN
- ;DEBUG
+ I $G(DEBUG) D 
+ . ZWRITE HEADERS
+ . ZWRITE RETURN
  ;
  QUIT:$QUIT ZCLOSE QUIT
  ;
@@ -195,11 +195,9 @@ CURL(RETURN,URL,PAYLOAD,MIME,TO,HEADERS) ; Post using CURL
  ; Delete the file a la %ZISH
  O F C F:(DELETE)
  ;
- ; Comment the zwrites out to see the return vales from the function
- ;DEBUG
- ; ZWRITE HEADERS
- ; ZWRITE RETURN
- ;DEBUG
+ I $G(DEBUG) D
+ . ZWRITE HEADERS
+ . ZWRITE RETURN
  ;
  QUIT
  ;
@@ -216,25 +214,28 @@ TRIM(%X,%F,%V) ;Trim spaces\char from front(left)/back(right) of string
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
  ;
-TEST ; Unit Tests
- ; NB: The server is now changed; these won't work any more.
- QUIT
- ; Test Get
- N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/DIC",,"application/text",5,.H)
- I H("STATUS")'=200 WRITE "FAIL FAIL FAIL",!
+TEST D EN^%ut($T(+1),1) quit  ; Unit Tests
+TGET ; @TEST Test Get
+ N RTN,H,RET S RET=$$%(.RTN,"GET","https://httpbin.org/stream/20",,"application/text",5,.H)
+ N CNT S CNT=0
+ N I F I=0:0 S I=$O(RTN(I)) Q:'I  S CNT=CNT+1
+ D CHKTF^%ut(CNT=20,"20 lines are supposed to be returned")
+ D CHKTF^%ut(H("STATUS")=200,"Status is supposed to be 200")
+ D CHKTF^%ut(RET=0,"Return code is supposed to be zero")
+ quit
  ;
- ; Test Put
- N PAYLOAD,RTN,H
+TPUT ; @TEST Test Put
+ N PAYLOAD,RTN,H,RET
  N R S R=$R(123423421234)
  S PAYLOAD(1)="KBANTEST ; VEN/SMH - Test routine for Sam ;"_R
  S PAYLOAD(2)=" QUIT"
- D %(.RTN,"PUT","https://thebes.smh101.com/r/KBANTEST",.PAYLOAD,"application/text",5,.H)
- I H("STATUS")'=201 WRITE "FAIL FAIL FAIL",!
+ S RET=$$%(.RTN,"PUT","https://httpbin.org/put",.PAYLOAD,"application/text",5,.H)
  ;
- ; Test Get with no mime and no headers to return
- N RTN,H D %(.RTN,"GET","https://thebes.smh101.com/r/KBANTEST")
- I $P(@$Q(RTN),";",3)'=R W "FAIL FAIL FAIL",!
- ;
+ N OK S OK=0
+ N I F I=0:0 S I=$O(RTN(I)) Q:'I  I RTN(I)["data",RTN(I)[R S OK=1
+ D CHKTF^%ut(RET=0,"Return code is supposed to be zero")
+ D CHKTF^%ut(H("STATUS")=200,"Status is supposed to be 200")
+ D CHKTF^%ut(OK,"Couldn't retried the putted string back")
  QUIT
  ;
 TESTCRT ; Unit Test with Client Certificate
@@ -249,15 +250,19 @@ TESTCRT ; Unit Test with Client Certificate
  I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
  W "Exit code: ",%,!
  QUIT
-TESTH ; Unit Test with headers
+ ;
+TESTH ; @TEST Unit Test with headers
  N OPTIONS
  S OPTIONS("header",1)="DNT: 1"
- N RTN N % S %=$$%(.RTN,"GET","http://green-sheet.smh101.com/",,,,,.OPTIONS)
- ZWRITE RTN
- I @$Q(RTN)'["DOCTYPE" W "FAIL FAIL FAIL",!
- W "Exit code: ",%,!
+ N RTN N % S %=$$%(.RTN,"GET","https://httpbin.org/headers",,,,,.OPTIONS)
+ N OK S OK=0
+ N I F I=0:0 S I=$O(RTN(I)) Q:'I  I $$UP(RTN(I))["DNT" S OK=1
+ D CHKTF^%ut(%=0,"Return code is supposed to be zero")
+ D CHKTF^%ut(OK,"Couldn't get the sent header back")
  QUIT
-TESTF ; Unit Test with Form
+ ;
+TESTF ; @TEST Unit Test with Form
+ N DEBUG S DEBUG=1
  N XML,H
  S XML(1)="<xml>"
  S XML(2)="<Book>Book 1</Book>"
@@ -266,6 +271,7 @@ TESTF ; Unit Test with Form
  S XML(5)="</xml>"
  S OPTIONS("form")="filename=test1234.xml;type=application/xml"
  N RTN N % S %=$$%(.RTN,"POST","http://httpbin.org/post",.XML,"",,.H,.OPTIONS)
- ZWRITE RTN
- W "Exit code: ",%,!
+ N I F I=0:0 S I=$O(RTN(I)) Q:'I  I RTN(I)["multipart/form-data" S OK=1
+ D CHKTF^%ut(%=0,"Return code is supposed to be zero")
+ D CHKTF^%ut(OK,"Couldn't get the form back")
  QUIT
