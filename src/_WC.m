@@ -1,4 +1,4 @@
-%WC ; VEN/SMH - Web Services Client using cURL ;2015-09-28  5:58 PM
+%WC ; VEN/SMH - Web Services Client using cURL ;2015-10-05  6:29 PM
  ;
  ; (c) Sam Habiel 2015
  ; Licensed under Apache 2
@@ -49,6 +49,8 @@
  ; N X S X=1/0
  ; DEBUG
  ;
+ ; Kill return variables
+ KILL RETURN,HEADERS
  ;
  S TO=$G(TO) ; Timeout
  I +TO=0 S TO=30 ; Default timeout
@@ -262,7 +264,6 @@ TESTH ; @TEST Unit Test with headers
  QUIT
  ;
 TESTF ; @TEST Unit Test with Form
- N DEBUG S DEBUG=1
  N XML,H
  S XML(1)="<xml>"
  S XML(2)="<Book>Book 1</Book>"
