@@ -1,2 +1,3 @@
 # vim temporary files
+*.un~
 *.swp
