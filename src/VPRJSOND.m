@@ -1,8 +1,5 @@
 VPRJSOND ;SLC/KCM -- Decode JSON
- ;;1.0;VIRTUAL PATIENT RECORD;**2**;Sep 01, 2011;Build 50
- ;
- ; VEN/SMH - bug fixes to prevent psudo-numberic arrays from 
- ; being thought as a JSON array: it's an object.
+ ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
  ;
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
@@ -19,7 +16,10 @@ DIRECT ; TAG for use by DECODE^VPRJSON
  ; VVSTACK: manages stack of subscripts
  ;  VVPROP: true if next string is property name, otherwise treat as value
  ;
- N VVMAX S VVMAX=4000 ; limit document lines to 4000 characters
+ ; V4W/DLW - Changed VVMAX from 4000 to 100, same as in the encoder
+ ; With the change to VVMAX, the following Unit Tests required changes:
+ ; SPLITA^VPRJUJD, SPLITB^VPRJUJD, LONG^VPRJUJD, MAXNUM^VPRJUJD 
+ N VVMAX S VVMAX=100 ; limit document lines to 100 characters
  S VVERR=$G(VVERR,"^TMP(""VPRJERR"",$J)")
  ; If a simple string is passed in, move it to an temp array (VVINPUT)
  ; so that the processing is consistently on an array.
@@ -29,14 +29,12 @@ DIRECT ; TAG for use by DECODE^VPRJSON
  S VVLINE=$O(@VVJSON@("")),VVIDX=1,VVSTACK=0,VVPROP=0,VVERRORS=0
  F  S VVTYPE=$$NXTKN() Q:VVTYPE=""  D  I VVERRORS Q
  . I VVTYPE="{" S VVSTACK=VVSTACK+1,VVSTACK(VVSTACK)="",VVPROP=1 D:VVSTACK>64 ERRX("STL{") Q
- . ; I VVTYPE="}" D:VVSTACK(VVSTACK) ERRX("OBM") S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF}") Q  ;VEN/SMH - old
  . I VVTYPE="}" D  QUIT
- . . I +VVSTACK(VVSTACK)=VVSTACK(VVSTACK),VVSTACK(VVSTACK) D ERRX("OBM") ; Numeric and true only
- . . S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF}") 
+ . . I VVSTACK(VVSTACK)?1n.n,VVSTACK(VVSTACK) D ERRX("OBM") ; Numeric and true only
+ . . S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF}")
  . I VVTYPE="[" S VVSTACK=VVSTACK+1,VVSTACK(VVSTACK)=1 D:VVSTACK>64 ERRX("STL[") Q
- . I VVTYPE="]" D:'VVSTACK(VVSTACK) ERRX("ARM") S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF]") Q  ; VEN/SMH - don't chk. Must be number.
- . I VVTYPE="," D  QUIT
- . . ;I VVSTACK(VVSTACK) S VVSTACK(VVSTACK)=VVSTACK(VVSTACK)+1  ; next in array  ; VEN/SMH - old
+ . I VVTYPE="]" D:'VVSTACK(VVSTACK) ERRX("ARM") S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF]") Q
+ . I VVTYPE="," D  Q
  . . I +VVSTACK(VVSTACK)=VVSTACK(VVSTACK),VVSTACK(VVSTACK) S VVSTACK(VVSTACK)=VVSTACK(VVSTACK)+1  ; VEN/SMH - next in array
  . . E  S VVPROP=1                                   ; or next property name
  . I VVTYPE=":" S VVPROP=0 D:'$L($G(VVSTACK(VVSTACK))) ERRX("MPN") Q
@@ -44,16 +42,10 @@ DIRECT ; TAG for use by DECODE^VPRJSON
  . . I VVPROP S VVSTACK(VVSTACK)=$$NAMPARS() I 1
  . . E  D ADDSTR
  . S VVTYPE=$TR(VVTYPE,"TFN","tfn")
- . I VVTYPE="t" D  Q
- . . I $TR($E(@VVJSON@(VVLINE),VVIDX,VVIDX+2),"RUE","rue")="rue" D SETBOOL("true") I 1
- . . E  D ERRX("EXT",VVTYPE)
- . I VVTYPE="f" D  Q
- . . I $TR($E(@VVJSON@(VVLINE),VVIDX,VVIDX+3),"ALSE","alse")="alse" D SETBOOL("false") I 1
- . . E  D ERRX("EXF",VVTYPE)
- . I VVTYPE="n" D  Q
- . . I $TR($E(@VVJSON@(VVLINE),VVIDX,VVIDX+2),"ULL","ull")="ull" D SETBOOL("null") I 1
- . . E  D ERRX("EXN",VVTYPE)
- . I "0123456789+-.eE"[VVTYPE S @$$CURNODE()=$$NUMPARS(VVTYPE) Q
+ . I VVTYPE="t" D SETBOOL("t") Q
+ . I VVTYPE="f" D SETBOOL("f") Q
+ . I VVTYPE="n" D SETBOOL("n") Q
+ . I "0123456789+-.eE"[VVTYPE D SETNUM(VVTYPE) Q  ;S @$$CURNODE()=$$NUMPARS(VVTYPE) Q
  . D ERRX("TKN",VVTYPE)
  I VVSTACK'=0 D ERRX("SCT",VVSTACK)
  Q
@@ -85,7 +77,8 @@ ADDSTR ; Add string value to current node, escaping text along the way
  . ;if no quote on current line advance line, scan again
  . I 'VVEND S VVTLINE=VVTLINE+1,VVEND=1 I '$D(@VVJSON@(VVTLINE)) D ERRX("EIQ") Q
  . S VVEND=$F(@VVJSON@(VVTLINE),"""",VVEND)
- . I VVEND,$E(@VVJSON@(VVTLINE),VVEND-2)'="\" S VVDONE=1 Q  ; found quote position
+ . Q:'VVEND  ; continue on to next line if no quote found on this one
+ . I (VVEND>2),($E(@VVJSON@(VVTLINE),VVEND-2)'="\") S VVDONE=1 Q  ; found quote position
  . S VVDONE=$$ISCLOSEQ(VVTLINE) ; see if this is an escaped quote or closing quote
  Q:VVERRORS
  ; unescape from VVIDX to VVEND, using \-extension nodes as necessary
@@ -98,9 +91,10 @@ SETSTR ; Set simple string value from within same line
  N VVX
  S VVX=$E(@VVJSON@(VVLINE),VVIDX,VVEND-2),VVIDX=VVEND
  S @$$CURNODE()=$$UES(VVX)
- I +VVX=VVX S @$$CURNODE()@("\s")=""
- ;S vX=$S(+vX=vX:$C(186)_vX,1:$$UES(vX))
- ;S @$$CURNODE()=vX
+ ; "\s" node indicates value is really a string in case value
+ ;      collates as numeric or equals boolean keywords
+ I VVX']]$C(1) S @$$CURNODE()@("\s")=""
+ I VVX="true"!(VVX="false")!(VVX="null") S @$$CURNODE()@("\s")=""
  I VVIDX>$L(@VVJSON@(VVLINE)) S VVLINE=VVLINE+1,VVIDX=1
  Q
 UESEXT ; unescape from VVLINE,VVIDX to VVTLINE,VVEND & extend (\) if necessary
@@ -117,7 +111,12 @@ UESEXT ; unescape from VVLINE,VVIDX to VVTLINE,VVEND & extend (\) if necessary
  . I (VVY'<VVTLINE),(('VVI)!(VVI>VVSTOP)) S VVDONE=1 QUIT  ; now past close quote
  . I 'VVI S VVY=VVY+1,VVI=1 QUIT  ; nothing escaped, go to next line
  . I VVI>$L(@VVJSON@(VVY)) S VVY=VVY+1,VVI=1 I '$D(@VVJSON@(VVY)) D ERRX("EIU")
- . D ADDBUF($$REALCHAR($E(@VVJSON@(VVY),VVI)))
+ . N VVTGT S VVTGT=$E(@VVJSON@(VVY),VVI)
+ . I VVTGT="u" D  I 1
+ . . N VVTGTC S VVTGTC=$E(@VVJSON@(VVY),VVI+1,VVI+4),VVI=VVI+4
+ . . I $L(VVTGTC)<4 S VVY=VVY+1,VVI=4-$L(VVTGTC),VVTGTC=VVTGTC_$E(@VVJSON@(VVY),1,VVI)
+ . . D ADDBUF($C($$DEC^XLFUTL(VVTGTC,16)))
+ . E  D ADDBUF($$REALCHAR(VVTGT))
  . S VVI=VVI+1
  . I (VVY'<VVTLINE),(VVI>VVSTOP) S VVDONE=1 ; VVI incremented past stop
  Q:VVERRORS
@@ -132,25 +131,27 @@ ADDBUF(VVX) ; add buffer of characters to destination
 SAVEBUF ; write out buffer to destination
  ; expects VVBUF,VVMAX,VVNODE,VVMORE to be defined
  ; used directly by ADDSTR,ADDBUF
- I 'VVMORE S @VVNODE=VVBUF S:+VVBUF=VVBUF @VVNODE@("\s")="" I 1 ;$S(+VVBUF=VVBUF:$C(186)_VVBUF,1:VVBUF)
- E  S @VVNODE@("\",VVMORE)=VVBUF
+ I VVMORE S @VVNODE@("\",VVMORE)=VVBUF
+ I 'VVMORE S @VVNODE=VVBUF I $L(VVBUF)<19,+$E(VVBUF,1,18) S @VVNODE@("\s")=""
  S VVMORE=VVMORE+1,VVBUF=""
  Q
 ISCLOSEQ(VVBLINE) ; return true if this is a closing, rather than escaped, quote
- ; expects VVJSON, VVIDX, VVEND
- ; always called directly from ADDSTR
- N VVBACK,VVBIDX
- S VVBACK=0,VVBIDX=VVEND-2
- ; starting at VVEND-2 means looking at the char right before the \
- ; if it is not \, then the \ was escaping the quote
- F  D  Q:$E(@VVJSON@(VVBLINE),VVBIDX)'="\"  Q:VVERRORS
- . S VVBACK=VVBACK+1,VVBIDX=VVBIDX-1
- . I (VVBLINE=VVLINE),(VVBIDX=VVIDX) Q  ; back at the open quote
- . Q:VVBIDX
- . ; when VVBIDX<1 go back a line
- . S VVBLINE=VVBLINE-1 I VVBLINE<VVLINE D ERRX("RSB") Q
- . S VVBIDX=$L(@VVJSON@(VVBLINE))
- Q VVBACK#2=0  ; VVBACK is even if this is a close quote
+ ; expects
+ ;   VVJSON: lines of the JSON encoded string
+ ;    VVIDX: points to 1st character of the segment
+ ;   VVLINE: points to the line in which the segment starts
+ ;    VVEND: points to 1st character after the " (may be past the end of the line)
+ ; used directly by ADDSTR
+ N VVBS,VVBIDX,VVBDONE
+ S VVBS=0,VVBIDX=VVEND-2,VVBDONE=0 ; VVBIDX starts at 1st character before quote
+ ; count the backslashes preceding the quote (odd number means the quote was escaped)
+ F  D  Q:VVBDONE!VVERRORS
+ . I VVBIDX<1 D  Q  ; when VVBIDX<1 go back a line
+ . . S VVBLINE=VVBLINE-1 I VVBLINE<VVLINE D ERRX("RSB") Q
+ . . S VVBIDX=$L(@VVJSON@(VVBLINE))
+ . I $E(@VVJSON@(VVBLINE),VVBIDX)'="\" S VVBDONE=1 Q
+ . S VVBS=VVBS+1,VVBIDX=VVBIDX-1
+ Q VVBS#2=0  ; VVBS is even if this is a close quote
  ;
 NAMPARS() ; Return parsed name, advancing index past the close quote
  ; -- This assumes no embedded quotes are in the name itself --
@@ -161,9 +162,18 @@ NAMPARS() ; Return parsed name, advancing index past the close quote
  . I VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVIDX,VVEND-2),VVIDX=VVEND,VVDONE=1
  . I 'VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVIDX,$L(@VVJSON@(VVLINE)))
  . I 'VVEND!(VVEND>$L(@VVJSON@(VVLINE))) S VVLINE=VVLINE+1,VVIDX=1 I '$D(@VVJSON@(VVLINE)) D ERRX("ORN")
+ ; prepend quote if label collates as numeric -- assumes no quotes in label
+ I VVNAME']]$C(1) S VVNAME=""""""_VVNAME
  Q VVNAME
  ;
-NUMPARS(VVDIGIT) ; Return parsed number, advancing index past the end of the number
+SETNUM(VVDIGIT) ; Set numeric along with any necessary modifier
+ N VVX
+ S VVX=$$NUMPARS(VVDIGIT)
+ S @$$CURNODE()=$S(VVX["e":+$TR(VVX,"e","E"),1:+VVX)
+ ; if numeric is exponent, "0.nnn" or "-0.nnn" store original string
+ I +VVX'=VVX S @$$CURNODE()@("\n")=VVX
+ Q
+NUMPARS(VVDIGIT) ; Return parsed number, advancing index past end of number
  ; VVIDX intially references the second digit
  N VVDONE,VVNUM
  S VVDONE=0,VVNUM=VVDIGIT
@@ -173,7 +183,21 @@ NUMPARS(VVDIGIT) ; Return parsed number, advancing index past the end of the num
  . S VVIDX=VVIDX+1 I VVIDX>$L(@VVJSON@(VVLINE)) S VVLINE=VVLINE+1,VVIDX=1 I '$D(@VVJSON@(VVLINE)) D ERRX("OR#")
  Q VVNUM
  ;
-SETBOOL(VVX) ; set a value and increment VVIDX
+SETBOOL(VVLTR) ; Parse and set boolean value, advancing index past end of value
+ N VVDONE,VVBOOL,VVX
+ S VVDONE=0,VVBOOL=VVLTR
+ F  D  Q:VVDONE  Q:VVERRORS
+ . S VVX=$TR($E(@VVJSON@(VVLINE),VVIDX),"TRUEFALSN","truefalsn")
+ . I '("truefalsn"[VVX) S VVDONE=1 Q
+ . S VVBOOL=VVBOOL_VVX
+ . S VVIDX=VVIDX+1 I VVIDX>$L(@VVJSON@(VVLINE)) S VVLINE=VVLINE+1,VVIDX=1 I '$D(@VVJSON@(VVLINE)) D ERRX("ORB")
+ I VVLTR="t",(VVBOOL'="true") D ERRX("EXT",VVTYPE)
+ I VVLTR="f",(VVBOOL'="false") D ERRX("EXF",VVTYPE)
+ I VVLTR="n",(VVBOOL'="null") D ERRX("EXN",VVTYPE)
+ S @$$CURNODE()=VVBOOL
+ Q
+ ;
+OSETBOOL(VVX) ; set a value and increment VVIDX
  S @$$CURNODE()=VVX
  S VVIDX=VVIDX+$L(VVX)-1
  N VVDIFF S VVDIFF=VVIDX-$L(@VVJSON@(VVLINE))  ; in case VVIDX moves to next line
@@ -184,8 +208,9 @@ CURNODE() ; Return a global/local variable name based on VVSTACK
  N VVI,VVSUBS
  S VVSUBS=""
  F VVI=1:1:VVSTACK S:VVI>1 VVSUBS=VVSUBS_"," D
- . ;I VVSTACK(VVI) S VVSUBS=VVSUBS_VVSTACK(VVI) ; ven/smh - OLD
- . I VVSTACK(VVI)=+VVSTACK(VVI) S VVSUBS=VVSUBS_VVSTACK(VVI) ; VEN/SMH - NEW. Fix psudo array bug.
+ . ; check numeric with pattern match instead of =+var due to GT.M interperting
+ . ; scientific notation as a number instead of a string
+ . I VVSTACK(VVI)?1N.N S VVSUBS=VVSUBS_VVSTACK(VVI) ; VEN/SMH Fix psudo array bug.
  . E  S VVSUBS=VVSUBS_""""_VVSTACK(VVI)_""""
  Q VVROOT_VVSUBS_")"
  ;
@@ -195,11 +220,13 @@ UES(X) ; Unescape JSON string
  N POS,Y,START
  S POS=0,Y=""
  F  S START=POS+1 D  Q:START>$L(X)
- . S POS=$F(X,"\",POS+1) ; find next position
- . I 'POS S Y=Y_$E(X,START,$L(X)),POS=$L(X) I 1
- . E  S Y=Y_$E(X,START,POS-2)_$$REALCHAR($E(X,POS))
- . ;S:'POS POS=$L(X)+2  ; get the rest of the string
- . ;S Y=Y_$E(X,START,POS-2)_$$REALCHAR($E(X,POS))
+ . S POS=$F(X,"\",START) ; find next position
+ . I 'POS S Y=Y_$E(X,START,$L(X)),POS=$L(X) Q
+ . ; otherwise handle escaped char
+ . N TGT
+ . S TGT=$E(X,POS),Y=Y_$E(X,START,POS-2)
+ . I TGT="u" S Y=Y_$C($$DEC^XLFUTL($E(X,POS+1,POS+4),16)),POS=POS+4 Q
+ . S Y=Y_$$REALCHAR(TGT)
  Q Y
  ;
 REALCHAR(C) ; Return actual character from escaped
@@ -211,7 +238,7 @@ REALCHAR(C) ; Return actual character from escaped
  I C="n" Q $C(10)
  I C="r" Q $C(13)
  I C="t" Q $C(9)
- I C="u" ;TODO add case for 4-hex-digits (U000A, for example)
+ I C="u" ;case covered above in $$DEC^XLFUTL calls
  ;otherwise
  I $L($G(VVERR)) D ERRX("ESC",C)
  Q C
