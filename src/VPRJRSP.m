@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2014-05-09  6:45 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2017-09-21  5:23 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -201,7 +201,15 @@ SENDATA ; write out the data as an HTTP response
  . I $D(@HTTPRSP)>1 D
  . . N ORIG,OL S ORIG=HTTPRSP,OL=$QL(HTTPRSP) ; Orig, Orig Length
  . . ZSHOW "*":^KBANTEMP
- . . F  S HTTPRSP=$Q(@HTTPRSP) Q:(($G(HTTPRSP)="")!($NA(@HTTPRSP,OL)'=$NA(@ORIG,OL)))  D W(@HTTPRSP)
+ . . ; F  S HTTPRSP=$Q(@HTTPRSP) Q:(($G(HTTPRSP)="")!($NA(@HTTPRSP,OL)'=$NA(@ORIG,OL)))  D W(@HTTPRSP)
+ . . ; Vertical rewrite & fixes for GT.M 6.3
+ . . N HTTPEXIT S HTTPEXIT=0
+ . . F  D  Q:HTTPEXIT
+ . . . S HTTPRSP=$Q(@HTTPRSP)
+ . . . D:$G(HTTPRSP)'="" W(@HTTPRSP)
+ . . . I $G(HTTPRSP)="" S HTTPEXIT=1
+ . . . E  I $G(@HTTPRSP),$G(@ORIG),$NA(@HTTPRSP,OL)'=$NA(@ORIG,OL) S HTTPEXIT=1
+ . . ; End ~ vertical rewrite
  . . S HTTPRSP=ORIG
  I RSPTYPE=3 D            ; write out pageable records
  . W PREAMBLE
