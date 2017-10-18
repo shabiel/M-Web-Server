@@ -1,4 +1,4 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2014-01-23  2:27 PM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -17,7 +17,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2014-01-23  2:27 PM; 12/25/13 1:03pm
  N TMPDIR S TMPDIR=$$PWD()
  ;
  ; Download the files from Github into temp directory
- D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/MWS.RSA")
+ D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.2/dist/MWS.RSA")
  ;
  ; Go back to the old directory
  D CD(PWD)
