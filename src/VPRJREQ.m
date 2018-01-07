@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2014-11-28  3:59 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-01-07  5:08 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -9,12 +9,12 @@ GO ; start up REST listener with defaults
  D JOB(PORT)
  QUIT
  ;
-JOB(PORT) ; Convenience entry point
- I +$SY=47 J START^VPRJREQ(PORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- E  J START^VPRJREQ(PORT)
+JOB(PORT,TLSCONFIG) ; Convenience entry point
+ I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
+ E  J START^VPRJREQ(PORT,,$G(TLSCONFIG))
  QUIT
  ;
-START(TCPPORT,DEBUG) ; set up listening for connections
+START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
@@ -24,7 +24,11 @@ START(TCPPORT,DEBUG) ; set up listening for connections
  S ^VPRHTTP(0,"listener")="starting"
  ;
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
- I %WOS="GT.M" S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""") ; for GT.M, set interrupt.
+ ;
+ ; $ZINTERRUPT for GT.M/YottaDB
+ I %WOS="GT.M" D
+ . I $T(JOBEXAM^ZSY)]"" S $ZINT="I $$JOBEXAM^ZSY($ZPOS),$$JOBEXAM^VPRJREQ($ZPOS)"
+ . E  S $ZINT="I $$JOBEXAM^VPRJREQ($ZPOS)"
  ;
  S TCPPORT=$G(TCPPORT,9080)
  ;
@@ -46,7 +50,7 @@ START(TCPPORT,DEBUG) ; set up listening for connections
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
  N CHILDSOCK  ; That will be set below; Child socket
  ;
- I $G(DEBUG) G DEBUG
+ I $G(DEBUG) D DEBUG($G(TLSCONFIG))
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
@@ -55,7 +59,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I %WOS="CACHE" D  G LOOP
  . R *X:10
  . E  QUIT  ; Loop back again when listening and nobody on the line
- . J CHILD:(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
+ . J CHILD($G(TLSCONFIG)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
  . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
  ; ---- END CACHE CODE ----
  ;
@@ -79,7 +83,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD:(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG)):(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
@@ -92,13 +96,13 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  ; 
  QUIT
  ;
-DEBUG ; Debug continuation. We don't job off the request, rather run it now.
+DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
  ; Stop using Ctrl-C (duh!)
  N $ET S $ET="BREAK"
  K ^VPRHTTP("log") ; Kill log so that we can see our errors when they happen.
  I %WOS="GT.M" U $I:(CENABLE:ioerror="T")
- I %WOS="CACHE" F  R *X:10 I  G CHILD
- I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILD
+ I %WOS="CACHE" F  R *X:10 I  G CHILDDEBUG
+ I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILDDEBUG
  QUIT
  ;
 JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
@@ -107,7 +111,8 @@ JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
  ;
 GTMLNX  ;From Linux xinetd script; $P is the main stream
  S ^VPRHTTP(0,"listener")="starting"
- S @("$ZINTERRUPT=""I $$JOBEXAM^VPRJREQ($ZPOSITION)""")
+ I $T(JOBEXAM^ZSY)]"" S $ZINT="I $$JOBEXAM^ZSY($ZPOS),$$JOBEXAM^VPRJREQ($ZPOS)"
+ E  S $ZINT="I $$JOBEXAM^VPRJREQ($ZPOS)"
  X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
  S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
  G CHILD
@@ -128,7 +133,8 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD ; handle HTTP requests on this connection
+CHILD(TLSCONFIG) ; handle HTTP requests on this connection
+CHILDDEBUG ; [Internal] Debugging entry point
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
@@ -137,10 +143,12 @@ CHILD ; handle HTTP requests on this connection
  N $ET S $ET="G ETSOCK^VPRJREQ"
  ;
 TLS ; Turn on TLS?
- ; Need to do this for Cache and GT.M
- ; W /TLS("server",1,"tls")
- ; N D,K,T
- ; S D=$DEVICE,K=$KEY,T=$TEST
+ I TLSCONFIG]"" D
+ . I %WOS="GT.M" W /TLS("server",1,TLSCONFIG)
+ . I %WOS="CACHE" U %WTCP:(::"-M":/TLS=TLSCONFIG)
+ N D,K,T
+ ; put a break point here to debug TLS
+ S D=$DEVICE,K=$KEY,T=$TEST
  ; U 0
  ; W !
  ; W "$DEVICE: "_D,!
