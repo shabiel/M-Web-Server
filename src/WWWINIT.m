@@ -17,7 +17,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
  N TMPDIR S TMPDIR=$$PWD()
  ;
  ; Download the files from Github into temp directory
- D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.2/dist/MWS.RSA")
+ D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.3/dist/MWS.RSA")
  ;
  ; Go back to the old directory
  D CD(PWD)
@@ -108,7 +108,7 @@ CACHETLS ; Create a client SSL/TLS config on Cache
  ;
  ; Test it by connecting to encrypted.google.com
  n rtn
- d config.TestConnection("173.194.33.4",443,.rtn)
+ d config.TestConnection("encrypted.google.com",443,.rtn)
  i rtn w "TLS/SSL client configured on Cache as config name 'client'",!
  e  w "Cannot configure TLS/SSL on Cache",! s $ec=",u-cache-error,"
  ZN NMSP
