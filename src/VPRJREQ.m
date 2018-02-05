@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-01-07  5:08 PM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-02-05  9:29 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -275,7 +275,7 @@ ETCODE ; error trap when calling out to routines
  S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT"
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
- D LOGDC
+ D:HTTPLOG LOGDC
  K ^TMP($J),^TMP("HTTPERR",$J)
  C $P  
  HALT ; Stop process 
