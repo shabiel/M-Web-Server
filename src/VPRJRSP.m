@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2017-09-21  5:23 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-02-05  10:08 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -42,7 +42,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
  ; If we have the %W file for mapping...
- IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.AUTHNODE) 
+ IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.AUTHNODE)
  ;
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
@@ -186,7 +186,7 @@ SENDATA ; write out the data as an HTTP response
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
- ; I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" D GZIP QUIT  ; If on GT.M, and we can zip, let's do that!
+ I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" D GZIP QUIT  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE D FLUSH Q  ; flush buffer and quit if empty
@@ -200,7 +200,7 @@ SENDATA ; write out the data as an HTTP response
  . ; I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
  . I $D(@HTTPRSP)>1 D
  . . N ORIG,OL S ORIG=HTTPRSP,OL=$QL(HTTPRSP) ; Orig, Orig Length
- . . ZSHOW "*":^KBANTEMP
+ . . ; ZSHOW "*":^KBANTEMP
  . . ; F  S HTTPRSP=$Q(@HTTPRSP) Q:(($G(HTTPRSP)="")!($NA(@HTTPRSP,OL)'=$NA(@ORIG,OL)))  D W(@HTTPRSP)
  . . ; Vertical rewrite & fixes for GT.M 6.3
  . . N HTTPEXIT S HTTPEXIT=0
@@ -243,48 +243,48 @@ GZIP ; EP to write gzipped content -- unstable right now...
  ;
  ; zip away - Open gzip and write to it, then read back the zipped file.
  N OLDIO S OLDIO=$IO
- ; NB: Must have wrap,fixed,chset="M" for GT.M to read the data back as binary.
- O "D":(shell="/bin/sh":command="gzip -f":parse:wrap:fixed:chset="M")::"pipe" 
- U "D"
+ n file s file="/dev/shm/mws-"_$J_"-"_$R(999999)_".dat"
+ o file:(newversion:stream:nowrap)
+ u file
  ;
  ; Write out data
- N ZIPPED,C S C=1
  N I,J
  I RSPTYPE=1 D            ; write out local variable
- . I $D(HTTPRSP)#2 W HTTPRSP ; R ZIPPED(C):0 I  S C=C+1
- . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  W HTTPRSP(I) R ZIPPED(C)#32767:0 S C=C+1
+ . I $D(HTTPRSP)#2 W HTTPRSP
+ . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  W HTTPRSP(I)
  I RSPTYPE=2 D            ; write out global using indirection
- . I $D(@HTTPRSP)#2 W @HTTPRSP ; R ZIPPED(C):0 I  S C=C+1
- . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I) ; R ZIPPED(C):0 I  S C=C+1
+ . I $D(@HTTPRSP)#2 W @HTTPRSP
+ . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I)
  I RSPTYPE=3 D            ; write out pageable records
  . W PREAMBLE
  . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
- . . I I>START W "," ; R ZIPPED(C):0 I  S C=C+1 ; separate items with a comma
- . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J) ; R ZIPPED(C):0 I  S C=C+1
- . W "]}}" ; R ZIPPED(C):0 I  S C=C+1
+ . . I I>START W "," ; separate items with a comma
+ . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J)
+ . W "]}}"
  . K @HTTPRSP@($J)
  ;
- ZSHOW "V":^KBANRPC1
- ; Tell gzip we are done.
- W /EOF
- ;
- ; Read back
- F  R ZIPPED(C)#32767 Q:$ZEOF  S C=C+1
- ;
  ; Close
- U OLDIO C "D"
+ c file
  ; 
+ O "D":(shell="/bin/sh":command="gzip "_file:parse):0:"pipe"
+ U "D" C "D"
+ ;
+ n ZIPPED
+ o file_".gz":(readonly:fixed:nowrap:recordsize=255:chset="M"):0
+ u file_".gz"
+ n i f i=1:1 read ZIPPED(i):0  q:$zeof
+ U OLDIO c file_".gz":delete
+ ;
  ; Calculate new size (reset SIZE first)
  S SIZE=0 
  N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  S SIZE=SIZE+$L(ZIPPED(I))
  ;
  ; Write out the content headings for gzipped file.
- W "Content-Encoding: gzip"_$C(13,10)
- W "Content-Length: "_SIZE_$C(13,10)_$C(13,10)
- N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  W ZIPPED(I)
- W !
+ D W("Content-Encoding: gzip"_$C(13,10))
+ D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
+ N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  D W(ZIPPED(I))
+ D FLUSH
  ;
- ZSHOW "V":^KBANRPC2
  ; House keeping.
  I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
  QUIT
