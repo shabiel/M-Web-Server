@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-02-05  9:29 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-02-05  11:15 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -11,7 +11,7 @@ GO ; start up REST listener with defaults
  ;
 JOB(PORT,TLSCONFIG) ; Convenience entry point
  I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- E  J START^VPRJREQ(PORT,,$G(TLSCONFIG))
+ E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG)) ; Cache can't accept an empty string in the second argument
  QUIT
  ;
 START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
