@@ -111,7 +111,7 @@ CACHETLS ; Create a client SSL/TLS config on Cache
  ;
  ; Test it by connecting to encrypted.google.com
  n rtn
- d config.TestConnection("173.194.33.4",443,.rtn)
+ d config.TestConnection("encrypted.google.com",443,.rtn)
  i rtn w "TLS/SSL client configured on Cache as config name 'client'",!
  e  w "Cannot configure TLS/SSL on Cache",! s $ec=",u-cache-error,"
  ZN NMSP
