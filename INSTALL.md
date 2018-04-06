@@ -419,7 +419,7 @@ Open the Linux Terminal.
 
 Use cURL to download the bootstrap routine.
 
-    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.2/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.3/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
 
 Open the Cache Terminal using `csession CACHE`, and switch to the appropriate
 namespace.
