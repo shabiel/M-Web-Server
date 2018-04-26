@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2013-09-04  2:04 AM ; 12/18/13 3:25pm
+%W0 ; VEN/SMH - Infrastructure web services hooks;2018-02-05  10:28 AM; 12/18/13 3:25pm
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; GET Mumps Routine
@@ -99,7 +99,7 @@ LISTER(RESULTS,ARGS) ; FV divergence in case an index is requested.
  . . I $P(%WRES("DILIST",I,0),U,IX1P)'=FROM K %WRES("DILIST",I,0)
  ;
  ;
- K ^KBANRPC ZSHOW "*":^KBANRPC
+ ; K ^KBANRPC ZSHOW "*":^KBANRPC
  ;
  ;
  I $D(DIERR) D SETERROR^VPRJRUT("500","Lister error") Q

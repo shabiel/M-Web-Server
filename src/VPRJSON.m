@@ -1,5 +1,10 @@
 VPRJSON ;SLC/KCM -- Decode/Encode JSON
- ;;1.0;VIRTUAL PATIENT RECORD;**2**;Sep 01, 2011;Build 50
+ ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
+ ;
+ ; Unit Tests
+ D ^VPRJUJD
+ D ^VPRJUJE
+ QUIT
  ;
  ; Note:  Since the routines use closed array references, VVROOT and VVERR
  ;        are used to reduce risk of naming conflicts on the closed array.

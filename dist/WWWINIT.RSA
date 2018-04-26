@@ -1,7 +1,7 @@
-Init routine for 0.1.1
-GT.M 17 Mar 2015  11:06 AM
-WWWINIT^INT^1^^0
-WWWINIT ; VEN/SMH - Initialize Web Server;17-Mar-2015 11:04
+Routines;;2018-02-05  10:32 AM
+
+WWWINIT
+WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
@@ -20,7 +20,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;17-Mar-2015 11:04
  N TMPDIR S TMPDIR=$$PWD()
  ;
  ; Download the files from Github into temp directory
- D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.1/dist/MWS.RSA")
+ D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.3/dist/MWS.RSA")
  ;
  ; Go back to the old directory
  D CD(PWD)
@@ -82,20 +82,17 @@ CACHEMAP ; Map %W* Globals and Routines away from %SYS in Cache
  ;
  ; Map %W globals away from %SYS
  ZN "%SYS" ; Go to SYS
- N % S %=##class(Config.Configuration).GetGlobalMapping(NMSP,"%W","",NMSP,NMSP)
- I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,"%W","",NMSP,NMSP)
+ N % S %=##class(Config.Configuration).GetGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
+ I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
  I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
- D MAPIT("%W0"),MAPIT("%WC"),MAPIT("%WHOME"),MAPIT("%WINI*")
- ZN NMSP ; Go back
- QUIT
  ;
-MAPIT(RTN) ;
  ; Map %W routines away from %SYS
  N A S A("Database")=NMSP
- N % S %=##Class(Config.MapRoutines).Get(NMSP,RTN,.A)
+ N % S %=##Class(Config.MapRoutines).Get(NMSP,"%W*",.A)
  S A("Database")=NMSP
- I '% S %=##Class(Config.MapRoutines).Create(NMSP,RTN,.A)
+ I '% S %=##Class(Config.MapRoutines).Create(NMSP,"%W*",.A)
  I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
+ ZN NMSP ; Go back
  QUIT
  ;
 CACHETLS ; Create a client SSL/TLS config on Cache
@@ -113,12 +110,11 @@ CACHETLS ; Create a client SSL/TLS config on Cache
  e  s %=config.Activate()
  ;
  ; Test it by connecting to encrypted.google.com
- n rtn,ip
- s ip=##class(%SYSTEM.INetInfo).HostNameToAddr("encrypted.google.com")
- d config.TestConnection(ip,443,.rtn)
- ZN NMSP
- i $G(rtn) w "TLS/SSL client configured on Cache as config name 'client'",!
+ n rtn
+ d config.TestConnection("encrypted.google.com",443,.rtn)
+ i rtn w "TLS/SSL client configured on Cache as config name 'client'",!
  e  w "Cannot configure TLS/SSL on Cache",! s $ec=",u-cache-error,"
+ ZN NMSP
  QUIT
  ;
 DOWNLOAD(URL) ; Download the files from Github
@@ -207,6 +203,9 @@ RIGTM(ROPATH,FF,GTMDIR) ; Silent Routine Input for GT.M
  QUIT  ; Done
  ;
 PARSEZRO(DIRS,ZRO) ; Parse $zroutines properly into an array
+ ; Eat spaces
+ F  Q:($E(ZRO)'=" ")  S ZRO=$E(ZRO,2,999)
+ ;
  N PIECE
  N I
  F I=1:1:$L(ZRO," ") S PIECE(I)=$P(ZRO," ",I)

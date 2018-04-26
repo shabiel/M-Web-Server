@@ -1,10 +1,10 @@
-VPRJTJED ;SLC/KCM -- Data for JSON encoding unit tests
+VPRJUJ02 ;SLC/KCM -- Sample data for JSON encoding
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ;
  ; expected return data values
  ;
-BASIC ;; Basic object 
+BASIC ;; Basic object
  ;;{"myObj":{"array":["one","two","three"],"booleanF":false,"booleanT":true,"nullValue":null,"numeric":3.1416,"subObject":{"fieldA":"hello","fieldB":"world"}}}
 VALS ;; Simple values only object
  ;;{"arr":["apple","orange","pear",{"obj":"4th array item is object"}],"bool1":true,"num1":2.1e3,"prop1":"property1"}
@@ -21,13 +21,11 @@ PRE ;; Adding already encoded values to object
 WPOUT ;; WP field encoded as JSON
  ;;{"dob":"APR 7,1935","gender":"MALE","lastVitals":{"height":{"lastDone":"Aug 24, 2009","value":190},"weight":{"lastDone":"Jul 01, 2011","value":210}},"name":"AVIVAPATIENT,THIRTY","patDemDetails":{"text":"               COORDINATING
  ;; MASTER OF RECORD: ABILENE (CAA)\r\n Address: Any Street                    Temporary: NO TEMPORARY ADDRESS\r\n         Any Town,WV 99998-0071\r\n         \r\n  County: UNSPECIFIED                     From\/To: NOT APPLICABLE\r\n"},
- ;;"uid":"urn:va:patient:F484:8"}
+ ;;"uid":"urn:va:F484:8:patient:8"}
 LTZERO ;; Leading and trailing zeros
- ;;{"count":737,"errors":0,"icd":"626.00","price":".65","ssn":"000427930"}
+ ;;{"code":".77","count":737,"errors":0,"icd":"626.00","price":0.65,"ssn":"000427930"}
 STRINGS ;; strings that look like numbers
  ;;{"count":234567,"hl7Time":"20120919","icd":"722.10","name":"Duck,Donald"}
-QUOTE ;; Quoted subjects test
- ;;{"DDOUT(\"0.85,0.01\")":1}
 EX1OUT ;; JSON.org example #1 target
  ;;{"menu":{"id":"file","popup":{"menuitem":[{"onclick":"CreateNewDoc()","value":"New"},{"onclick":"OpenDoc()","value":"Open"},{"onclick":"CloseDoc()","value":"Close"}]},"value":"File"}}
 EX2OUT ;; JSON.org example #2 target
@@ -54,7 +52,7 @@ WP ;; object with word processing field
  ;;Y("patDemDetails","text","\",8)="         Any Town,WV 99998-0071"_$C(13,10)
  ;;Y("patDemDetails","text","\",9)="         "_$C(13,10)
  ;;Y("patDemDetails","text","\",10)="  County: UNSPECIFIED                     From/To: NOT APPLICABLE"_$C(13,10)
- ;;Y("uid")="urn:va:patient:F484:8"
+ ;;Y("uid")="urn:va:F484:8:patient:8"
  ;;zzzzz
  ;
  ; data values for JSON.ORG examples rendered as M arrays

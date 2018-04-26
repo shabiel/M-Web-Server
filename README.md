@@ -15,6 +15,18 @@ JSON store](https://github.com/OSEHRA-Sandbox/Health-Management-Platform/tree/ma
 ## Install
 See [INSTALL.md](INSTALL.md).
 
+## Developer Documentation
+See the [doc](doc) folder.
+
+## Packaging
+This section for the maintainer to remember how to package this when it gets updated.
+
+ * After editing and committing the routines, update WWWINIT with the new version number to be.
+ * Pack WWWINIT into WWWINIT.RSA with PackRO.py from the OSEHRA/VistA repo.
+ * Pack MWS.RSA like this: `../VistA/Scripts/PackRO.py $(find src -name '*.m' -not -name 'WWWINIT.m') > dist/MWS.RSA`
+ * git tag the new version number; and git push --tags
+ * Test on GT.M and Cache
+
 ## Links
 * OSEHRA Homepage: http://osehra.org
 * OSEHRA Repositories: http://code.osehra.org
