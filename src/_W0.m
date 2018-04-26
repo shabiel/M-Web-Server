@@ -300,10 +300,14 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; Get mime type
  ; TODO: Really really needs to be in a file
  N EXT S EXT=$P(PATH,".",$L(PATH,"."))
+ S RESULT("cache")=86400
  I $E(EXT,1,3)="htm" S RESULT("mime")="text/html"
  I EXT="js" S RESULT("mime")="application/javascript"
  I EXT="css" S RESULT("mime")="text/css"
  I EXT="pdf" S RESULT("mime")="application/pdf"
+ I EXT="gif" S RESULT("mime")="image/gif"
+ I EXT="png" S RESULT("mime")="image/png"
+ I EXT="svg" S RESULT("mime")="image/svg+xml"
  ;
  ; Read operation
  U PATH
