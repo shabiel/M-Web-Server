@@ -1,145 +1,388 @@
-VPRJREQ ;SLC/KCM - Listen for HTTP requests ;2018-04-30T22:35Z
+VPRJREQ ;slc/kcm - m-web: listener ;2018-04-30T22:35Z
  ;;1.8;MASH;;
  ;
- ; Listener Process ---------------------------------------
- ; Mods by VEN/SMH for GT.M support.
+ ; VPRJREQ implements the Mumps Advanced Shell's M Web Server (m-web),
+ ; which supplies HTTP version 1.0 single-request listening & response
+ ; services for mumps systems.
+ ; It was originally developed by Kevin C. Meldrum at VA Salt Lake,
+ ; then upgraded by Sam Habiel at the Vista Expertise Network & OSEHRA
+ ; to support GT.M and additional capabilties. It is now undergoing
+ ; refactoring for formal inclusion in Mumps Advanced Shell v1.8 by
+ ; Frederick D. S. Marshall.
+ ; This refactored version is currently untested & in progress. Stick
+ ; with the stable version in Sam's Github repository.
+ ;
+ ;
+ ;
+ ;@section 0 primary development
+ ;
+ ;
+ ;
+ ;@to-do
+ ; refactor
+ ; renamespace to %w
+ ; upgrade to http 1.1
+ ;  add ETag support
+ ; upgrade to http 2.0
+ ;@contents
+ ; ^VPRJREQ-GO: dmi: start m-web listener on port 9080
+ ; JOB: start m-web listener on specified port
+ ; START-LOOP: m-web listener main entry point
+ ; STOP: dmi: tell listener to stop running
+ ;
+ ; DEBUG: dmi: debug http 1.0 single-request handler
+ ; JOBEXAM: interrupt framework for gt.m
+ ; GTMLNX: xinetd wrapper for http 1.0 single-request handler
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT: http 1.0 single-request handler
+ ; ADDHEAD: add header name & value
+ ;
+ ; $$RDCRLF = read a header line
+ ; RDCHNKS: read body in chunks
+ ; RDLEN-RDLOOP: fixed-length read
+ ;
+ ; ETSOCK: error trap for http 1.0 single-request handler
+ ; ETCODE: error trap for response
+ ; ETDC: handle client disconnect
+ ; ETBAIL: emergency error trap
+ ;
+ ; INCRLOG: get unique log id for each request
+ ; LOGRAW: log raw lines read in
+ ; LOGHDR: log header lines read in
+ ; LOGBODY: log request body
+ ; LOGRSP: log response before sending
+ ; LOGCN: log continue
+ ; LOGDC: log client disconnection
+ ; LOGERR: log error information
+ ;
+ ; SIGNON: TODO: VISTA SIGN-ON
+ ; SIGNOFF: TODO: VISTA SIGN-OFF
+ ;
+ ;
+ ;
+ ;@section 1 http listener
+ ;
+ ;
+ ;
+ ; ^VPRJREQ ; dmi: start m-web listener on port 9080
+ ;
+ ;@called-by
+ ; direct-mode interface only, no calls in
+ ;@falls-thru-to
+ ; GO
+ ;@input: none
+ ;@output: none
  ;
  ;
  ;
 GO ; start up REST listener with defaults
  ;
- N PORT S PORT=$G(^VPRHTTP(0,"port"),9080)
- D JOB(PORT)
- QUIT
+ ;@falls-thru-from
+ ; ^VPRJREQ
+ ;@called-by: none
+ ;@calls
+ ; JOB
+ ;@input
+ ; ^VPRHTTP(0,"port")
+ ;@output: none
+ ;
+ new PORT set PORT=$get(^VPRHTTP(0,"port"),9080)
+ do JOB(PORT)
+ ;
+ quit  ; end of ^VPRJREQ-GO
  ;
  ;
  ;
-JOB(PORT,TLSCONFIG) ; Convenience entry point
+JOB(PORT,TLSCONFIG) ; start m-web on specified port
  ;
- I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG)) ; Cache can't accept an empty string in the second argument
+ ;@called-by
+ ; ^VPRJREQ-GO
+ ; direct-mode interface
+ ;@jobs
+ ; START^VPRJREQ
+ ;@calls: none
+ ;@input
+ ; PORT =
+ ; TLSCONFIG =
+ ;@output: none
  ;
- QUIT
+ ; convenience entry point
+ ;
+ set TLXCONFIG=$get(TLSCONFIG)
+ ;
+ if +$system=47 do  ; gt.m
+ . job START^VPRJREQ(PORT,,TLSCONFIG):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in & out files please
+ . quit
+ ;
+ else  do  ; cache
+ . job START^VPRJREQ(PORT,"",TLSCONFIG) ; cache can't accept an empty string in 2nd argument
+ . quit
+ ;
+ quit  ; end of JOB
  ;
  ;
  ;
-START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
+START(TCPPORT,DEBUG,TLSCONFIG) ; m-web listener main entry point
  ;
- ; I hope TCPPORT needs no explanations.
+ ;@jobbed-by
+ ; JOB
+ ;@called-by: none
+ ;@falls-thru-to
+ ; LOOP
+ ;@calls
+ ; DEBUG
+ ;@interrupt-calls
+ ; $$JOBEXAM^ZSY
+ ; $$JOBEXAM^VPRJREQ
+ ;@text-ref
+ ; JOBEXAM^ZSY
+ ;@input
+ ;@output
+ ;
+ ; set up listening for connections
+ ;
+ ; I hope TCPPORT needs no explanations
  ;
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
  ; CTRL-C will always work
  ;
- S ^VPRHTTP(0,"listener")="starting"
+ set ^VPRHTTP(0,"listener")="starting"
  ;
- N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ ; get mumps virtual machine
+ new %WOS set %WOS=$select(+$system=47:"GT.M",+$system=50:"MV1",1:"CACHE")
  ;
- ; $ZINTERRUPT for GT.M/YottaDB
- I %WOS="GT.M" D
- . I $T(JOBEXAM^ZSY)]"" S $ZINT="I $$JOBEXAM^ZSY($ZPOS),$$JOBEXAM^VPRJREQ($ZPOS)"
- . E  S $ZINT="I $$JOBEXAM^VPRJREQ($ZPOS)"
+ ; $zinterrupt for gt.m/yottadb
+ if %WOS="GT.M" do
+ . if $text(JOBEXAM^ZSY)]"" do
+ . . set $zinterrupt="if $$JOBEXAM^ZSY($zpos),$$JOBEXAM^VPRJREQ($zpos)"
+ . . quit
+ . else  do
+ . . set $zinterrupt="if $$JOBEXAM^VPRJREQ($zpos)"
+ . . quit
+ . quit
  ;
- S TCPPORT=$G(TCPPORT,9080)
+ set TCPPORT=$get(TCPPORT,9080)
  ;
- ; Device ID
- I %WOS="CACHE" S TCPIO="|TCP|"_TCPPORT
- I %WOS="GT.M" S TCPIO="SCK$"_TCPPORT
+ ; device id
+ if %WOS="CACHE" do
+ . set TCPIO="|TCP|"_TCPPORT
+ . quit
+ if %WOS="GT.M" do
+ . set TCPIO="SCK$"_TCPPORT
+ . quit
  ;
- ; Open Code
- I %WOS="CACHE" O TCPIO:(:TCPPORT:"ACT"):15 E  U 0 W !,"error cannot open port "_TCPPORT Q
- I %WOS="GT.M" O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
+ ; open code
+ new %WEXIT set %WEXIT=0
+ if %WOS="CACHE" do  quit:%WEXIT
+ . open TCPIO:(:TCPPORT:"ACT"):15 if  quit
+ . set %WEXIT=1
+ . use 0
+ . write !,"error cannot open port "_TCPPORT
+ . quit
+ if %WOS="GT.M" do  quit:%WEXIT
+ . open TCPIO:(LISTEN=TCPPORT_":TCP":delim=$char(13,10):attach="server"):15:"socket" if  quit
+ . set %WEXIT=1
+ . use 0
+ . write !,"error cannot open port "_TCPPORT
+ . quit
  ;
  ; K. Now we are really really listening.
- S ^VPRHTTP(0,"listener")="running"
+ set ^VPRHTTP(0,"listener")="running"
  ;
- ; This is the same for GT.M and Cache
- U TCPIO
+ ; this is the same for gt.m & cache
+ use TCPIO
  ;
- I %WOS="GT.M" W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
- N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
- N CHILDSOCK  ; That will be set below; Child socket
+ ; listen 5 deep - sets $key to "LISTENING|socket_handle|portnumber"
+ if %WOS="GT.M" do
+ . write /LISTEN(5)
+ . quit
+ new PARSOCK set PARSOCK=$piece($key,"|",2) ; parent socket
+ new CHILDSOCK ; child socket, set below
  ;
- I $G(DEBUG) D DEBUG($G(TLSCONFIG))
+ if $get(DEBUG) do
+ . do DEBUG($get(TLSCONFIG))
+ . quit
  ;
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  ;
- I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
+ ;@falls-thru-from
+ ; START
+ ;@branches-from
+ ; LOOP
+ ;@called-by: none
+ ;@jobs
+ ; CHILD
+ ; START^VPRJREQ [commented out, pre-v6.1]
+ ;@branches-to
+ ; LOOP
+ ; CHILD
+ ;@calls: none
+ ;
+ if $extract(^VPRHTTP(0,"listener"),1,4)="stop" do  quit
+ . close TCPIO
+ . set ^VPRHTTP(0,"listener")="stopped"
+ . quit
+ ;
  ;
  ; ---- CACHE CODE ----
- I %WOS="CACHE" D  G LOOP
- . R *X:10
- . E  QUIT  ; Loop back again when listening and nobody on the line
- . J CHILD($G(TLSCONFIG)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
- . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
+ ;
+ if %WOS="CACHE" do  goto LOOP
+ . read *X:10
+ . else  quit  ; loop back again when listening & nobody on the line
+ . ; send device to another job for input & output:
+ . job CHILD($get(TLSCONFIG)):(:4:TCPIO:TCPIO):10
+ . if $za\8196#2=1 do  ; if job failed to clear bit
+ . . write *-2
+ . . quit
+ . quit
+ ;
  ; ---- END CACHE CODE ----
  ;
+ ;
  ; ----- GT.M CODE ----
- ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
- ; N GTMDONE S GTMDONE=0  ; To tell us if we should loop waiting or process HTTP requests ; don't need this anymore
- ;I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
- I %WOS="GT.M" D  G LOOP
+ ;
+ ; in gt.m $key is
+ ;  "CONNECT|socket_handle|portnumber"
+ ; then
+ ;  "READ|socket_handle|portnumber"
+ ;
+ ; to tell us if we should loop waiting or process HTTP requests
+ ; we don't need this anymore
+ ; new GTMDONE set GTMDONE=0
+ ; if %WOS="GT.M" do  goto LOOP:'GTMDONE,CHILD:GTMDONE
+ ;
+ if %WOS="GT.M" do  goto LOOP
  . ;
- . ; Wait until we have a connection (inifinte wait). 
- . ; Stop if the listener asked us to stop.
- . FOR  W /WAIT(10) Q:$KEY]""  Q:($E(^VPRHTTP(0,"listener"),1,4)="stop")
+ . ; wait until we have a connection (infinite wait)
+ . ; stop if listener asked us to stop
  . ;
- . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
- . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
+ . for  do  quit:$key]""  quit:$extract(^VPRHTTP(0,"listener"),1,4)="stop"
+ . . write /WAIT(10)
+ . . quit
+ . ;
+ . ; we have to stop! when we quit, we go to loop & exit at loop+1
+ . ;
+ . if $extract(^VPRHTTP(0,"listener"),1,4)="stop" quit
  . ; 
- . ; At connection, job off the new child socket to be served away.
- . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
- . I $P($KEY,"|")="CONNECT" D  ; >=6.1
- . . S CHILDSOCK=$P($KEY,"|",2)
- . . U TCPIO:(detach=CHILDSOCK)
- . . N Q S Q=""""
- . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG)):(input="_ARG_":output="_ARG_")"
- . . J @J
+ . ; at connection, job off new child socket to be served away
  . ;
- . ; GT.M before 6.1:
- . ; Use the incoming socket; close the server, and restart it and goto CHILD
- . ; USE TCPIO:(SOCKET=$P($KEY,"|",2))
- . ; CLOSE TCPIO:(SOCKET="server")
- . ; JOB START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
- . ; SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
+ . ; if $piece($key,"|")="CONNECT" quit  ; before gt.m v6.1
+ . ;
+ . if $piece($key,"|")="CONNECT" do  ; gt.m >= v6.1
+ . . seet CHILDSOCK=$piece($key,"|",2)
+ . . use TCPIO:(detach=CHILDSOCK)
+ . . new Q set Q=""""
+ . . new ARG set ARG=Q_"SOCKET:"_CHILDSOCK_Q
+ . . new J set J="CHILD($get(TLSCONFIG)):(input="_ARG_":output="_ARG_")"
+ . . job @J
+ . . quit
+ . ;
+ . ; gt.m before 6.1:
+ . ; use incoming socket; close server, restart it, goto child
+ . ; use TCPIO:(SOCKET=$piece($key,"|",2))
+ . ; close TCPIO:(SOCKET="server")
+ . ; job START^VPRJREQ(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ . ; set GTMDONE=1 ; will goto child at the do exist up above
+ . ;
  . ; ---- END GT.M CODE ----
+ . quit
  ; 
- QUIT
+ quit  ; end of START-LOOP
  ;
  ;
  ;
-DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
+STOP ; dmi: tell listener to stop running
  ;
- ; Stop using Ctrl-C (duh!)
- N $ET S $ET="BREAK"
- K ^VPRHTTP("log") ; Kill log so that we can see our errors when they happen.
- I %WOS="GT.M" U $I:(CENABLE:ioerror="T")
- I %WOS="CACHE" F  R *X:10 I  G CHILDDEBUG
- I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILDDEBUG
+ ;@called-by
+ ; direct-mode interface
+ ;@calls: none
  ;
- QUIT
+ ; this direct-mode interface lets system managers manually stop
+ ; the m web server listener
  ;
+ set ^VPRHTTP(0,"listener")="stopped"
  ;
- ;
-JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
- ;
- ZSHOW "*":^VPRHTTP("processlog",+$H,$P($H,",",2),$J)
- ;
- QUIT 1
+ quit  ; end of STOP
  ;
  ;
  ;
-GTMLNX  ;From Linux xinetd script; $P is the main stream
+ ;@section 2 http 1.0 single-request handler
  ;
- S ^VPRHTTP(0,"listener")="starting"
- I $T(JOBEXAM^ZSY)]"" S $ZINT="I $$JOBEXAM^ZSY($ZPOS),$$JOBEXAM^VPRJREQ($ZPOS)"
- E  S $ZINT="I $$JOBEXAM^VPRJREQ($ZPOS)"
- X "U $P:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
- S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("IP")=%
  ;
- G CHILD
+ ;
+DEBUG(TLSCONFIG) ; dmi: debug http 1.0 single-request handler
+ ;
+ ;@called-by
+ ; START
+ ;@trap
+ ; debug mode
+ ;@branches-to
+ ; CHILDDEBUG
+ ;@calls: none
+ ;
+ ; debug continuation
+ ; we don't job off request, rather run it now
+ ;
+ ; stop using ctrl-c (duh!)
+ ;
+ new $etrap set $etrap="break"
+ kill ^VPRHTTP("log") ; kill log to see our errors when they happen
+ if %WOS="GT.M" do
+ . use $io:(CENABLE:ioerror="T")
+ . quit
+ if %WOS="CACHE" for  read *X:10 if  goto CHILDDEBUG
+ if %WOS="GT.M" for  write /WAIT(10) if $key]"" goto CHILDDEBUG
+ ;
+ quit  ; end of DEBUG
+ ;
+ ;
+ ;
+JOBEXAM(%ZPOS) ; interrupt framework for gt.m
+ ;
+ ;@called-by
+ ; interrupt processing
+ ;@interrupt-setup-by
+ ; START-LOOP
+ ; GTMLNX
+ ;@calls: none
+ ;
+ zshow "*":^VPRHTTP("processlog",+$horolog,$piece($horolog,",",2),$job)
+ ;
+ quit 1 ; end of $$JOBEXAM
+ ;
+ ;
+ ;
+GTMLNX ; xinetd wrapper for http 1.0 single-request handler
+ ;
+ ;@called-by
+ ; linux xinetd script
+ ;@trap
+ ; ETSOCK
+ ;@branches-to
+ ; CHILD
+ ;@interrupt-calls
+ ; $$JOBEXAM^ZSY
+ ; $$JOBEXAM^VPRJREQ
+ ;@text-ref
+ ; JOBEXAM^ZSY
+ ;@calls
+ ;@input
+ ; $principal = main stream
+ ;
+ set ^VPRHTTP(0,"listener")="starting"
+ if $text(JOBEXAM^ZSY)]"" do
+ . set $zinterrupt="if $$JOBEXAM^ZSY($zpos),$$JOBEXAM^VPRJREQ($zpos)"
+ . quit
+ else  do
+ . set $zinterrupt="if $$JOBEXAM^VPRJREQ($zpos)"
+ . quit
+ xecute "use $principal:(nowrap:nodelimiter:ioerror=""ETSOCK"")"
+ set %=""
+ set @("%=$ztrnlnm(""REMOTE_HOST"")")
+ set:$length(%) IO("IP")=%
+ ;
+ goto CHILD ; end of GTMLNX
  ;
  ;
  ;
@@ -161,9 +404,17 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ;
  ;
  ;
-CHILD(TLSCONFIG) ; handle HTTP requests on this connection
+CHILD(TLSCONFIG) ; http 1.0 single-request handler
  ;
-CHILDDEBUG ; [Internal] Debugging entry point
+ ;@called-by
+ ;@calls
+ ;
+ ; handle HTTP requests on this connection
+ ;
+CHILDDEBUG ; [internal] debugging entry point for CHILD
+ ;
+ ;@called-by
+ ;@calls
  ;
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
@@ -174,6 +425,9 @@ CHILDDEBUG ; [Internal] Debugging entry point
  ;
  ;
 TLS ; Turn on TLS?
+ ;
+ ;@called-by
+ ;@calls
  ;
  I TLSCONFIG]"" D
  . I %WOS="GT.M" W /TLS("server",1,TLSCONFIG)
@@ -191,10 +445,17 @@ TLS ; Turn on TLS?
  ;
 NEXT ; begin next request
  ;
+ ;@called-by
+ ;@calls
+ ;
  K HTTPREQ,HTTPRSP,HTTPERR
  K ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
+ ;
 WAIT ; wait for request on this connection
+ ;
+ ;@called-by
+ ;@calls
  ;
  I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C %WTCP Q
  X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
@@ -249,218 +510,403 @@ WAIT ; wait for request on this connection
  ; -- otherwise get ready for the next request
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
  ;
- G NEXT
+ goto NEXT ; end of CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;
+ ;
+ ;
+ADDHEAD(LINE) ; add header name & value
+ ;
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls
+ ; LOGHDR
+ ; $$LTRIM^VPRJRUT
+ ; $$LOW^VPRJRUT
+ ;
+ ; expects HTTPREQ to be defined
+ ;
+ do:HTTPLOG LOGHDR(LINE)
+ new NAME set NAME=$$LOW^VPRJRUT($$LTRIM^VPRJRUT($piece(LINE,":")))
+ new VALUE set VALUE=$$LTRIM^VPRJRUT($piece(LINE,":",2,99))
+ if LINE'[":" do
+ . set NAME=""
+ . set VALUE=LINE
+ . quit
+ if '$length(NAME) do
+ . set NAME=$get(HTTPREQ("header")) ; grab the last name used
+ . quit
+ quit:'$length(NAME)  ; no header name so just ignore this line
+ if $data(HTTPREQ("header",NAME)) do
+ . set HTTPREQ("header",NAME)=HTTPREQ("header",NAME)_","_VALUE
+ . quit
+ else  do
+ . set HTTPREQ("header",NAME)=VALUE
+ . set HTTPREQ("header")=NAME
+ . quit
+ ;
+ quit  ; end of ADDHEAD
+ ;
+ ;
+ ;
+ ;@section 3 http reader subroutines
  ;
  ;
  ;
 RDCRLF() ; read a header line
  ;
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls
+ ; LOGRAW
+ ;
  ; fixes a problem where the read would terminate before CRLF
  ; (on a packet boundary or when 1024 characters had been read)
  ;
- N X,LINE,RETRY
- S LINE=""
- F RETRY=1:1 R X:1 D:HTTPLOG LOGRAW(X) S LINE=LINE_X Q:$A($ZB)=13  Q:RETRY>10
+ new LINE set LINE=""
+ new X,RETRY
+ for RETRY=1:1 do  quit:$ascii($zb)=13  quit:RETRY>10
+ . read X:1
+ . do:HTTPLOG LOGRAW(X)
+ . set LINE=LINE_X
+ . quit
  ;
- Q LINE
+ quit LINE ; end of $$RDCRLF
  ;
  ;
  ;
 RDCHNKS ; read body in chunks
  ;
- Q  ; still need to implement
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: none
+ ;
+ ; still need to implement
+ ;
+ quit  ; end of RDCHNKS
  ;
  ;
  ;
-RDLEN(REMAIN,TIMEOUT) ; read L bytes with timeout T
+RDLEN(REMAIN,TIMEOUT) ; fixed-length read
  ;
- N X,LINE,LENGTH
- S LINE=0
+ ;@falls-thru-to
+ ; RDLOOP
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: none
+ ;
+ ; read L bytes with timeout T
+ ;
+ new LINE set LINE=0
+ new X,LENGTH
  ;
 RDLOOP ;
+ ;
+ ;@falls-thru-from
+ ; RDLEN
+ ;@branches-to
+ ; RDLOOP
+ ;@called-by: none
+ ;@calls
+ ; LOGRAW
  ;
  ; read until L bytes collected
  ; quit with what we have if read times out
  ;
- S LENGTH=REMAIN I LENGTH>4000 S LENGTH=4000
- R X#LENGTH:TIMEOUT
- I '$T D:HTTPLOG>1 LOGRAW("timeout:"_X) S LINE=LINE+1,HTTPREQ("body",LINE)=X Q
- I HTTPLOG>1 D LOGRAW(X)
- S REMAIN=REMAIN-$L(X),LINE=LINE+1,HTTPREQ("body",LINE)=X
- G:REMAIN RDLOOP
+ set LENGTH=REMAIN
+ if LENGTH>4000 do
+ . set LENGTH=4000
+ . quit
+ read X#LENGTH:TIMEOUT else  do  quit
+ . do:HTTPLOG>1 LOGRAW("timeout:"_X)
+ . set LINE=LINE+1
+ . set HTTPREQ("body",LINE)=X
+ . quit
  ;
- Q
+ if HTTPLOG>1 do
+ . do LOGRAW(X)
+ . quit
+ set REMAIN=REMAIN-$length(X)
+ set LINE=LINE+1
+ set HTTPREQ("body",LINE)=X
+ goto:REMAIN RDLOOP
  ;
- ;
- ;
-ADDHEAD(LINE) ; add header name and header value
- ;
- ; expects HTTPREQ to be defined
- ;
- D:HTTPLOG LOGHDR(LINE)
- N NAME,VALUE
- S NAME=$$LOW^VPRJRUT($$LTRIM^VPRJRUT($P(LINE,":")))
- S VALUE=$$LTRIM^VPRJRUT($P(LINE,":",2,99))
- I LINE'[":" S NAME="",VALUE=LINE
- I '$L(NAME) S NAME=$G(HTTPREQ("header")) ; grab the last name used
- I '$L(NAME) Q  ; no header name so just ignore this line
- I $D(HTTPREQ("header",NAME)) D
- . S HTTPREQ("header",NAME)=HTTPREQ("header",NAME)_","_VALUE
- E  D
- . S HTTPREQ("header",NAME)=VALUE,HTTPREQ("header")=NAME
- ;
- Q
+ quit  ; end of RDLEN-RDLOOP
  ;
  ;
  ;
-ETSOCK ; error trap when handling socket (i.e., client closes connection)
- ;
- D LOGERR
- C %WTCP
- ;
- HALT  ; exit because connection has been closed
+ ;@section 4 http error handling
  ;
  ;
  ;
-ETCODE ; error trap when calling out to routines
+ETSOCK ; error trap for http 1.0 single-request handler
  ;
- S $ETRAP="G ETBAIL^VPRJREQ"
- I $TLEVEL TROLLBACK ; abandon any transactions
- L                   ; release any locks
- ; Set the error information and write it as the HTTP response.
- D LOGERR
- D SETERROR^VPRJRUT(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
- D RSPERROR^VPRJRSP  ; switch to error response
- D SENDATA^VPRJRSP
- ; Leave $ECODE as non-null so that the error handling continues.
- ; This next line will 'unwind' the stack and got back to listening
- ; for the next HTTP request (goto NEXT).
- S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT"
+ ;@called-by
+ ; GTMLNX
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: LOGERR
  ;
- Q
+ ; socket-handler trap, i.e., client closes connection
  ;
+ do LOGERR
+ close %WTCP
  ;
+ ; exit because connection has been closed
  ;
-ETDC ; error trap for client disconnect ; not a true M trap
- ;
- D:HTTPLOG LOGDC
- K ^TMP($J),^TMP("HTTPERR",$J)
- C $P
- ;
- HALT ; Stop process
+ halt  ; end of ETSOCK & end of process
  ;
  ;
  ;
-ETBAIL ; error trap of error traps
+ETCODE ; error trap for response
  ;
- U %WTCP
- W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
- K ^TMP($J),^TMP("HTTPERR",$J)
- C %WTCP
+ ;@traps
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;  at call to RESPOND^VPRJRSP
+ ;  which invokes web services in response to request
+ ;@trapped-by
+ ; ETBAIL
+ ;@branches-from
+ ; $etrap
+ ;@called-by: none
+ ;@calls
+ ; LOGERR
+ ; SETERROR^VPRJRUT
+ ; RSPERROR^VPRJRSP
+ ; SENDATA^VPRJRSP
+ ;@output
+ ; changes error trap
  ;
- HALT  ; exit because we can't recover
+ ; trap when calling out to routines
+ ;
+ set $etrap="goto ETBAIL^VPRJREQ" ; set emergency backup trap
+ ;
+ if $tlevel trollback  ; abandon any transactions
+ lock  ; & release any locks
+ ;
+ ; set error info & write as http response
+ do LOGERR
+ do SETERROR^VPRJRUT(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
+ do RSPERROR^VPRJRSP ; switch to error response
+ do SENDATA^VPRJRSP
+ ;
+ ; leave $ecode as non-null so error handling continues
+ ; next line unwinds stack & goes back to listening
+ ; for the next HTTP request (goto NEXT)
+ ;
+ st $etrap="quit:$estack&$quit 0 quit:$estack  set $ecode="""" goto NEXT"
+ ;
+ quit  ; end of ETCODE
+ ;
+ ;
+ ;
+ETDC ; handle client disconnect
+ ;
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls
+ ; LOGDC
+ ;
+ ; error trap for client disconnect ; not a true M trap
+ ;
+ do:HTTPLOG LOGDC
+ kill ^TMP($job)
+ kill ^TMP("HTTPERR",$job)
+ close $principal
+ ;
+ ; Stop process
+ ;
+ halt  ; end of ETDC & end of process
+ ;
+ ;
+ ;
+ETBAIL ; emergency error trap
+ ;
+ ;@traps
+ ; ETCODE
+ ;@branches-from
+ ; $etrap
+ ;@called-by: none
+ ;@calls: none
+ ;
+ ; error trap of error traps
+ ;
+ use %WTCP
+ write "HTTP/1.1 500 Internal Server Error",$char(13,10),$char(13,10),!
+ kill ^TMP($job)
+ kill ^TMP("HTTPERR",$job)
+ close %WTCP
+ ;
+ ; exit because we can't recover
+ ;
+ halt  ; end of ETBAIL & end of process
+ ;
+ ;
+ ;
+ ;@section 5 http logging
  ;
  ;
  ;
 INCRLOG ; get unique log id for each request
  ;
- N DT,ID
- S DT=HTTPLOG("DT")
- L +^VPRHTTP("log",DT):2 E  S HTTPLOG("ID")=99999 Q  ; get unique logging session
- S ID=$G(^VPRHTTP("log",DT),0)+1
- S ^VPRHTTP("log",DT)=ID
- L -^VPRHTTP("log",DT)
- S HTTPLOG("ID")=ID
- Q:'HTTPLOG
- S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls
+ ; $$HTE^VPRJRUT
  ;
- Q
+ new DT set DT=HTTPLOG("DT")
+ lock +^VPRHTTP("log",DT):2 else  do  quit  ; get unique logging session
+ . set HTTPLOG("ID")=99999
+ . quit
+ new ID set ID=$get(^VPRHTTP("log",DT),0)+1
+ set ^VPRHTTP("log",DT)=ID
+ lock -^VPRHTTP("log",DT)
+ ;
+ set HTTPLOG("ID")=ID
+ quit:'HTTPLOG
+ ;
+ set ^VPRHTTP("log",DT,$job,ID)=$$HTE^VPRJRUT($horolog)_"  $j:"_$job_"  $p:"_%WTCP_"  $stack:"_$stack
+ ;
+ quit  ; end of INCRLOG
  ;
  ;
  ;
 LOGRAW(X) ; log raw lines read in
  ;
- N DT,ID,LN
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- S LN=$G(^VPRHTTP("log",DT,$J,ID,"raw"),0)+1
- S ^VPRHTTP("log",DT,$J,ID,"raw")=LN
- S ^VPRHTTP("log",DT,$J,ID,"raw",LN)=X
- S ^VPRHTTP("log",DT,$J,ID,"raw",LN,"ZB")=$A($ZB)
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ; RDCRLF
+ ; RDLEN-RDLOOP
+ ;@calls: none
  ;
- Q
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ new LN set LN=$get(^VPRHTTP("log",DT,$job,ID,"raw"),0)+1
+ set ^VPRHTTP("log",DT,$job,ID,"raw")=LN
+ set ^VPRHTTP("log",DT,$job,ID,"raw",LN)=X
+ set ^VPRHTTP("log",DT,$job,ID,"raw",LN,"ZB")=$ascii($zb)
+ ;
+ quit  ; end of LOGRAW
  ;
  ;
  ;
 LOGHDR(X) ; log header lines read in
  ;
- N DT,ID,LN
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- S LN=$G(^VPRHTTP("log",DT,$J,ID,"req","header"),0)+1
- S ^VPRHTTP("log",DT,$J,ID,"req","header")=LN
- S ^VPRHTTP("log",DT,$J,ID,"req","header",LN)=X
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ; ADDHEAD
+ ;@calls: none
  ;
- Q
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ new LN set LN=$get(^VPRHTTP("log",DT,$job,ID,"req","header"),0)+1
+ set ^VPRHTTP("log",DT,$job,ID,"req","header")=LN
+ set ^VPRHTTP("log",DT,$job,ID,"req","header",LN)=X
  ;
- ;
- ;
-LOGBODY ; log the request body
- ;
- Q:'$D(HTTPREQ("body"))
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- M ^VPRHTTP("log",DT,$J,ID,"req","body")=HTTPREQ("body")
- ;
- Q
+ quit  ; end of LOGHDR
  ;
  ;
  ;
-LOGRSP ; log the response before sending
+LOGBODY ; log request body
  ;
- Q:'$L($G(HTTPRSP))  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
- E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: none
  ;
- Q
+ quit:'$data(HTTPREQ("body"))
+ ;
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ merge ^VPRHTTP("log",DT,$job,ID,"req","body")=HTTPREQ("body")
+ ;
+ quit  ; end of LOGBODY
+ ;
+ ;
+ ;
+LOGRSP ; log response before sending
+ ;
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: none
+ ;
+ quit:'$length($get(HTTPRSP))
+ ; quit:'$data(@HTTPRSP)  ; ven/smh - response may be scalar
+ ;
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ if $extract(HTTPRSP)="^" do
+ . merge ^VPRHTTP("log",DT,$job,ID,"response")=@HTTPRSP
+ . quit
+ else  do
+ . merge ^VPRHTTP("log",DT,$job,ID,"response")=HTTPRSP
+ . quit
+ ;
+ quit  ; end of LOGRSP
  ;
  ;
  ;
 LOGCN ; log continue
  ;
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- S ^VPRHTTP("log",DT,$J,ID,"continue")="HTTP/1.1 100 Continue"
+ ;@called-by
+ ; CHILD-CHILDDEBUG-TLS-NEXT-WAIT
+ ;@calls: none
  ;
- QUIT
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ set ^VPRHTTP("log",DT,$job,ID,"continue")="HTTP/1.1 100 Continue"
+ ;
+ quit  ; end of LOGCN
  ;
  ;
  ;
-LOGDC ; log client disconnection; VEN/SMH
+LOGDC ; log client disconnection
  ;
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- S ^VPRHTTP("log",DT,$J,ID,"disconnect")=$$HTE^VPRJRUT($H)
+ ;@called-by
+ ; ETDC
+ ;@calls
+ ; $$HTE^VPRJRUT
  ;
- QUIT
+ ; ven/smh
+ ;
+ new DT set DT=HTTPLOG("DT")
+ new ID set ID=HTTPLOG("ID")
+ set ^VPRHTTP("log",DT,$job,ID,"disconnect")=$$HTE^VPRJRUT($horolog)
+ ;
+ quit  ; end of LOGDC
  ;
  ;
  ;
 LOGERR ; log error information
  ;
- N %D,%I
- S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
- N ISGTM S ISGTM=$P($SYSTEM,",")=47
- S ^VPRHTTP("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
- N %LVL,%TOP,%N
- S %TOP=$STACK(-1),%N=0
- F %LVL=0:1:%TOP S %N=%N+1,^VPRHTTP("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
- N %X,%Y
- S %X="^VPRHTTP(""log"",%D,$J,%I,""error"",""symbols"","
- ; Works on GT.M and Cache to capture ST.
- S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
+ ;@called-by
+ ; ETSOCK
+ ; ETCODE
+ ;@calls: none
  ;
- Q
+ new %D set %D=HTTPLOG("DT")
+ new %I set %I=HTTPLOG("ID")
+ new ISGTM set ISGTM=$piece($system,",")=47
+ set ^VPRHTTP("log",%D,$J,%I,"error")=$select(ISGTM:$zstatus,1:$zerror_"  ($ecode:"_$ecode_")")
+ ;
+ new %TOP set %TOP=$stack(-1)
+ new %N set %N=0
+ new %LVL
+ for %LVL=0:1:%TOP do
+ . set %N=%N+1
+ . set ^VPRHTTP("log",%D,$J,%I,"error","stack",%N)=$stack(%LVL,"PLACE")_":"_$stack(%LVL,"MCODE")
+ . quit
+ ;
+ new %X set %X="^VPRHTTP(""log"",%D,$J,%I,""error"",""symbols"","
+ ; works on gt.m & cache to capture symbol table
+ new %Y set %Y="%"
+ for  do  quit:%Y=""
+ . merge:$data(@%Y) @(%X_"%Y)="_%Y)
+ . set %Y=$order(@%Y)
+ . quit
+ ;
+ quit  ; end of LOGERR
+ ;
+ ;
+ ;
+ ;@section 6 incomplete subroutines
  ;
  ;
  ;
@@ -473,12 +919,6 @@ SIGNOFF ; TODO: VISTA SIGN-OFF
  ;
  ;
  ; Deprecated -- use VPRJ
- ;
-STOP ; tell the listener to stop running
- ;
- S ^VPRHTTP(0,"listener")="stopped"
- ;
- Q
  ;
  ;
  ;
