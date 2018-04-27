@@ -302,8 +302,12 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
  ; Get mime type
  ; TODO: Really really needs to be in a file
+ ; This isn't complete, by any means; it just grabs the most likely types to be
+ ; found on an M Web Server. A few common Microsoft types are supported, but
+ ; few other vendor-specific types are. Also, there are a few Mumps-centric
+ ; types added below (under the x- prefix). Everything else defaults to
+ ; "application/plain".
  new MIMELKUP
- set MIMELKUP("ai")="application/postscript"
  set MIMELKUP("aif")="audio/aiff"
  set MIMELKUP("aiff")="audio/aiff"
  set MIMELKUP("au")="audio/basic"
