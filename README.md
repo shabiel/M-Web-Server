@@ -1,6 +1,6 @@
 # M Web Server
 
-This source tree represents an web (HTTP) server implemented in the M language.
+This source tree represents a web (HTTP) server implemented in the M language.
 It is maintained by OSEHRA, the Open Source Electronic Health Record Agent.
 
 ## Purpose
@@ -19,7 +19,7 @@ See [INSTALL.md](INSTALL.md).
 See the [doc](doc) folder.
 
 ## Packaging
-This section for the maintainer to remember how to package this when it gets updated.
+This section is to help the maintainer remember how to package this when it gets updated.
 
  * After editing and committing the routines, update WWWINIT with the new version number to be.
  * Pack WWWINIT into WWWINIT.RSA with PackRO.py from the OSEHRA/VistA repo.
