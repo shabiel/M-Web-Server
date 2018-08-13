@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-02-05  10:08 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-08-13  1:26 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -243,7 +243,9 @@ GZIP ; EP to write gzipped content -- unstable right now...
  ;
  ; zip away - Open gzip and write to it, then read back the zipped file.
  N OLDIO S OLDIO=$IO
- n file s file="/dev/shm/mws-"_$J_"-"_$R(999999)_".dat"
+ n file
+ i $ZV["Linux" s file="/dev/shm/mws-"_$J_"-"_$R(999999)_".dat"
+ e  s file="/tmp/mws-"_$J_"-"_$R(999999)_".dat"
  o file:(newversion:stream:nowrap)
  u file
  ;
