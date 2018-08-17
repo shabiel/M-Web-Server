@@ -297,13 +297,51 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; Prevent End of file Errors for Cache. Set DSM mode for that.
  I +$SY=0 D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
  ;
+ ; Set content-cache value; defaults to one week.
+ set RESULT("cache")=604800
+ ;
  ; Get mime type
  ; TODO: Really really needs to be in a file
- N EXT S EXT=$P(PATH,".",$L(PATH,"."))
- I $E(EXT,1,3)="htm" S RESULT("mime")="text/html"
- I EXT="js" S RESULT("mime")="application/javascript"
- I EXT="css" S RESULT("mime")="text/css"
- I EXT="pdf" S RESULT("mime")="application/pdf"
+ ; This isn't complete, by any means; it just grabs the most likely types to be
+ ; found on an M Web Server. A few common Microsoft types are supported, but
+ ; few other vendor-specific types are. Also, there are a few Mumps-centric
+ ; types added below (under the x- prefix). Everything else defaults to
+ ; "application/plain".
+ new MIMELKUP
+ set MIMELKUP("aif")="audio/aiff"
+ set MIMELKUP("aiff")="audio/aiff"
+ set MIMELKUP("au")="audio/basic"
+ set MIMELKUP("avi")="video/avi"
+ set MIMELKUP("css")="text/css"
+ set MIMELKUP("doc")="application/msword"
+ set MIMELKUP("gif")="image/gif"
+ set MIMELKUP("htm")="text/html"
+ set MIMELKUP("html")="text/html"
+ set MIMELKUP("ico")="image/x-icon"
+ set MIMELKUP("jpe")="image/jpeg"
+ set MIMELKUP("jpeg")="image/jpeg"
+ set MIMELKUP("jpg")="image/jpeg"
+ set MIMELKUP("js")="application/javascript"
+ set MIMELKUP("kid")="text/x-mumps-kid"
+ set MIMELKUP("m")="text/x-mumps"
+ set MIMELKUP("mov")="video/quicktime"
+ set MIMELKUP("mp3")="audio/mpeg3"
+ set MIMELKUP("pdf")="application/pdf"
+ set MIMELKUP("png")="image/png"
+ set MIMELKUP("ppt")="application/vnd.ms-powerpoint"
+ set MIMELKUP("ps")="application/postscript"
+ set MIMELKUP("qt")="video/quicktime"
+ set MIMELKUP("svg")="image/svg+xml"
+ set MIMELKUP("tex")="application/x-tex"
+ set MIMELKUP("tif")="image/tiff"
+ set MIMELKUP("tiff")="image/tiff"
+ set MIMELKUP("txt")="text/plain"
+ set MIMELKUP("wav")="audio/wav"
+ set MIMELKUP("xls")="application/vnd.ms-excel"
+ set MIMELKUP("zip")="application/zip"
+ new EXT set EXT=$PIECE(PATH,".",$L(PATH,"."))
+ if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
+ else  set RESULT("mime")="application/plain"
  ;
  ; Read operation
  U PATH
