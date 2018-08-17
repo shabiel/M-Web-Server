@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2014-05-09  5:39 PM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2018-08-17  9:18 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -159,7 +159,8 @@ SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into ^TMP("HTTPERR",$J)
  I '$L($G(ERRNAME)) S ERRNAME="Unknown error"
  ;
  I ERRCODE>500 S HTTPERR=500,TOPMSG="Internal Server Error"  ; M Server Error
- I ERRCODE<500,ERRCODE>400 S HTTPERR=ERRCODE,TOPMSG=ERRNAME  ; Other HTTP Errors 
+ I ERRCODE<500,ERRCODE>400 S HTTPERR=ERRCODE,TOPMSG=ERRNAME  ; Other HTTP Errors
+ Q:$G(NOGBL)
  S NEXTERR=$G(^TMP("HTTPERR",$J,0),0)+1,^TMP("HTTPERR",$J,0)=NEXTERR
  S ^TMP("HTTPERR",$J,1,"apiVersion")="1.0"
  S ^TMP("HTTPERR",$J,1,"error","code")=HTTPERR

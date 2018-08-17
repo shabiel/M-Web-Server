@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-08-13  1:26 PM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-08-17  9:24 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -7,7 +7,7 @@ RESPOND ; find entry point to handle request and call it
  ; expects HTTPREQ, HTTPRSP is used to return the response
  ;
  ; TODO: check cache of HEAD requests first and return that if there?
- K ^TMP($J)
+ K:'$G(NOGBL) ^TMP($J)
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D EN^%WHOME(.HTTPRSP) QUIT  ; Home page requested.
  D MATCH(.ROUTINE,.HTTPARGS) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
