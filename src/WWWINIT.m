@@ -1,30 +1,14 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
+WWWINIT ; VEN/SMH - Initialize Web Server;2018-08-17  8:52 AM; 12/25/13 1:03pm
  ;;0.1;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
- I +$SYSTEM=0 DO CACHEMAP
+ DO CACHEMAP("%W")
  ;
  ; Set-up TLS on Cache
- I +$SYSTEM=0 DO CACHETLS
+ DO CACHETLS
  ;
- ; Get current directory (GT.M may need it to write routines later)
- N PWD S PWD=$$PWD()
- ;
- ; Change to temporary directory (a bit complex for Windows)
- D CDTMPDIR
- ;
- ; Get temp dir
- N TMPDIR S TMPDIR=$$PWD()
- ;
- ; Download the files from Github into temp directory
- D DOWNLOAD("https://raw.github.com/shabiel/M-Web-Server/0.1.3/dist/MWS.RSA")
- ;
- ; Go back to the old directory
- D CD(PWD)
- ;
- ; Silently install RSA -- fur GT.M pass the GTM directory in case we need it.
- I +$SYSTEM=0 DO RICACHE(TMPDIR_"MWS.RSA")
- I +$SYSTEM=47 DO RIGTM(TMPDIR_"MWS.RSA",,PWD)
+ ; Install the package
+ D INSTALLRO("https://raw.github.com/shabiel/M-Web-Server/0.1.3/dist/MWS.RSA")
  ;
  ; If fileman is installed, do an init for the %W(17.001 file
  I $D(^DD) D ^%WINIT
@@ -33,10 +17,12 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
  D LOADHAND
  ; 
  ; Set the home directory for the server
- D HOMEDIR
+ N % S %=$$HOMEDIR
+ I '% QUIT
  ;
  ; Set start port
  N PORT S PORT=$$PORT()
+ I PORT=0 QUIT
  ;
  ; Start Server
  D JOB^VPRJREQ(PORT)
@@ -50,73 +36,115 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2017-10-18  11:11 AM; 12/25/13 1:03pm
  ;
  QUIT
  ;
+CACHE() Q $L($SY,",")'=2
+GTM()   Q +$SY=47
+ ;
+INSTALLRO(URL) ; [Private] Download and Install RO files
+ ; Get current directory (GT.M may need it to write routines later)
+ N PWD S PWD=$$PWD()
+ ;
+ ; Change to temporary directory (a bit complex for Windows)
+ D CDTMPDIR
+ ;
+ ; Get temp dir
+ N TMPDIR S TMPDIR=$$PWD()
+ ;
+ ; Download the files from Github into temp directory
+ D DOWNLOAD(URL)
+ ;
+ ; Go back to the old directory
+ D CD(PWD)
+ ;
+ ; Silently install RSA -- fur GT.M pass the GTM directory in case we need it.
+ new filename set filename=$p(URL,"/",$l(URL,"/"))
+ I $$CACHE DO RICACHE(TMPDIR_filename)
+ I $$GTM DO RIGTM(TMPDIR_filename,,PWD)
+ QUIT
+ ;
 PWD() ; $$ - Get current directory
- Q:+$SY=0 $ZU(168)
- Q:+$SY=47 $ZD
+ Q:$$CACHE $ZU(168)
+ Q:$$GTM $ZD
  S $EC=",U-NOT-IMPLEMENTED,"
  QUIT
  ;
 CDTMPDIR ; Proc - Change to temporary directory
- I +$SY=47 S $ZD="/tmp/" QUIT  ; GT.M
- I +$SY=0 DO  QUIT
- . new OS set OS=$zversion(1)
- . if OS=1 S $EC=",U-VMS-NOT-SUPPORTED,"
- . if OS=2 D  ; windows
- . . N % S %=$ZU(168,"C:\TEMP\")
- . if OS=3 D  ; UNIX
- . . N % S %=$ZU(168,"/tmp/")
+ I $$GTM S $ZD="/tmp/" QUIT  ; GT.M
+ I $$CACHE S %=$ZU(168,^%SYS("TempDir")) QUIT  ; Cache
  S $EC=",U-NOT-IMPLEMENTED,"
  QUIT
  ;
+ ;
 CD(DIR) ; Proc - Change to the old directory
- I +$SY=0 N % S %=$ZU(168,DIR) QUIT
- I +$SY=47 S $ZD=DIR QUIT
+ I $$CACHE N % S %=$ZU(168,DIR) QUIT
+ I $$GTM S $ZD=DIR QUIT
  QUIT
  ;
-CACHEMAP ; Map %W* Globals and Routines away from %SYS in Cache
+ ;
+CACHEMAP(G) ; Map Globals and Routines away from %SYS in Cache
+ ; ZEXCEPT: AddGlobalMapping,Class,Config,Configuration,Create,Get,GetErrorText,GetGlobalMapping,MapRoutines,MapGlobals,Namespaces,Status,class - these are all part of Cache class names
  ; Get current namespace
- N NMSP S NMSP=$NAMESPACE
+ I $$GTM QUIT
  ;
- ; Map %W globals away from %SYS
+ S G=G_"*"
+ N NMSP
+ I $P($P($ZV,") ",2),"(")<2012 S NMSP=$ZU(5)
+ I $P($P($ZV,") ",2),"(")>2011 S NMSP=$NAMESPACE
+ ;
+ N $ET S $ET="ZN NMSP D ^%ZTER S $EC="""""
+ ;
  ZN "%SYS" ; Go to SYS
- N % S %=##class(Config.Configuration).GetGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
- I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,"%W*","",NMSP,NMSP)
- I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
  ;
- ; Map %W routines away from %SYS
- N A S A("Database")=NMSP
- N % S %=##Class(Config.MapRoutines).Get(NMSP,"%W*",.A)
- S A("Database")=NMSP
- I '% S %=##Class(Config.MapRoutines).Create(NMSP,"%W*",.A)
- I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) QUIT
+ ; Props
+ N PROP
+ N % S %=##Class(Config.Namespaces).Get(NMSP,.PROP) ; Get all namespace properties
+ I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) S $EC=",U-CONFIG-FAIL," QUIT
+ ;
+ N DBG S DBG=PROP("Globals")  ; get the database globals location
+ N DBR S DBR=PROP("Routines") ; get the database routines location
+ ;
+ ; the following is needed for the call to MapGlobals.Create below, is not set in above call
+ S PROP("Database")=NMSP
+ ;
+ ; Map %ut globals away from %SYS
+ N %
+ S %=##class(Config.Configuration).GetGlobalMapping(NMSP,G,"",DBG,DBG)
+ I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,G,"",DBG,DBG)
+ I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) S $EC=",U-CONFIG-FAIL," QUIT
+ ;
+ ; Map %ut routines away from %SYS
+ N PROPRTN S PROPRTN("Database")=DBR
+ N % S %=##Class(Config.MapRoutines).Get(NMSP,G,.PROPRTN)
+ S PROPRTN("Database")=DBR  ; Cache seems to like deleting this
+ I '% S %=##Class(Config.MapRoutines).Create(NMSP,G,.PROPRTN)
+ I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) S $EC=",U-CONFIG-FAIL," QUIT
  ZN NMSP ; Go back
  QUIT
  ;
+ ;
 CACHETLS ; Create a client SSL/TLS config on Cache
+ I $$GTM QUIT
  ;
  ; Create the configuration
- N NMSP S NMSP=$NAMESPACE
- ZN "%SYS"
+ N $NAMESPACE S $NAMESPACE="%SYS"
  n config,status
- n % s %=##class(Security.SSLConfigs).Exists("client",.config,.status) ; check if config exists
+ n % s %=##class(Security.SSLConfigs).Exists("encrypt_only",.config,.status) ; check if config exists
  i '% d
- . n prop s prop("Name")="client"
- . s %=##class(Security.SSLConfigs).Create("client",.prop) ; create a default ssl config
+ . n prop s prop("Name")="encrypt_only"
+ . s %=##class(Security.SSLConfigs).Create("encrypt_only",.prop) ; create a default ssl config
  . i '% w $SYSTEM.Status.GetErrorText(%) s $ec=",u-cache-error,"
- . s %=##class(Security.SSLConfigs).Exists("client",.config,.status) ; get config
+ . s %=##class(Security.SSLConfigs).Exists("encrypt_only",.config,.status) ; get config
  e  s %=config.Activate()
  ;
  ; Test it by connecting to encrypted.google.com
  n rtn
  d config.TestConnection("encrypted.google.com",443,.rtn)
- i rtn w "TLS/SSL client configured on Cache as config name 'client'",!
+ i rtn w "TLS/SSL client configured on Cache as config name 'encrypt_only'",!
  e  w "Cannot configure TLS/SSL on Cache",! s $ec=",u-cache-error,"
- ZN NMSP
  QUIT
  ;
 DOWNLOAD(URL) ; Download the files from Github
- D:+$SY=0 DOWNCACH(URL)
- D:+$SY=47 DOWNGTM(URL)
+ D:$$CACHE DOWNCACH(URL)
+ D:$$GTM DOWNGTM(URL)
  QUIT
  ;
 DOWNCACH(URL) ; Download for Cache
@@ -124,7 +152,7 @@ DOWNCACH(URL) ; Download for Cache
  set httprequest=##class(%Net.HttpRequest).%New()
  if $e(URL,1,5)="https" do
  . set httprequest.Https=1
- . set httprequest.SSLConfiguration="client"
+ . set httprequest.SSLConfiguration="encrypt_only"
  new server set server=$p(URL,"://",2),server=$p(server,"/")
  new port set port=$p(server,":",2)
  new filepath set filepath=$p(URL,"://",2),filepath=$p(filepath,"/",2,99)
@@ -160,6 +188,7 @@ RIGTM(ROPATH,FF,GTMDIR) ; Silent Routine Input for GT.M
  U "pipe" C "pipe"
  ;
  ; Set end of routine
+ N EOR
  I FF S EOR=$C(13,12)
  E  S EOR=""
  ;
@@ -264,8 +293,8 @@ RICACHE(ROPATH) ; Silent Routine Input for Cache
  QUIT  ; Done
  ;
 TESTD(DIR) ; $$ ; Can I write to this directory?
- Q:(+$SY=0) $$TESTD00(DIR)
- Q:(+$SY=47) $$TESTD47(DIR)
+ Q:($$CACHE) $$TESTD00(DIR)
+ Q:($$GTM) $$TESTD47(DIR)
  ;
 TESTD00(DIR) ; $$ ; Can I write to this directory in Cache?
  N $ET S $ET="G TESTDET"
@@ -296,7 +325,7 @@ LOADHAND N I F I=1:1 N LN S LN=$P($T(LH+I),";;",2,99) Q:LN=""  D  ; Read inline
  . N TESTNODE S TESTNODE="" ; for $DATA testing
  . I $QS(NREF,2)="B" S TESTNODE=$NA(@NREF,5) ; Get all subs b4 IEN
  . I $L(TESTNODE),$D(@TESTNODE) DO  QUIT  ; If node exists in B index
- . . WRITE TESTNODE_" ALREADY INSTALLED",!  ; say so
+ . . ; WRITE TESTNODE_" ALREADY INSTALLED",!  ; say so
  . . KILL ^%W(17.6001,IEN) ; and delete the stuff we entered
  . S @LN  ; okay to set.
  QUIT
@@ -321,7 +350,8 @@ LH ;; START
  ;;
 ENDLOAD
  ;
-HOMEDIR ; Set ^%WHOME
+HOMEDIR() ; Set ^%WHOME (0 = failure; 1 = success)
+ W !!!
  W "Enter the home directory where you will store the html, js, and css files"
  W !!
  W "Make sure this is a directory where you have write permissions.",!!
@@ -336,6 +366,8 @@ HOMEDIR ; Set ^%WHOME
 AGAIN ; Try again
  W !,"Enter Directory: ",$$PWD(),"// "
  R DIR:30
+ E  QUIT:$Q 0 QUIT
+ I DIR["^" QUIT:$Q 0 QUIT
  I $L(DIR),DIR["/",$E(DIR,$L(DIR))'="/" S $E(DIR,$L(DIR)+1)="/"
  I $L(DIR),DIR["\",$E(DIR,$L(DIR))'="\" S $E(DIR,$L(DIR)+1)="\"
  S ^%WHOME=$S($L(DIR):DIR,1:$$PWD())
@@ -344,18 +376,20 @@ AGAIN ; Try again
  ; Create www directory; D = delimiter
  N D S D=$S(^%WHOME["/":"/",1:"\")
  I $P(^%WHOME,D,$L(^%WHOME,D)-1)'="www" D MKDIR(^%WHOME_"www") S ^%WHOME=^%WHOME_"www"_D
- QUIT
+ QUIT:$QUIT 1 QUIT
  ;
 MKDIR(DIR) ; Proc; Make directory; does not create parents
- I +$SY=0 N % S %=$ZF(-1,"mkdir "_DIR)
- I +$SY=47 o "p":(shell="/bin/sh":command="mkdir "_DIR)::"pipe" U "p" C "p"
+ I $$CACHE N % S %=$ZF(-1,"mkdir "_DIR)
+ I $$GTM o "p":(shell="/bin/sh":command="mkdir "_DIR)::"pipe" U "p" C "p"
  QUIT
  ;
 PORT() ; $$; select a port
  N PORT,PORTOK
  S PORT="",PORTOK=0
- F  D  Q:((PORT>1023)&(PORT<65536)&(PORTOK))
+ F  D  Q:PORTOK
  . R !,"Enter a port number between 1024 and 65535: 9080// ",PORT:30
+ . E  S PORT=0,PORTOK=1 QUIT
+ . I PORT["^" S PORT=0,PORTOK=1 QUIT
  . I PORT="" S PORT=9080
  . Q:'((PORT>1023)&(PORT<65536)) ; De Morgan's law exit
  . S PORTOK=$$PORTOK(PORT)
@@ -367,7 +401,7 @@ PORTOK(PORT) ; $$; Is this port okay?
  N $ET,$ES S $ET="G PORTOKER"
  ;
  ; Cache
- I +$SY=0 DO  QUIT OKAY
+ I $$CACHE DO  QUIT OKAY
  . N TCPIO S TCPIO="|TCP|"_PORT
  . O TCPIO:(:PORT:"ACT"):2
  . I  S OKAY=1
@@ -375,7 +409,7 @@ PORTOK(PORT) ; $$; Is this port okay?
  . C TCPIO
  ;
  ; GT.M
- I +$SY=47 DO  QUIT OKAY
+ I $$GTM DO  QUIT OKAY
  . N TCPIO S TCPIO="server$"_PORT
  . O TCPIO:(ZLISTEN=PORT_":TCP":delim=$c(10,13):attach="server"):2:"socket"
  . I  S OKAY=1
@@ -389,14 +423,14 @@ PORTOKER ; Error handler for open port
  S $EC=""
  QUIT 0
  ;
-TEST D EN^XTMUNIT($T(+0),1) QUIT
+TEST D EN^%ut($T(+0),3) QUIT
 GTMRITST ; @TEST - Test GT.M Routine Input
  ; Use VPE's RSA file to test.
- Q:+$SY'=47
+ Q:'$$GTM
  N OLDDIR S OLDDIR=$$PWD()
  D DELRGTM("%ZV*"),DELRGTM("ZV*")
  D SILENT^%RSEL("%ZV*")
- D CHKEQ^XTMUNIT(%ZR,0)
+ D CHKEQ^%ut(%ZR,0)
  N URL S URL="http://hardhats.org/tools/vpe/VPE_12.zip"
  S $ZD="/tmp/"
  N CMD S CMD="curl -L -s -O "_URL
@@ -409,7 +443,7 @@ GTMRITST ; @TEST - Test GT.M Routine Input
  N PATH S PATH="/tmp/VPE_12_Rtns.MGR"
  D RIGTM(PATH,,OLDDIR)
  D SILENT^%RSEL("%ZV*")
- D CHKTF^XTMUNIT(%ZR>0)
+ D CHKTF^%ut(%ZR>0)
  QUIT
  ;
 DELRGTM(NMSP) ; Delete routines for GT.M - yahoo
@@ -420,9 +454,9 @@ DELRGTM(NMSP) ; Delete routines for GT.M - yahoo
  QUIT
  ;
 CACHERIT ; @TEST - Test Cache Routine Input
- Q:+$SY'=0
+ Q:'$$CACHE
  D DELRCACH("%ZV*"),DELRCACH("ZV*")
- D CHKTF^XTMUNIT('$D(^$R("%ZVEMD")))
+ D CHKTF^%ut('$D(^$R("%ZVEMD")))
  N OLD S OLD=$$PWD()
  D CDTMPDIR
  N URL S URL="http://hardhats.org/tools/vpe/VPE_12.zip"
@@ -438,7 +472,7 @@ CACHERIT ; @TEST - Test Cache Routine Input
  ZN NS
  D RICACHE(PATH)
  D CD(OLD)
- D CHKTF^XTMUNIT($D(^$R("%ZVEMD")))
+ D CHKTF^%ut($D(^$R("%ZVEMD")))
  QUIT
  ;
 DELRCACH(NMSP) ; Delete routines for Cache - yahoo again
@@ -452,8 +486,8 @@ DELRCACH(NMSP) ; Delete routines for Cache - yahoo again
  ;
 LHTEST ; @TEST - Load hander test... make sure it loads okay even multiple times
  N I F I=1:1:30 D LOADHAND
- D CHKTF^XTMUNIT($O(^%W(17.6001," "),-1)<20) ; Should have just 3 entries
- D CHKTF^XTMUNIT($D(^%W(17.6001,"B","GET","xml","XML^VPRJRSP"))) ; Must be loaded
+ D CHKTF^%ut($O(^%W(17.6001," "),-1)<20) ; Should have just 3 entries
+ D CHKTF^%ut($D(^%W(17.6001,"B","GET","xml","XML^VPRJRSP"))) ; Must be loaded
  QUIT
  ;
 WDTESTY ; @TEST - Successful write to a directory!
@@ -461,25 +495,25 @@ WDTESTY ; @TEST - Successful write to a directory!
  N OLD S OLD=$$PWD()
  D CDTMPDIR
  N D S D=$$PWD()
- I +$SY=0 S OUT=$$TESTD00(D)
- I +$SY=47 S OUT=$$TESTD47(D)
- D CHKTF^XTMUNIT(OUT)
+ I $$CACHE S OUT=$$TESTD00(D)
+ I $$GTM S OUT=$$TESTD47(D)
+ D CHKTF^%ut(OUT)
  D CD(OLD)
  QUIT
  ;
 WDTESTN0 ; @TEST - Try to write to a directory with no permissions
  N OUT
- I +$SY=0 S OUT=$$TESTD00("/root/")
- I +$SY=47 S OUT=$$TESTD47("/root/")
- D CHKTF^XTMUNIT(OUT=0)
+ I $$GTM S OUT=$$TESTD00("/root/")
+ I $$CACHE S OUT=$$TESTD47("/root/")
+ D CHKTF^%ut(OUT=0)
  QUIT
 WDTESTN1 ; @TEST - Try to write to a directory that doesn't exist
  N OUT
- I +$SY=0 S OUT=$$TESTD00("/lkjasdf/lkasjdflka/lakjdfs/")
- I +$SY=47 S OUT=$$TESTD47("/lkjasdf/lkasjdflka/lakjdfs/")
- D CHKTF^XTMUNIT(OUT=0)
+ I $$GTM S OUT=$$TESTD00("/lkjasdf/lkasjdflka/lakjdfs/")
+ I $$CACHE S OUT=$$TESTD47("/lkjasdf/lkasjdflka/lakjdfs/")
+ D CHKTF^%ut(OUT=0)
  QUIT
 PORTOKT ; @TEST - Test Port Okay
- D CHKEQ^XTMUNIT($$PORTOK(135),0)
- D CHKEQ^XTMUNIT($$PORTOK(61232),1)
+ D CHKEQ^%ut($$PORTOK(135),0)
+ D CHKEQ^%ut($$PORTOK(61232),1)
  QUIT
