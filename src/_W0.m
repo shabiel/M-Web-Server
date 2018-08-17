@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2018-02-05  10:28 AM; 12/18/13 3:25pm
+%W0 ; VEN/SMH - Infrastructure web services hooks;2018-08-17  10:50 AM; 12/18/13 3:25pm
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; GET Mumps Routine
@@ -273,6 +273,7 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  QUIT
  ;
 FILESYS(RESULT,ARGS) ; Handle filesystem/*
+ I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
  N PATH
  ;
  ; Vhere is our home? If any home!

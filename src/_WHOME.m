@@ -1,9 +1,17 @@
-%WHOME ; VEN/SMH - Home page processor; 25 NOV 2013
+%WHOME ; VEN/SMH - Home page processor;2018-08-17  9:19 AM
  ;;
  ;
 EN(RESULT) ; PEP
  S RESULT("mime")="text/html; charset=utf-8"
  N CRLF S CRLF=$C(13,10)
+ N ARGS S ARGS("*")="index.html"
+ ; Retrieve index.html from filesystem before returning default page
+ D FILESYS^%W0(.RESULT,.ARGS)
+ I $D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
+ ; If we found an index.html don't return the default
+ I $D(RESULT) QUIT
+ ; return default index.html
+ S RESULT("mime")="text/html; charset=utf-8"
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D
  . I RESULT(I)["<%TABLEDATA%>" D
  .. N IEN S IEN=0 F J=I:.0001 S IEN=$O(^%W(17.6001,IEN)) Q:'IEN  D
