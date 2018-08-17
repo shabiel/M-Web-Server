@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-02-05  11:15 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-08-17  9:40 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -9,19 +9,19 @@ GO ; start up REST listener with defaults
  D JOB(PORT)
  QUIT
  ;
-JOB(PORT,TLSCONFIG) ; Convenience entry point
- I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG)) ; Cache can't accept an empty string in the second argument
+JOB(PORT,TLSCONFIG,NOGBL) ; Convenience entry point
+ I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG),$G(NOGBL)):(IN="/dev/null":OUT="vprjreq.mjo":ERR="vprjreq.mje"):5  ; no in and out files please.
+ E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG),$G(NOGBL)) ; Cache can't accept an empty string in the second argument
  QUIT
  ;
-START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
+START(TCPPORT,DEBUG,TLSCONFIG,NOGBL) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
  ; CTRL-C will always work
  ;
- S ^VPRHTTP(0,"listener")="starting"
+ S:'$G(NOGBL) ^VPRHTTP(0,"listener")="starting"
  ;
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
@@ -41,7 +41,7 @@ START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
  I %WOS="GT.M" O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
  ;
  ; K. Now we are really really listening.
- S ^VPRHTTP(0,"listener")="running"
+ S:'$G(NOGBL) ^VPRHTTP(0,"listener")="running"
  ;
  ; This is the same for GT.M and Cache
  U TCPIO
@@ -53,7 +53,7 @@ START(TCPPORT,DEBUG,TLSCONFIG) ; set up listening for connections
  I $G(DEBUG) D DEBUG($G(TLSCONFIG))
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
- I $E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
+ I '$G(NOGBL)&$E(^VPRHTTP(0,"listener"),1,4)="stop" C TCPIO S ^VPRHTTP(0,"listener")="stopped" Q
  ;
  ; ---- CACHE CODE ----
  I %WOS="CACHE" D  G LOOP
@@ -71,10 +71,10 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . ;
  . ; Wait until we have a connection (inifinte wait). 
  . ; Stop if the listener asked us to stop.
- . FOR  W /WAIT(10) Q:$KEY]""  Q:($E(^VPRHTTP(0,"listener"),1,4)="stop")
+ . FOR  W /WAIT(10) Q:$KEY]""  Q:('$G(NOGBL)&$E(^VPRHTTP(0,"listener"),1,4)="stop")
  . ;
  . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
- . I $E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
+ . I '$G(NOGBL)&$E(^VPRHTTP(0,"listener"),1,4)="stop" QUIT
  . ; 
  . ; At connection, job off the new child socket to be served away.
  . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
@@ -83,7 +83,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG)):(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL)):(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
@@ -99,7 +99,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
 DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
  ; Stop using Ctrl-C (duh!)
  N $ET S $ET="BREAK"
- K ^VPRHTTP("log") ; Kill log so that we can see our errors when they happen.
+ K:'$G(NOGBL) ^VPRHTTP("log") ; Kill log so that we can see our errors when they happen.
  I %WOS="GT.M" U $I:(CENABLE:ioerror="T")
  I %WOS="CACHE" F  R *X:10 I  G CHILDDEBUG
  I %WOS="GT.M" F  W /WAIT(10) I $KEY]"" G CHILDDEBUG
@@ -133,7 +133,7 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD(TLSCONFIG) ; handle HTTP requests on this connection
+CHILD(TLSCONFIG,NOGBL) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
@@ -158,10 +158,10 @@ TLS ; Turn on TLS?
  ;
 NEXT ; begin next request
  K HTTPREQ,HTTPRSP,HTTPERR
- K ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
+ K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
 WAIT ; wait for request on this connection
- I $E($G(^VPRHTTP(0,"listener")),1,4)="stop" C %WTCP Q
+ I '$G(NOGBL)&$E($G(^VPRHTTP(0,"listener")),1,4)="stop" C %WTCP Q
  X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
  X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
@@ -180,7 +180,7 @@ WAIT ; wait for request on this connection
  F  S TCPX=$$RDCRLF() Q:'$L(TCPX)  D ADDHEAD(TCPX)
  ;
  ; -- Handle Contiuation Request - VEN/SMH
- I $G(HTTPREQ("header","expect"))="100-continue" D LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
+ I $G(HTTPREQ("header","expect"))="100-continue" D:HTTPLOG LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
  X:%WOS="CACHE" "U %WTCP:(::""S"")" ; Stream mode
@@ -208,7 +208,7 @@ WAIT ; wait for request on this connection
  ;
  ; -- exit on Connection: Close
  I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  HALT
- . K ^TMP($J),^TMP("HTTPERR",$J)
+ . K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
  . C %WTCP
  ;
  ; -- otherwise get ready for the next request
@@ -276,31 +276,34 @@ ETCODE ; error trap when calling out to routines
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
  D:HTTPLOG LOGDC
- K ^TMP($J),^TMP("HTTPERR",$J)
+ K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
  C $P  
  HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
  U %WTCP
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
- K ^TMP($J),^TMP("HTTPERR",$J)
+ K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
  C %WTCP
  HALT  ; exit because we can't recover
  ;
 INCRLOG ; get unique log id for each request
  N DT,ID
  S DT=HTTPLOG("DT")
- L +^VPRHTTP("log",DT):2 E  S HTTPLOG("ID")=99999 Q  ; get unique logging session
- S ID=$G(^VPRHTTP("log",DT),0)+1
- S ^VPRHTTP("log",DT)=ID
- L -^VPRHTTP("log",DT)
+ I '$G(NOGBL) D
+ . L +^VPRHTTP("log",DT):2 E  S HTTPLOG("ID")=99999 Q  ; get unique logging session
+ . S ID=$G(^VPRHTTP("log",DT),0)+1
+ . S ^VPRHTTP("log",DT)=ID
+ . L -^VPRHTTP("log",DT)
+ E  S ID=99999
  S HTTPLOG("ID")=ID
  Q:'HTTPLOG
- S ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
+ S:'$G(NOGBL) ^VPRHTTP("log",DT,$J,ID)=$$HTE^VPRJRUT($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
  Q
 LOGRAW(X) ; log raw lines read in
  N DT,ID,LN
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  S LN=$G(^VPRHTTP("log",DT,$J,ID,"raw"),0)+1
  S ^VPRHTTP("log",DT,$J,ID,"raw")=LN
  S ^VPRHTTP("log",DT,$J,ID,"raw",LN)=X
@@ -309,6 +312,7 @@ LOGRAW(X) ; log raw lines read in
 LOGHDR(X) ; log header lines read in
  N DT,ID,LN
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  S LN=$G(^VPRHTTP("log",DT,$J,ID,"req","header"),0)+1
  S ^VPRHTTP("log",DT,$J,ID,"req","header")=LN
  S ^VPRHTTP("log",DT,$J,ID,"req","header",LN)=X
@@ -317,23 +321,27 @@ LOGBODY ; log the request body
  Q:'$D(HTTPREQ("body"))
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  M ^VPRHTTP("log",DT,$J,ID,"req","body")=HTTPREQ("body")
  Q
 LOGRSP ; log the response before sending
  Q:'$L($G(HTTPRSP))  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
  E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
  Q
 LOGCN ; log continue
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  S ^VPRHTTP("log",DT,$J,ID,"continue")="HTTP/1.1 100 Continue"
  QUIT
 LOGDC ; log client disconnection; VEN/SMH
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
+ I $G(NOGBL) QUIT
  S ^VPRHTTP("log",DT,$J,ID,"disconnect")=$$HTE^VPRJRUT($H)
  QUIT
  ;
@@ -341,7 +349,7 @@ LOGERR ; log error information
  N %D,%I
  S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
  N ISGTM S ISGTM=$P($SYSTEM,",")=47
- S ^VPRHTTP("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
+ S:'$G(NOGBL) ^VPRHTTP("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
  N %LVL,%TOP,%N
  S %TOP=$STACK(-1),%N=0
  F %LVL=0:1:%TOP S %N=%N+1,^VPRHTTP("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
