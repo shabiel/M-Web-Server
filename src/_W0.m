@@ -306,14 +306,15 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; This isn't complete, by any means; it just grabs the most likely types to be
  ; found on an M Web Server. A few common Microsoft types are supported, but
  ; few other vendor-specific types are. Also, there are a few Mumps-centric
- ; types added below (under the x- prefix). Everything else defaults to
- ; "application/plain".
+ ; types added below (under the x- prefix). If it's an unrecognized file
+ ; extension, no MIME type is set.
  new MIMELKUP
  set MIMELKUP("aif")="audio/aiff"
  set MIMELKUP("aiff")="audio/aiff"
  set MIMELKUP("au")="audio/basic"
  set MIMELKUP("avi")="video/avi"
  set MIMELKUP("css")="text/css"
+ set MIMELKUP("csv")="text/csv"
  set MIMELKUP("doc")="application/msword"
  set MIMELKUP("gif")="image/gif"
  set MIMELKUP("htm")="text/html"
@@ -340,9 +341,8 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  set MIMELKUP("wav")="audio/wav"
  set MIMELKUP("xls")="application/vnd.ms-excel"
  set MIMELKUP("zip")="application/zip"
- new EXT set EXT=$PIECE(PATH,".",$L(PATH,"."))
+ new EXT set EXT=$PIECE(PATH,".",$LENGTH(PATH,"."))
  if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
- else  set RESULT("mime")="application/plain"
  ;
  ; Read operation
  U PATH
