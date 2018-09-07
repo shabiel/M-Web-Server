@@ -19,11 +19,12 @@ See [INSTALL.md](INSTALL.md).
 See the [doc](doc) folder.
 
 ## Packaging
-This section is to help the maintainer remember how to package this when it gets updated.
+This section is to help the maintainer remember how to package this when it gets updated. We rely on the github tag for automated installation.
 
  * After editing and committing the routines, update WWWINIT with the new version number to be.
  * Pack WWWINIT into WWWINIT.RSA with PackRO.py from the OSEHRA/VistA repo.
  * Pack MWS.RSA like this: `../VistA/Scripts/PackRO.py $(find src -name '*.m' -not -name 'WWWINIT.m') > dist/MWS.RSA`
+ * Update the Install Documentation with the new version number.
  * git tag the new version number; and git push --tags
  * Test on GT.M and Cache
 
@@ -31,5 +32,4 @@ This section is to help the maintainer remember how to package this when it gets
 * OSEHRA Homepage: http://osehra.org
 * OSEHRA Repositories: http://code.osehra.org
 * OSEHRA Github: https://github.com/OSEHRA
-* OSEHRA Gitorious: https://gitorious.org/osehra
 * VA VistA Document Library: http://www.va.gov/vdl
