@@ -1,4 +1,4 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2018-08-17  10:50 AM; 12/18/13 3:25pm
+%W0 ; VEN/SMH - Infrastructure web services hooks;2018-09-07  11:52 AM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; GET Mumps Routine
@@ -338,6 +338,7 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  set MIMELKUP("tif")="image/tiff"
  set MIMELKUP("tiff")="image/tiff"
  set MIMELKUP("txt")="text/plain"
+ set MIMELKUP("log")="text/plain"
  set MIMELKUP("wav")="audio/wav"
  set MIMELKUP("xls")="application/vnd.ms-excel"
  set MIMELKUP("zip")="application/zip"
