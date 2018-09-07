@@ -38,7 +38,7 @@ in your shell. If you see anything other than a blank, you are ready to go.
 
 On the linux terminal, Use cURL to download the bootstrap routine.
 
-    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.4/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
 
 Run GT.M using `$gtm_dist/mumps -dir`.
 
@@ -59,7 +59,7 @@ SLASH IN YOUR OUTPUT DIRECTORY:
     Formfeed delimited <No>? 
     Input device: <terminal>: /tmp/WWWINIT.RSA
     
-    Init routine for 0.1.4
+    Init routine for 0.1.5
     GT.M 01-JAN-2014 14:03:54
     
     
@@ -330,7 +330,7 @@ Then download the bootstrap file as follows:
 
 	C:\Users\VISTAEXPERTISE>cd %temp%
 
-	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://raw.github.com/shabiel/M-Web-Server/0.1.4/dist/WWWINIT.RSA
+	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA
 
 Open the Cache Terminal from the Cache Cube, or use another method to get in. Read the routine archive in. Cache will complain that it doesn't recoginze GT.M's format. Ignore this error.
 
@@ -342,7 +342,7 @@ Open the Cache Terminal from the Cache Cube, or use another method to get in. Re
 	 
 		*****  W A R N I N G   *****
 	 
-	File Header: Init routine for 0.1.4
+	File Header: Init routine for 0.1.5
 	Date Stamp: GT.M 01-JAN-2014 14:03:54
 	 
 	This file may not be a %RO output file.
@@ -364,7 +364,7 @@ Open the Cache Terminal from the Cache Cube, or use another method to get in. Re
 	Please enter a number from the above list: <0> 0
 	 
 	File written by OLD GT.M 01-JAN-2014 14:03:54 with description:
-	Init routine for 0.1.4
+	Init routine for 0.1.5
 	 
 	( All Select Enter List Quit )
 	 
@@ -419,7 +419,7 @@ Open the Linux Terminal.
 
 Use cURL to download the bootstrap routine.
 
-    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.4/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
 
 Open the Cache Terminal using `csession CACHE`, and switch to the appropriate
 namespace.
@@ -435,7 +435,7 @@ Ignore this error.
 
 		*****  W A R N I N G   *****
 
-	File Header: Init routine for 0.1.4
+	File Header: Init routine for 0.1.5
 	Date Stamp: GT.M 01-JAN-2014 14:03:54
 
 	This file may not be a %RO output file.
@@ -457,7 +457,7 @@ Ignore this error.
 	Please enter a number from the above list: <0> 0
 
 	File written by OLD GT.M 01-JAN-2014 14:03:54 with description:
-	Init routine for 0.1.4
+	Init routine for 0.1.5
 
 	( All Select Enter List Quit )
 

@@ -916,7 +916,7 @@ AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Heade
  QUIT 0
 
 %W0
-%W0 ; VEN/SMH - Infrastructure web services hooks;2018-08-17  10:50 AM; 12/18/13 3:25pm
+%W0 ; VEN/SMH - Infrastructure web services hooks;2018-09-07  11:52 AM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; GET Mumps Routine
@@ -1224,14 +1224,15 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; This isn't complete, by any means; it just grabs the most likely types to be
  ; found on an M Web Server. A few common Microsoft types are supported, but
  ; few other vendor-specific types are. Also, there are a few Mumps-centric
- ; types added below (under the x- prefix). Everything else defaults to
- ; "application/plain".
+ ; types added below (under the x- prefix). If it's an unrecognized file
+ ; extension, no MIME type is set.
  new MIMELKUP
  set MIMELKUP("aif")="audio/aiff"
  set MIMELKUP("aiff")="audio/aiff"
  set MIMELKUP("au")="audio/basic"
  set MIMELKUP("avi")="video/avi"
  set MIMELKUP("css")="text/css"
+ set MIMELKUP("csv")="text/csv"
  set MIMELKUP("doc")="application/msword"
  set MIMELKUP("gif")="image/gif"
  set MIMELKUP("htm")="text/html"
@@ -1255,12 +1256,12 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  set MIMELKUP("tif")="image/tiff"
  set MIMELKUP("tiff")="image/tiff"
  set MIMELKUP("txt")="text/plain"
+ set MIMELKUP("log")="text/plain"
  set MIMELKUP("wav")="audio/wav"
  set MIMELKUP("xls")="application/vnd.ms-excel"
  set MIMELKUP("zip")="application/zip"
- new EXT set EXT=$PIECE(PATH,".",$L(PATH,"."))
+ new EXT set EXT=$PIECE(PATH,".",$LENGTH(PATH,"."))
  if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
- else  set RESULT("mime")="application/plain"
  ;
  ; Read operation
  U PATH

@@ -19,12 +19,15 @@ See [INSTALL.md](INSTALL.md).
 See the [doc](doc) folder.
 
 ## Packaging
-This section is to help the maintainer remember how to package this when it gets updated. We rely on the github tag for automated installation.
+This section is to help the maintainer remember how to package this when it
+gets updated. We rely on the github tag for automated installation. The OSEHRA
+VistA repo contains the PackRO script which is used here.
 
  * After editing and committing the routines, update WWWINIT with the new version number to be.
- * Pack WWWINIT into WWWINIT.RSA with PackRO.py from the OSEHRA/VistA repo.
- * Pack MWS.RSA like this: `../VistA/Scripts/PackRO.py $(find src -name '*.m' -not -name 'WWWINIT.m') > dist/MWS.RSA`
+ * `../VistA/Scripts/PackRO.py src/WWWINIT.m > dist/WWWINIT.RSA`
+ * `../VistA/Scripts/PackRO.py $(find src -name '*.m' -not -name 'WWWINIT.m') > dist/MWS.RSA`
  * Update the Install Documentation with the new version number.
+ * Commit and push
  * git tag the new version number; and git push --tags
  * Test on GT.M and Cache
 

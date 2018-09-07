@@ -1,5 +1,5 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2018-08-17  10:54 AM; 12/25/13 1:03pm
- ;;0.1.4;MASH WEB SERVER/WEB SERVICES
+WWWINIT ; VEN/SMH - Initialize Web Server;2018-09-07  11:56 AM
+ ;;0.1.5;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
  DO CACHEMAP("%W")
@@ -8,7 +8,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2018-08-17  10:54 AM; 12/25/13 1:03pm
  DO CACHETLS
  ;
  ; Install the package
- D INSTALLRO("https://raw.github.com/shabiel/M-Web-Server/0.1.4/dist/MWS.RSA")
+ D INSTALLRO("https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/MWS.RSA")
  ;
  ; If fileman is installed, do an init for the %W(17.001 file
  I $D(^DD) D ^%WINIT
