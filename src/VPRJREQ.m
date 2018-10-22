@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-08-17  9:40 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-10-22  9:09 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -265,6 +265,8 @@ ETCODE ; error trap when calling out to routines
  I $TLEVEL TROLLBACK ; abandon any transactions
  L                   ; release any locks
  ; Set the error information and write it as the HTTP response.
+ I $D(%WNULL) C %WNULL
+ U %WTCP
  D LOGERR
  D SETERROR^VPRJRUT(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
  D RSPERROR^VPRJRSP  ; switch to error response

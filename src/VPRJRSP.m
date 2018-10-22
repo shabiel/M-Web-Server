@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-08-17  9:24 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-10-22  9:11 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -14,12 +14,20 @@ RESPOND ; find entry point to handle request and call it
  D QSPLIT(.HTTPARGS) I $G(HTTPERR) QUIT          ; Split the query string
  S HTTPREQ("paging")=$G(HTTPARGS("start"),0)_":"_$G(HTTPARGS("limit"),999999)
  S HTTPREQ("store")=$S($$LOW^VPRJRUT($E(HTTPREQ("path"),2,4))="vpr":"vpr",1:"data")
+ N %WNULL S %WNULL=""
+ I +$SY=47 S %WNULL="/dev/null"
+ I $L($SY,":")=2 D
+ . I $ZV(1)=2 s %WNULL="//./nul"
+ . I $ZV(1)=3 s %WNULL="/dev/null"
+ I %WNULL="" S $EC=",U-OS-NOT-SUPPORTED,"
+ O %WNULL U %WNULL
  I "PUT,POST"[HTTPREQ("method") D
  . N BODY
  . M BODY=HTTPREQ("body") K HTTPREQ("body")
  . X "S LOCATION=$$"_ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)" ; VEN/SMH - Modified -- added HTTPRSP per http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.2
  . I $L(LOCATION) S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):"https://"_HTTPREQ("header","host")_LOCATION,1:LOCATION)
  E  D @(ROUTINE_"(.HTTPRSP,.HTTPARGS)")
+ C %WNULL U %WTCP
  Q
 QSPLIT(QUERY) ; parses and decodes query fragment into array
  ; expects HTTPREQ to contain "query" node
