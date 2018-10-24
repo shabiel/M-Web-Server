@@ -33,6 +33,51 @@ find_path(YOTTADB_INCLUDE_DIR NAMES libyottadb.h
 set(YOTTADB_INCLUDE_DIRS ${YOTTADB_INCLUDE_DIR})
 
 if(MUMPS_UTF8_MODE)
+find_program(ICUCONFIG NAMES icu-config)
+  if(ICUCONFIG)
+    execute_process(
+      COMMAND ${ICUCONFIG} --version
+      OUTPUT_VARIABLE icu_version
+      RESULT_VARIABLE icu_failed
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+    if(icu_failed)
+      message(FATAL_ERROR "Command\n ${ICUCONFIG} --version\nfailed (${icu_failed}).")
+    elseif("x${icu_version}" MATCHES "^x([0-9]+\\.[0-9]+)")
+      set(ydb_icu_version "${CMAKE_MATCH_1}")
+    else()
+      message(FATAL_ERROR "Command\n ${ICUCONFIG} --version\nproduced unrecognized output:\n ${icu_version}")
+    endif()
+  else()
+    message(FATAL_ERROR "Unable to find 'icu-config'.  Set ICUCONFIG in CMake cache.")
+  endif()
+  
+  find_program(LOCALECFG NAMES locale)
+  if(LOCALECFG)
+    execute_process(
+      COMMAND ${LOCALECFG} -a
+      OUTPUT_VARIABLE locale_list
+      RESULT_VARIABLE locale_failed
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+    if(locale_failed)
+      message(FATAL_ERROR "Command\n ${LOCALECFG} -a\nfailed (${locale_failed}).")
+    endif()
+    STRING(REGEX REPLACE "\n" ";" locale_list "${locale_list}")
+    foreach(lc ${locale_list})
+      string(TOLOWER "${lc}" lc_lower)
+      if("x${lc_lower}" MATCHES "^x[a-zA-Z_]+\\.?utf-?8")
+        set(LC_ALL ${lc})
+        message("-- Setting locale to ${LC_ALL}")
+        break()
+      endif()
+    endforeach(lc)
+    if("${LC_ALL}" STREQUAL "")
+      message("Locale undefined. Expect to see NONUTF8LOCALE during MUMPS routine compilation: ${locale_list}\n")
+    endif()
+  else()
+    message(FATAL_ERROR "Unable to find 'locale'.  Set LOCALECFG in CMake cache.")
+  endif()
   set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/utf8/mumps)
 else()
   set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/mumps)
