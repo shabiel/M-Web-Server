@@ -33,7 +33,7 @@ find_path(YOTTADB_INCLUDE_DIR NAMES libyottadb.h
 set(YOTTADB_INCLUDE_DIRS ${YOTTADB_INCLUDE_DIR})
 
 if(MUMPS_UTF8_MODE)
-find_program(ICUCONFIG NAMES icu-config)
+  find_program(ICUCONFIG NAMES icu-config)
   if(ICUCONFIG)
     execute_process(
       COMMAND ${ICUCONFIG} --version
@@ -79,6 +79,7 @@ find_program(ICUCONFIG NAMES icu-config)
     message(FATAL_ERROR "Unable to find 'locale'.  Set LOCALECFG in CMake cache.")
   endif()
   set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/utf8/mumps)
+  set(ydb_chset "UTF-8")
 else()
   set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/mumps)
 endif()
