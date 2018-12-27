@@ -8,10 +8,10 @@ RESPOND ; find entry point to handle request and call it
  ;
  ; TODO: check cache of HEAD requests first and return that if there?
  K:'$G(NOGBL) ^TMP($J)
- N ROUTINE,LOCATION,HTTPARGS,HTTPBODY,TYPE,RTNARGTYPES
- S TYPE=0
+ N ROUTINE,LOCATION,HTTPARGS,HTTPBODY,PARAMS,RTNARGTYPES
+ S PARAMS=""
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D EN^%WHOME(.HTTPRSP) QUIT  ; Home page requested.
- D MATCH(.ROUTINE,.HTTPARGS,.TYPE,.RTNARGTYPES) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
+ D MATCH(.ROUTINE,.HTTPARGS,.PARAMS,.RTNARGTYPES) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
  D QSPLIT(HTTPREQ("query"),.HTTPARGS) I $G(HTTPERR) QUIT          ; Split the query string
  S HTTPREQ("paging")=$G(HTTPARGS("start"),0)_":"_$G(HTTPARGS("limit"),999999)
  S HTTPREQ("store")=$S($$LOW^VPRJRUT($E(HTTPREQ("path"),2,4))="vpr":"vpr",1:"data")
@@ -27,7 +27,7 @@ RESPOND ; find entry point to handle request and call it
  N FORMPARAMS
  N BSTR
  M BODY=HTTPREQ("body") K HTTPREQ("body")
- I TYPE=0 D
+ I PARAMS!0 D
  . I "PUT,POST"[HTTPREQ("method") D
  . . S DYN=ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)"; VEN/SMH - Modified -- added HTTPRSP per http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.2
  . E  D
@@ -66,7 +66,7 @@ RESPOND ; find entry point to handle request and call it
  K BODY
  K FORMPARAMS
  K BSTR
- I TYPE!0 D
+ I PARAMS=0 D
  . S ITR=""
  . F  S AT=$O(RTNARGTYPES(ITR)) Q:AT=""  D
  . . S ITR=AT
@@ -90,36 +90,34 @@ BODYASSTR(BODY)
  . S ITR=AT
  . S BSTR=BSTR_BODY(AT)
  Q BSTR
-MATCH(ROUTINE,ARGS,TYPE,RTNARGTYPES) ; evaluate paths in sequence until match found (else 404)
+MATCH(ROUTINE,ARGS,PARAMS,RTNARGTYPES) ; evaluate paths in sequence until match found (else 404)
  ; Also does authentication and authorization
  ; TODO: this needs some work so that it will accomodate patterns shorter than the path
  ; expects HTTPREQ to contain "path" and "method" nodes
  ; ROUTINE contains the TAG^ROUTINE to execute for this path, otherwise empty
  ; .ARGS will contain an array of resolved path arguments
- ; .TYPE will contain whether the routine should be called with the default argument structure of , it will either contain zero or the number of
- ;      arguments the routine takes
- ;              ^%W(17.6001,3,"TYPE")=0
- ;              - PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
- ;              - GET (.HTTPRSP,.HTTPARGS)
+ ; .PARAMS will contain whether the routine should be called with the default argument structure of , it will either contain zero or the number of
+ ;      default (no params specified)
+ ;      		- PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
+ ;      		- GET (.HTTPRSP,.HTTPARGS)
  ;       OR
- ;      ^%W(17.6001,3,"TYPE")=6
+ ;      		^%W(17.6001,3,"PARAMS",0)="q:p1"
+ ;      		^%W(17.6001,3,"PARAMS",1)="f:p1"
+ ;      		^%W(17.6001,3,"PARAMS",2)="h:p1"
+ ;      		^%W(17.6001,3,"PARAMS",3)="req:"
+ ;      		^%W(17.6001,3,"PARAMS",4)="res:"
+ ;      		^%W(17.6001,3,"PARAMS",5)="body:"
  ;              extracting the arguments from the available list by type and then calling the routine with actual formal parameters instead
  ;              for eg,
  ;                      R1(qp1, fp1, hp1, cHTTPREQ, cHTTPRSP, body)
- ; .RTNARGTYPES will contain the type of argument, whether it is a query param, a header param, a form param, a body param or a context param (like request/response)
- ;              ^%W(17.6001,3,"TYPE",0)="q:p1"
- ;              ^%W(17.6001,3,"TYPE",1)="f:p1"
- ;              ^%W(17.6001,3,"TYPE",2)="h:p1"
- ;              ^%W(17.6001,3,"TYPE",3)="req:"
- ;              ^%W(17.6001,3,"TYPE",4)="res:"
- ;              ^%W(17.6001,3,"TYPE",5)="body:"
+ ; .RTNARGTYPES will contain the type of argument, whether it is a query param, a header param, a form param, a body param or a context param (like request/response) 
  ;
  N AUTHNODE ; Authentication and Authorization node
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
  ; If we have the %W file for mapping...
- IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.TYPE,.RTNARGTYPES,.AUTHNODE)
+ IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.PARAMS,.RTNARGTYPES,.AUTHNODE)
  ;
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
@@ -160,7 +158,7 @@ MATCH(ROUTINE,ARGS,TYPE,RTNARGTYPES) ; evaluate paths in sequence until match fo
  QUIT
  ;
  ;
-MATCHF(ROUTINE,ARGS,TYPE,RTNARGTYPES,AUTHNODE) ; Match against a file...
+MATCHF(ROUTINE,ARGS,PARAMS,RTNARGTYPES,AUTHNODE) ; Match against a file...
  ; ^%W(17.6001,"B","GET","xml"
  N PATH S PATH=HTTPREQ("path")
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
@@ -200,9 +198,9 @@ MATCHF(ROUTINE,ARGS,TYPE,RTNARGTYPES,AUTHNODE) ; Match against a file...
  Q:PATH1'=$E(PATTERN,1,$L(PATH1))
  S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
  N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
- S TYPE=$G(^%W(17.6001,IEN,"TYPE"))
- I TYPE!0 D
- . M RTNARGTYPES=^%W(17.6001,IEN,"TYPE")
+ S PARAMS=$O(^%W(17.6001,IEN,"PARAMS",""))
+ I PARAMS=0 D
+ . M RTNARGTYPES=^%W(17.6001,IEN,"PARAMS")
  S AUTHNODE=$G(^%W(17.6001,IEN,"AUTH"))
  QUIT
  ;
