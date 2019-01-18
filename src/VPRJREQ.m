@@ -1,8 +1,7 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2018-10-22  9:09 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2019-01-18  10:58 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
- ; Mods by VEN/SMH for GT.M support.
  ;
 GO ; start up REST listener with defaults
  N PORT S PORT=$G(^VPRHTTP(0,"port"),9080)
@@ -14,7 +13,7 @@ JOB(PORT,TLSCONFIG,NOGBL) ; Convenience entry point
  E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG),$G(NOGBL)) ; Cache can't accept an empty string in the second argument
  QUIT
  ;
-START(TCPPORT,DEBUG,TLSCONFIG,NOGBL) ; set up listening for connections
+START(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
@@ -24,6 +23,8 @@ START(TCPPORT,DEBUG,TLSCONFIG,NOGBL) ; set up listening for connections
  S:'$G(NOGBL) ^VPRHTTP(0,"listener")="starting"
  ;
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ ;
+ I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace"
  ;
  ; $ZINTERRUPT for GT.M/YottaDB
  I %WOS="GT.M" D
@@ -83,7 +84,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL)):(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE)):(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
@@ -133,10 +134,13 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD(TLSCONFIG,NOGBL) ; handle HTTP requests on this connection
+CHILD(TLSCONFIG,NOGBL,TRACE) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ ;
+ I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
+ ;
  S HTTPLOG=$G(^VPRHTTP(0,"logging"),0) ; HTTPLOG remains set throughout
  S HTTPLOG("DT")=+$H
  D INCRLOG ; set unique request id for log
@@ -206,8 +210,8 @@ WAIT ; wait for request on this connection
  I HTTPLOG>2 D LOGRSP
  D SENDATA^VPRJRSP
  ;
- ; -- exit on Connection: Close
- I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close" D  HALT
+ ; -- exit on Connection: Close (or if tracing is on so that we can get our trace results)
+ I $$LOW^VPRJRUT($G(HTTPREQ("header","connection")))="close"!$G(TRACE) D  HALT
  . K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
  . C %WTCP
  ;
@@ -353,12 +357,13 @@ LOGERR ; log error information
  N ISGTM S ISGTM=$P($SYSTEM,",")=47
  S:'$G(NOGBL) ^VPRHTTP("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
  N %LVL,%TOP,%N
- S %TOP=$STACK(-1),%N=0
+ S %TOP=$STACK(-1)-1,%N=0
  F %LVL=0:1:%TOP S %N=%N+1,^VPRHTTP("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
  N %X,%Y
  S %X="^VPRHTTP(""log"",%D,$J,%I,""error"",""symbols"","
  ; Works on GT.M and Cache to capture ST.
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
+ I +$SY=47 ZSHOW "D":^VPRHTTP("log",%D,$J,%I,"error","devices")
  Q
  ;
 SIGNON ; TODO: VISTA SIGN-ON
