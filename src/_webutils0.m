@@ -1,7 +1,7 @@
-%W0 ; VEN/SMH - Infrastructure web services hooks;2018-09-07  11:52 AM
+%webutils0 ; OSE/SMH - Infrastructure web services hooks;2019-01-17  6:04 PM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
-R(RESULT,ARGS) ; GET Mumps Routine
+R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
  S RESULT=$NA(^TMP($J))
  K @RESULT
@@ -11,14 +11,14 @@ R(RESULT,ARGS) ; GET Mumps Routine
  E  K RESULT("mime") D SETERROR^VPRJRUT(404,"Routine not found")
  QUIT
  ;
-PR(ARGS,BODY,RESULT) ; PUT Mumps Routine
+PR(ARGS,BODY,RESULT) ; [Public] PUT /r/{routine} Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  N PARSED ; Parsed array which stores each line on a separate node.
  D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
  N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
- Q RESULT
+ Q "/r/"_ARGS("routine")
  ;
-SAVE(RN)        ;Save a routine
+SAVE(RN) ; [Private] Save a routine
  Q:$E(RN,1,4)'="KBAN"  ; Just for this server, don't do this.
  N %,%F,%I,%N,SP,$ETRAP
  S $ETRAP="S $ECODE="""" Q"
@@ -30,6 +30,10 @@ SAVE(RN)        ;Save a routine
  ;C %N
  U %I
  Q
+ ;
+ERR(RESULT,ARGS) ; GET /error Force M Error
+ N X S X=1/0
+ ;
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
  I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser
@@ -155,17 +159,6 @@ F(RESULT,ARGS) ; handles fileman/{file}/{iens}
  I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
  QUIT
  ;
-MOCHA(RESULTS,ARGS) ;
- K RESULTS
- S RESULTS("mime")="text/xml; charset=utf-8"
- N TYPE S TYPE=$G(ARGS("type"))
- I TYPE="" K RESULTS("mime") D SETERROR^VPRJRUT(404,"MOCHA web service not found")
- N XMLRTN D GETXML^KBAIT1(.XMLRTN,TYPE)
- I '$O(XMLRTN("")) K RESULTS("mime") D SETERROR^VPRJRUT(404,"MOCHA sub service not found")
- D ADDCRLF^VPRJRUT(.XMLRTN)
- M RESULTS=XMLRTN
- QUIT
- ;
 POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  N IEN S IEN=$O(^%W(6.6002,""),-1)+1
  N %WFDA S %WFDA(6.6002,"?+1,",.01)=IEN D UPDATE^DIE("",$NA(%WFDA))
@@ -176,31 +169,6 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  ; ZSHOW "V":^KBANPARSED
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  Q RESULT
- ;
-MOCHAP(ARGS,BODY,RESULT) ; POST XML to MOCHA; handles MOCHA/ordercheck
- ; N TYPE S TYPE=$G(ARGS("type"))
- N DIQUIET S DIQUIET=1 D DT^DICRW
- N PARSEDTEXT D PARSE10^VPRJRUT(.BODY,.PARSEDTEXT)
- ; K ^KBANPARSED M ^KBANPARSED=PARSEDTEXT
- ; D GETXRSP^KBAIT1(.RESULT,TYPE)
- ;
- ; Put the parsed XML in a global
- N R S R=$NA(^TMP($J,"MOCHA","ORDERCHECK"))
- K @R 
- M @R=PARSEDTEXT
- ;
- ; Parse it
- N DOCHANDLE S DOCHANDLE=$$EN^MXMLDOM(R,"W")
- I 'DOCHANDLE D SETERROR^VPRJRUT("500","XML not parsable") Q ""
- ;
- ; Process it
- D EN^KBANMOCHA(.RESULT,DOCHANDLE)
- ; ZSHOW "*":^KBANPARSED
- ;
- ; Clean-up
- D DELETE^MXMLDOM(DOCHANDLE)
- K @R
- Q ""
  ;
 RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
  ; Very simple... no security checking
@@ -232,13 +200,16 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ;
  S ARGLIST=$E(ARGLIST,1,$L(ARGLIST)-1) ; Remove trailing comma
  ;
- N %WCALL 
- I $L(ARGLIST) S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RESULT,"_ARGLIST_")" ; Routine call with arguments
- E  S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RESULT)" ; Routine call with no arguments
+ N %WCALL
+ N RPCRESULT
+ I $L(ARGLIST) S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RPCRESULT,"_ARGLIST_")" ; Routine call with arguments
+ E  S %WCALL="D "_XWB(2,"RTAG")_"^"_XWB(2,"RNAM")_"(.RPCRESULT)" ; Routine call with no arguments
  ;
  X %WCALL ; Action!
  ;
- D ADDCRLF^VPRJRUT(.RESULT) ; Add CRLF to each line
+ if ARGS("rpc")'["JSON" D ADDCRLF^VPRJRUT(.RPCRESULT) ; Add CRLF to each line if not JSON
+ ;
+ M RESULT=RPCRESULT
  ;
  ; debug
  ;K ^KBANRPC 
@@ -247,7 +218,7 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ; debug
  ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return
- Q "/rpc/"_RP
+ Q "/rpc/"_ARGS("rpc")
  ;
 RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ; Very simple... no security checking
