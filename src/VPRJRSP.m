@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2018-10-22  9:11 AM
+VPRJRSP ;SLC/KCM -- Handle HTTP Response;2019-01-18  3:57 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -8,49 +8,115 @@ RESPOND ; find entry point to handle request and call it
  ;
  ; TODO: check cache of HEAD requests first and return that if there?
  K:'$G(NOGBL) ^TMP($J)
- N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
+ N ROUTINE,LOCATION,HTTPARGS,HTTPBODY,PARAMS,RTNARGTYPES
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D EN^%WHOME(.HTTPRSP) QUIT  ; Home page requested.
- D MATCH(.ROUTINE,.HTTPARGS) I $G(HTTPERR) QUIT  ; Resolve the URL and authenticate if necessary
- D QSPLIT(.HTTPARGS) I $G(HTTPERR) QUIT          ; Split the query string
- S HTTPREQ("paging")=$G(HTTPARGS("start"),0)_":"_$G(HTTPARGS("limit"),999999)
- S HTTPREQ("store")=$S($$LOW^VPRJRUT($E(HTTPREQ("path"),2,4))="vpr":"vpr",1:"data")
+ ;
+ ; Resolve the URL and authenticate if necessary
+ D MATCH(.ROUTINE,.HTTPARGS,.PARAMS) I $G(HTTPERR) QUIT
+ ;
+ ; Split the query string
+ D QSPLIT(HTTPREQ("query"),.HTTPARGS) I $G(HTTPERR) QUIT
+ ;
+ ; %WNULL Support for VistA - Use this device to prevent VistA from writing to you.
  N %WNULL S %WNULL=""
  I +$SY=47 S %WNULL="/dev/null"
  I $L($SY,":")=2 D
- . I $ZV(1)=2 s %WNULL="//./nul"
- . I $ZV(1)=3 s %WNULL="/dev/null"
+ . I $ZVERSION(1)=2 s %WNULL="//./nul"
+ . I $ZVERSION(1)=3 s %WNULL="/dev/null"
  I %WNULL="" S $EC=",U-OS-NOT-SUPPORTED,"
  O %WNULL U %WNULL
- I "PUT,POST"[HTTPREQ("method") D
- . N BODY
- . M BODY=HTTPREQ("body") K HTTPREQ("body")
- . X "S LOCATION=$$"_ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)" ; VEN/SMH - Modified -- added HTTPRSP per http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.2
- . I $L(LOCATION) S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):"https://"_HTTPREQ("header","host")_LOCATION,1:LOCATION)
- E  D @(ROUTINE_"(.HTTPRSP,.HTTPARGS)")
+ ;
+ N BODY
+ N FORMPARAMS
+ M BODY=HTTPREQ("body") K HTTPREQ("body")
+ ;
+ I '$D(PARAMS) D
+ . I "PUT,POST"[HTTPREQ("method") D
+ .. X "S LOCATION=$$"_ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)"
+ .. I $L(LOCATION) S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):"https://"_HTTPREQ("header","host")_LOCATION,1:LOCATION)
+ . E  D
+ .. D @(ROUTINE_"(.HTTPRSP,.HTTPARGS)")
+ E  D
+ . N DYN
+ . S DYN=ROUTINE_"("
+ . S ITR=""
+ . F  S AT=$O(RTNARGTYPES(ITR)) Q:AT=""  D
+ . . S ITR=AT
+ . . I $F(RTNARGTYPES(AT),"q:")=3 D
+ . . . I $D(HTTPARGS($E(RTNARGTYPES(AT),3,$L(RTNARGTYPES(AT)))))=0 D  S HTTPERR=400 Q
+ . . . X "S ARG"_AT_"="""_HTTPARGS($E(RTNARGTYPES(AT),3,$L(RTNARGTYPES(AT))))_""""
+ . . . S DYN=DYN_"ARG"_AT_","
+ . . I $F(RTNARGTYPES(AT),"h:")=3 D
+ . . . I $D(HTTPREQ("header",$E(RTNARGTYPES(AT),3,$L(RTNARGTYPES(AT)))))=0 D  S HTTPERR=400 Q
+ . . . X "S ARG"_AT_"="""_HTTPREQ("header",$E(RTNARGTYPES(AT),3,$L(RTNARGTYPES(AT))))_""""
+ . . . S DYN=DYN_"ARG"_AT_","
+ . . I $F(RTNARGTYPES(AT),"f:")=3 D
+ . . . I $D(BODY)!10 D  S HTTPERR=400 Q
+ . . . I HTTPREQ("header","content-type")["application/x-www-form-urlencoded" D
+ . . . . N BSTR S BSTR=$$BODYASSTR(.BODY)
+ . . . . D QSPLIT(BSTR,FORMPARAMS)
+ . . . . S DYN=DYN_".FORMPARAMS,"
+ . . . E  S HTTPERR=400 Q
+ . . I $F(RTNARGTYPES(AT),"req:")=5 D
+ . . . S DYN=DYN_".HTTPREQ,"
+ . . I $F(RTNARGTYPES(AT),"res:")=5 D
+ . . . S DYN=DYN_".HTTPRSP,"
+ . . I $F(RTNARGTYPES(AT),"body:")=5 D
+ . . . S DYN=DYN_".BODY,"
+ . I $E(DYN,$L(DYN))="," D
+ . . S DYN=$E(DYN,1,$L(DYN)-1)
+ . S DYN=DYN_")"
+ . X "S LOCATION=$$"_DYN
+ ;
+ ; Back to our original device
  C %WNULL U %WTCP
  Q
-QSPLIT(QUERY) ; parses and decodes query fragment into array
- ; expects HTTPREQ to contain "query" node
+ ;
+QSPLIT(QPARAMS,QUERY) ; parses and decodes query fragment into array
+ ; expects QPARAMS to contain "query" node
  ; .QUERY will contain query parameters as subscripts: QUERY("name")=value
  N I,X,NAME,VALUE
- F I=1:1:$L(HTTPREQ("query"),"&") D
- . S X=$$URLDEC^VPRJRUT($P(HTTPREQ("query"),"&",I))
+ F I=1:1:$L(QPARAMS,"&") D
+ . S X=$$URLDEC^VPRJRUT($P(QPARAMS,"&",I))
  . S NAME=$P(X,"="),VALUE=$P(X,"=",2,999)
  . I $L(NAME) S QUERY($$LOW^VPRJRUT(NAME))=VALUE
  Q
-MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
+BODYASSTR(BODY)
+ S BSTR=""
+ S ITR=""
+ F  S AT=$O(BODY(ITR)) Q:AT=""  D
+ . S ITR=AT
+ . S BSTR=BSTR_BODY(AT)
+ Q BSTR
+ ;
+MATCH(ROUTINE,ARGS,PARAMS) ; evaluate paths in sequence until match found (else 404)
  ; Also does authentication and authorization
  ; TODO: this needs some work so that it will accomodate patterns shorter than the path
  ; expects HTTPREQ to contain "path" and "method" nodes
  ; ROUTINE contains the TAG^ROUTINE to execute for this path, otherwise empty
  ; .ARGS will contain an array of resolved path arguments
+ ; .PARAMS will contain whether the routine should be called with the default argument structure of , it will either contain zero or the number of
+ ;      default (no params specified)
+ ;      		- PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
+ ;      		- GET (.HTTPRSP,.HTTPARGS)
+ ;       OR
+ ;      		^%web(17.6001,3,"PARAMS",0)="q:p1"
+ ;      		^%web(17.6001,3,"PARAMS",1)="f:p1"
+ ;      		^%web(17.6001,3,"PARAMS",2)="h:p1"
+ ;      		^%web(17.6001,3,"PARAMS",3)="req:"
+ ;      		^%web(17.6001,3,"PARAMS",4)="res:"
+ ;      		^%web(17.6001,3,"PARAMS",5)="body:"
+ ;              extracting the arguments from the available list by type and then calling the routine with actual formal parameters instead
+ ;              for eg,
+ ;                      R1(qp1, fp1, hp1, cHTTPREQ, cHTTPRSP, body)
+ ; .RTNARGTYPES will contain the type of argument, whether it is a query param, a header param, a form param, a body param or a context param (like request/response) 
  ;
  N AUTHNODE ; Authentication and Authorization node
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
  ; If we have the %W file for mapping...
- IF $D(^%W(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.AUTHNODE)
+ IF $D(^%web(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.PARAMS,.AUTHNODE)
  ;
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
@@ -91,19 +157,19 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  QUIT
  ;
  ;
-MATCHF(ROUTINE,ARGS,AUTHNODE) ; Match against a file...
- ; ^%W(17.6001,"B","GET","xml"
+MATCHF(ROUTINE,ARGS,PARAMS,AUTHNODE) ; Match against a file...
+ ; ^%web(17.6001,"B","GET","xml"
  N PATH S PATH=HTTPREQ("path")
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  ;
  N DONE S DONE=0
  N PATH1 S PATH1=$$URLDEC^VPRJRUT($P(PATH,"/",1),1) ; get first / piece of path; and decode.
  N PATTERN S PATTERN=PATH1  ; looper variable; start at first piece of path.
- I $D(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
- . S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
+ I $D(^%web(17.6001,"B",HTTPREQ("method"),PATTERN)) D  ; if path isn't just a simple full path that already exists
+ . S ROUTINE=$O(^%web(17.6001,"B",HTTPREQ("method"),PATTERN,""))
  E  D
  . ; Loop through patterns. Start with first piece of path. quit if $order took us off the deep end.
- . F  S PATTERN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
+ . F  S PATTERN=$O(^%web(17.6001,"B",HTTPREQ("method"),PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
  . . ;
  . . ; TODO: only matches 1st piece then *. Second piece can be different.
  . . N I F I=2:1:$L(PATTERN,"/") D
@@ -129,9 +195,10 @@ MATCHF(ROUTINE,ARGS,AUTHNODE) ; Match against a file...
  . . ; At this point, none of the stuff failed. We can tell the initial loop that we are done.
  . . S DONE=1
  Q:PATH1'=$E(PATTERN,1,$L(PATH1))
- S ROUTINE=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,""))
- N IEN S IEN=$O(^%W(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
- S AUTHNODE=$G(^%W(17.6001,IEN,"AUTH"))
+ S ROUTINE=$O(^%web(17.6001,"B",HTTPREQ("method"),PATTERN,""))
+ N IEN S IEN=$O(^%web(17.6001,"B",HTTPREQ("method"),PATTERN,ROUTINE,""))
+ I $O(^%web(17.6001,IEN,"PARAMS",0)) M PARAMS=^%web(17.6001,IEN,"PARAMS")
+ S AUTHNODE=$G(^%web(17.6001,IEN,"AUTH"))
  QUIT
  ;
  ;
@@ -188,14 +255,14 @@ SENDATA ; write out the data as an HTTP response
  ;
  D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
  D W("Date: "_$$GMT^VPRJRUT_$C(13,10)) ; RFC 1123 date
- I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; ?? Request location; TODO: Check this. Should be Response.
+ I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("cache")) D W("Cache-Control: max-age="_HTTPRSP("cache")_$C(13,10)) K HTTPRSP("cache") ; Browser caching
  I $D(HTTPRSP("mime")) D  ; Stack $TEST for the ELSE below
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
- I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" D GZIP QUIT  ; If on GT.M, and we can zip, let's do that!
+ I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE D FLUSH Q  ; flush buffer and quit if empty
@@ -209,9 +276,6 @@ SENDATA ; write out the data as an HTTP response
  . ; I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
  . I $D(@HTTPRSP)>1 D
  . . N ORIG,OL S ORIG=HTTPRSP,OL=$QL(HTTPRSP) ; Orig, Orig Length
- . . ; ZSHOW "*":^KBANTEMP
- . . ; F  S HTTPRSP=$Q(@HTTPRSP) Q:(($G(HTTPRSP)="")!($NA(@HTTPRSP,OL)'=$NA(@ORIG,OL)))  D W(@HTTPRSP)
- . . ; Vertical rewrite & fixes for GT.M 6.3
  . . N HTTPEXIT S HTTPEXIT=0
  . . F  D  Q:HTTPEXIT
  . . . S HTTPRSP=$Q(@HTTPRSP)
@@ -220,17 +284,9 @@ SENDATA ; write out the data as an HTTP response
  . . . E  I $G(@HTTPRSP),$G(@ORIG),$NA(@HTTPRSP,OL)'=$NA(@ORIG,OL) S HTTPEXIT=1
  . . ; End ~ vertical rewrite
  . . S HTTPRSP=ORIG
- I RSPTYPE=3 D            ; write out pageable records
- . W PREAMBLE
- . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
- . . I I>START D W(",") ; separate items with a comma
- . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  D W(@HTTPRSP@($J,I,J))
- . D W("]}}")
- . K @HTTPRSP@($J)
  D FLUSH ; flush buffer
- ; W $C(13,10),!  ; flush buffer ; ****VEN/SMH NOT INCLUDED IN THE SIZE!!!
- I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
  Q
+ ;
 W(DATA) ; EP to write data
  ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
  S %WBUFF=%WBUFF_DATA
@@ -244,7 +300,6 @@ FLUSH ; EP to flush written data
  QUIT
  ;
 GZIP ; EP to write gzipped content -- unstable right now...
- ;
  ; Nothing to write?
  I 'SIZE D  QUIT  ; nothing to write!
  . W "Content-Length: 0"_$C(13,10,13,10)
@@ -266,17 +321,10 @@ GZIP ; EP to write gzipped content -- unstable right now...
  I RSPTYPE=2 D            ; write out global using indirection
  . I $D(@HTTPRSP)#2 W @HTTPRSP
  . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I)
- I RSPTYPE=3 D            ; write out pageable records
- . W PREAMBLE
- . F I=START:1:(START+LIMIT-1) Q:'$D(@HTTPRSP@($J,I))  D
- . . I I>START W "," ; separate items with a comma
- . . S J="" F  S J=$O(@HTTPRSP@($J,I,J)) Q:'J  W @HTTPRSP@($J,I,J)
- . W "]}}"
- . K @HTTPRSP@($J)
  ;
  ; Close
  c file
- ; 
+ ;
  O "D":(shell="/bin/sh":command="gzip "_file:parse):0:"pipe"
  U "D" C "D"
  ;
@@ -287,7 +335,7 @@ GZIP ; EP to write gzipped content -- unstable right now...
  U OLDIO c file_".gz":delete
  ;
  ; Calculate new size (reset SIZE first)
- S SIZE=0 
+ S SIZE=0
  N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  S SIZE=SIZE+$L(ZIPPED(I))
  ;
  ; Write out the content headings for gzipped file.
@@ -296,41 +344,8 @@ GZIP ; EP to write gzipped content -- unstable right now...
  N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  D W(ZIPPED(I))
  D FLUSH
  ;
- ; House keeping.
- I RSPTYPE=3,($E(HTTPRSP,1,4)="^TMP") D UPDCACHE
  QUIT
  ;
-UPDCACHE ; update the cache for this query
- I HTTPREQ("store")="data" G UPD4DATA
-UPD4VPR ;
- N PID,INDEX,HASH,HASHTS,MTHD
- S PID=$G(^TMP($J,"pid")),INDEX=$G(^TMP($J,"index"))
- S HASH=$G(^TMP($J,"hash")),HASHTS=$G(^TMP($J,"timestamp"))
- Q:'$L(PID)  Q:'$L(INDEX)  Q:'$L(HASH)
- ;
- S MTHD=$G(^VPRMETA("index",INDEX,"common","method"))
- L +^VPRTMP(HASH):1  E  Q
- I $G(^VPRPTI(PID,MTHD,INDEX))=HASHTS D
- . K ^VPRTMP(HASH)
- . M ^VPRTMP(HASH)=^TMP($J)
- . S ^VPRTMP(HASH,"created")=$H
- . S ^VPRTMP("PID",PID,HASH)=""
- L -^VPRTMP(HASH)
- Q
-UPD4DATA ;
- N INDEX,HASH,HASHTS,MTHD
- S INDEX=$G(^TMP($J,"index"))
- S HASH=$G(^TMP($J,"hash")),HASHTS=$G(^TMP($J,"timestamp"))
- Q:'$L(INDEX)  Q:'$L(HASH)
- ;
- S MTHD=$G(^VPRJMETA("index",INDEX,"common","method"))
- L +^VPRTMP(HASH):1  E  Q
- I $G(^VPRJDX(MTHD,INDEX))=HASHTS D
- . K ^VPRTMP(HASH)
- . M ^VPRTMP(HASH)=^TMP($J)
- . S ^VPRTMP(HASH,"created")=$H
- L -^VPRTMP(HASH)
- Q
 RSPERROR ; set response to be an error response
  D ENCODE^VPRJSON("^TMP(""HTTPERR"",$J,1)","^TMP(""HTTPERR"",$J,""JSON"")")
  S HTTPRSP="^TMP(""HTTPERR"",$J,""JSON"")"
@@ -360,53 +375,10 @@ XML(RESULT,ARGS) ; text XML
  S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
  S ^TMP($J,7)="</note>"
  QUIT
-VPRMATCH(ROUTINE,ARGS) ; specific algorithm for matching URL's
- Q
+ ;
 URLMAP ; map URLs to entry points (HTTP methods handled within entry point)
- ;;POST vpr/{pid?1.N} PUTOBJ^VPRJPR
- ;;PUT vpr/{pid?1.N} PUTOBJ^VPRJPR
- ;;GET vpr/{pid?1.N}/index/{indexName} INDEX^VPRJPR
- ;;GET vpr/{pid?1.N}/index/{indexName}/{template} INDEX^VPRJPR
- ;;GET vpr/{pid?1.N}/count/{countName} COUNT^VPRJPR
- ;;GET vpr/{pid?1.N}/last/{indexName} LAST^VPRJPR
- ;;GET vpr/{pid?1.N}/last/{indexName}/{template} LAST^VPRJPR
- ;;GET vpr/{pid?1.N}/{uid?1"urn:".E} GETOBJ^VPRJPR
- ;;GET vpr/{pid?1.N}/{uid?1"urn:".E}/{template} GETOBJ^VPRJPR
- ;;GET vpr/{pid?1.N}/find/{collection} FIND^VPRJPR
- ;;GET vpr/{pid?1.N}/find/{collection}/{template} FIND^VPRJPR
- ;;GET vpr/{pid?1.N} GETPT^VPRJPR
- ;;GET vpr/uid/{uid?1"urn:".E} GETUID^VPRJPR
- ;;GET vpr/uid/{uid?1"urn:".E}/{template} GETUID^VPRJPR
- ;;POST vpr PUTPT^VPRJPR
- ;;PUT vpr PUTPT^VPRJPR
- ;;GET vpr/all/count/{countName} ALLCOUNT^VPRJPR
- ;;GET vpr/all/index/{indexName} ALLINDEX^VPRJPR
- ;;GET vpr/all/index/{indexName}/{template} ALLINDEX^VPRJPR
- ;;GET vpr/all/find/{collection} ALLFIND^VPRJPR
- ;;GET vpr/all/find/{collection}/{template} ALLFIND^VPRJPR
- ;;GET vpr/pid/{icndfn} PID^VPRJPR
- ;;DELETE vpr/{pid?1.N}/{uid?1"urn:".E} DELUID^VPRJPR
- ;;DELETE vpr/uid/{uid?1"urn:".E} DELUID^VPRJPR
- ;;DELETE vpr/{pid?1.N} DELPT^VPRJPR
- ;;DELETE vpr DELALL^VPRJPR
- ;;DELETE vpr/{pid?1.N}/collection/{collectionName} DELCOLL^VPRJPR
- ;;DELETE vpr/all/collection/{collectionName} ALLDELC^VPRJPR
- ;;POST data PUTOBJ^VPRJDR
- ;;PUT data PUTOBJ^VPRJDR
- ;;PUT data/{collectionName} NEWOBJ^VPRJDR
- ;;POST data/{collectionName} NEWOBJ^VPRJDR
- ;;GET data/{uid?1"urn:".E} GETOBJ^VPRJDR
- ;;GET data/index/{indexName} INDEX^VPRJDR
- ;;GET data/last/{indexName} LAST^VPRJDR
- ;;GET data/count/{countName} COUNT^VPRJDR
- ;;GET data/find/{collection} FIND^VPRJDR
- ;;GET data/find/{collection}/{template} FIND^VPRJDR
- ;;DELETE data/{uid?1"urn:".E} DELUID^VPRJDR
- ;;DELETE data/collection/{collectionName} DELCTN^VPRJDR
- ;;DELETE data DELALL^VPRJDR
  ;;GET ping PING^VPRJRSP
  ;;zzzzz
- Q
  ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
  ;
