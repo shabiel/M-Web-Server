@@ -1,4 +1,4 @@
-%webutils0 ; OSE/SMH - Infrastructure web services hooks;2019-01-17  6:04 PM
+%webutils0 ; OSE/SMH - Infrastructure web services hooks;2019-01-21  3:29 PM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
@@ -32,6 +32,7 @@ SAVE(RN) ; [Private] Save a routine
  Q
  ;
 ERR(RESULT,ARGS) ; GET /error Force M Error
+ I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
  N X S X=1/0
  ;
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
@@ -184,6 +185,13 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ;
  N PARAMS,%WERR
  I $D(BODY) D DECODE^VPRJSON($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ ;
+ ; debug
+ ;K ^KBANRPC 
+ ;M ^KBANRPC=BODY,^KBANRPC=RP
+ ;ZSHOW "V":^KBANRPC
+ ; debug
+ ;
  I $D(%WERR) D SETERROR^VPRJRUT("400","Input parameters not correct")
  ;
  ; Loop through the PARAMS and construct an argument list
@@ -211,14 +219,20 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ;
  M RESULT=RPCRESULT
  ;
- ; debug
- ;K ^KBANRPC 
- ;M ^KBANRPC=BODY,^KBANRPC=RP
- ;ZSHOW "V":^KBANRPC
- ; debug
  ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return
  Q "/rpc/"_ARGS("rpc")
+ ;
+rpc2(result,rpcName,start,direction,body) ; Demo entry point using parameters
+ ; Call like this: curl http://SM1234:CATDOG.44@localhost:9080/rpc2/ORWU%20NEWPERS -d 'start=A&direction=1'
+ if rpcName'="ORWU NEWPERS" quit
+ ;
+ n rpcResult
+ d NEWPERS^ORWU(.rpcResult,start,direction)
+ D ADDCRLF^VPRJRUT(.rpcResult)
+ m result=rpcResult
+ s result("mime")="text/plain; charset=utf-8" ; Character set of the return
+ Q "/rpc2/ORWU NEWPERS"
  ;
 RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ; Very simple... no security checking
@@ -248,9 +262,9 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  N PATH
  ;
  ; Vhere is our home? If any home!
- I $D(^%WHOME)#2 D
- . I +$SY=47 S $ZD=^%WHOME ; GT.M
- . I +$SY=0 N % S %=$ZU(168,^%WHOME) ; Cache
+ I $D(^%webhome)#2 D
+ . I +$SY=47 S $ZD=^%webhome ; GT.M
+ . I +$SY=0 N % S %=$ZU(168,^%webhome) ; Cache
  ;
  ; Ok, get the actual path
  I +$SY=47 S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
@@ -258,6 +272,7 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
  ; GT.M errors out on FNF; Cache blocks. Need timeout and else.
  N $ET S $ET="G FILESYSE"
+ ;
  ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
  I +$SY=47 O PATH:(REWIND:READONLY:FIXED:CHSET="M") 
  ;

@@ -1,4 +1,4 @@
-VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2019-01-18  10:58 AM
+VPRJREQ ;SLC/KCM -- Listen for HTTP requests;2019-01-21  4:20 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -9,7 +9,7 @@ GO ; start up REST listener with defaults
  QUIT
  ;
 JOB(PORT,TLSCONFIG,NOGBL) ; Convenience entry point
- I +$SY=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG),$G(NOGBL)):(IN="/dev/null":OUT="vprjreq.mjo":ERR="vprjreq.mje"):5  ; no in and out files please.
+ I $P($SY,",")=47 J START^VPRJREQ(PORT,,$G(TLSCONFIG),$G(NOGBL)):(IN="/dev/null":OUT="vprjreq.mjo":ERR="vprjreq.mje"):5  ; no in and out files please.
  E  J START^VPRJREQ(PORT,"",$G(TLSCONFIG),$G(NOGBL)) ; Cache can't accept an empty string in the second argument
  QUIT
  ;
@@ -22,7 +22,9 @@ START(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE) ; set up listening for connections
  ;
  S:'$G(NOGBL) ^VPRHTTP(0,"listener")="starting"
  ;
- N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ I '$G(NOGBL),$D(^DD) ; This just opens the main mumps.dat file so it can appear in lsof
+ ;
+ N %WOS S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
  I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace"
  ;
@@ -107,6 +109,8 @@ DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run 
  QUIT
  ;
 JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
+ N S S S=""
+ F  S S=$O(^VPRHTTP("processlog",+$H,S)) Q:'S  K ^(S,$J)  ; **NAKED** ; delete old $ZINTs
  ZSHOW "*":^VPRHTTP("processlog",+$H,$P($H,",",2),$J)
  QUIT 1
  ;
@@ -216,6 +220,12 @@ WAIT ; wait for request on this connection
  . C %WTCP
  ;
  ; -- otherwise get ready for the next request
+ ;
+ ; Remove DUZ from ST and Logout if we logged into VistA
+ I $G(DUZ) D
+ . K DUZ
+ . D LOGOUT^XUSRB
+ ;
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^VPRJREQ ; unlink all routines; only for debug mode
  G NEXT
  ;
@@ -268,6 +278,7 @@ ETCODE ; error trap when calling out to routines
  S $ETRAP="G ETBAIL^VPRJREQ"
  I $TLEVEL TROLLBACK ; abandon any transactions
  L                   ; release any locks
+ i $d(%webcrash2) s $ec=",U-test-error-trap,"
  ; Set the error information and write it as the HTTP response.
  I $D(%WNULL) C %WNULL
  U %WTCP
@@ -331,11 +342,11 @@ LOGBODY ; log the request body
  M ^VPRHTTP("log",DT,$J,ID,"req","body")=HTTPREQ("body")
  Q
 LOGRSP ; log the response before sending
- Q:'$L($G(HTTPRSP))  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
+ I '$L($G(HTTPRSP))&'$O(HTTPRSP("")) QUIT  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
  I $G(NOGBL) QUIT
- I $E(HTTPRSP)="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
+ I $E($G(HTTPRSP))="^" M ^VPRHTTP("log",DT,$J,ID,"response")=@HTTPRSP
  E  M ^VPRHTTP("log",DT,$J,ID,"response")=HTTPRSP
  Q
 LOGCN ; log continue
@@ -363,14 +374,8 @@ LOGERR ; log error information
  S %X="^VPRHTTP(""log"",%D,$J,%I,""error"",""symbols"","
  ; Works on GT.M and Cache to capture ST.
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
- I +$SY=47 ZSHOW "D":^VPRHTTP("log",%D,$J,%I,"error","devices")
+ I ISGTM ZSHOW "D":^VPRHTTP("log",%D,$J,%I,"error","devices")
  Q
- ;
-SIGNON ; TODO: VISTA SIGN-ON
- ;
-SIGNOFF ; TODO: VISTA SIGN-OFF
- ;
- ; Deprecated -- use VPRJ
  ;
 STOP ; tell the listener to stop running
  S ^VPRHTTP(0,"listener")="stopped"

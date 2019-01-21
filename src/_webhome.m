@@ -1,12 +1,12 @@
-%WHOME ; VEN/SMH - Home page processor;2018-08-17  9:19 AM
+%webhome ; VEN/SMH - Home page processor;2019-01-21  9:44 AM
  ;;
  ;
-EN(RESULT) ; PEP
+en(RESULT) ; PEP
  S RESULT("mime")="text/html; charset=utf-8"
  N CRLF S CRLF=$C(13,10)
  N ARGS S ARGS("*")="index.html"
  ; Retrieve index.html from filesystem before returning default page
- D FILESYS^%W0(.RESULT,.ARGS)
+ D FILESYS^%webutils0(.RESULT,.ARGS)
  I $D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT

@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2018-08-17  9:18 AM
+VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2019-01-21  12:50 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -50,6 +50,7 @@ REFSIZE(ROOT) ; return the size of glvn passed in ROOT
  N SIZE,I
  S SIZE=0
  S ROOT=$NA(@ROOT)
+ I $P($SY,",")=47 G REFSIZEGTM
  I $D(@ROOT)#2 S SIZE=$L(@ROOT)
  ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
  N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
@@ -57,12 +58,26 @@ REFSIZE(ROOT) ; return the size of glvn passed in ROOT
  S ROOT=ORIG
  Q SIZE
  ;
+REFSIZEGTM ; Refsize for GT.M/UTF-8
+ I $D(@ROOT)#2 S SIZE=$ZL(@ROOT)
+ ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
+ N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
+ F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$ZL(@ROOT)
+ S ROOT=ORIG
+ Q SIZE
+ ;
 VARSIZE(V) ; return the size of a variable
  Q:'$D(V) 0
  N SIZE,I
  S SIZE=0
+ I $P($SY,",")=47 G VARSIZEGTM
  I $D(V)#2 S SIZE=$L(V)
  I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$L(V(I))
+ Q SIZE
+ ;
+VARSIZEGTM ; Varsize for GT.M/UTF-8
+ I $D(V)#2 S SIZE=$ZL(V)
+ I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$ZL(V(I))
  Q SIZE
  ;
 PAGE(ROOT,START,LIMIT,SIZE,PREAMBLE) ; create the size and preamble for a page of data
