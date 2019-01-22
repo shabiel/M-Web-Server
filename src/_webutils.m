@@ -1,4 +1,4 @@
-VPRJRUT ;SLC/KCM -- Utilities for HTTP communications ;2019-01-21  12:50 PM
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-22  11:22 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -80,54 +80,9 @@ VARSIZEGTM ; Varsize for GT.M/UTF-8
  I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$ZL(V(I))
  Q SIZE
  ;
-PAGE(ROOT,START,LIMIT,SIZE,PREAMBLE) ; create the size and preamble for a page of data
- Q:'$D(ROOT) 0 Q:'$L(ROOT) 0
- N I,J,KEY,KINST,COUNT,TEMPLATE,PID
- K @ROOT@($J)
- S SIZE=0,COUNT=0,TEMPLATE=$G(@ROOT@("template"),0),PID=$G(@ROOT@("pid"))
- F I=START:1:(START+LIMIT-1) Q:'$D(@ROOT@("data",I))  S COUNT=COUNT+1 D
- . S KEY="" F  S KEY=$O(@ROOT@("data",I,KEY)) Q:KEY=""  D
- . . S KINST="" F  S KINST=$O(@ROOT@("data",I,KEY,KINST)) Q:KINST=""  D
- . . . S PID=^(KINST)  ; null if non-pt data
- . . . D TMPLT(ROOT,TEMPLATE,I,KEY,KINST,PID)
- . . . S J="" F  S J=$O(@ROOT@($J,I,J)) Q:'J  S SIZE=SIZE+$L(@ROOT@($J,I,J))
- S PREAMBLE=$$BLDHEAD(@ROOT@("total"),COUNT,START,LIMIT)
- ; add 3 for "]}}", add COUNT-1 for commas
- S SIZE=SIZE+$L(PREAMBLE)+3+COUNT-$S('COUNT:0,1:1)
- Q
-TMPLT(ROOT,TEMPLATE,ITEM,KEY,KINST,PID) ; set template
- I HTTPREQ("store")="data" G TLT4DATA
-TLT4VPR ;
- ; called from PAGE
- I $G(TEMPLATE)="uid" S @ROOT@($J,ITEM,1)="{""uid"":"""_KEY_"""}" Q
- ; other template
- I $L(TEMPLATE),$D(^VPRPT("TEMPLATE",PID,KEY,TEMPLATE)) M @ROOT@($J,ITEM)=^(TEMPLATE) Q
- ; else full object
- M @ROOT@($J,ITEM)=^VPRPT("JSON",PID,KEY)
- Q
-TLT4DATA ;
- ; called from PAGE
- I $G(TEMPLATE)="uid" S @ROOT@($J,ITEM,1)="{""uid"":"""_KEY_"""}" Q
- ; other template
- I $L(TEMPLATE),$D(^VPRJD("TEMPLATE",KEY,TEMPLATE)) M @ROOT@($J,ITEM)=^(TEMPLATE) Q
- ; else full object
- M @ROOT@($J,ITEM)=^VPRJD("JSON",KEY)
- Q
-BLDHEAD(TOTAL,COUNT,START,LIMIT) ; Build the object header
- N X,UPDATED
- S UPDATED=$P($$FMTHL7^XLFDT($$NOW^XLFDT),"+")
- S X="{""apiVersion"":""1.0"",""data"":{""updated"":"_UPDATED_","
- S X=X_"""totalItems"":"_TOTAL_","
- S X=X_"""currentItemCount"":"_COUNT_","
- I LIMIT'=999999 D  ; only set thise if paging
- . S X=X_"""itemsPerPage"":"_LIMIT_","
- . S X=X_"""startIndex"":"_START_","
- . S X=X_"""pageIndex"":"_(START\LIMIT)_","
- . S X=X_"""totalPages"":"_(TOTAL\LIMIT+$S(TOTAL#LIMIT:1,1:0))_","
- S X=X_"""items"":["
- Q X
- ;
+setError(ERRCODE,MESSAGE,ERRARRAY) G setError1
 SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into ^TMP("HTTPERR",$J)
+setError1 ;
  ; causes HTTPERR system variable to be set
  ; ERRCODE:  query errors are 100-199, update errors are 200-299, M errors are 500
  ; MESSAGE:  additional explanatory material
@@ -240,25 +195,6 @@ HEX2DEC(HEX) ; return a hex number as decimal
  Q $$BASE(HEX,16,10)
  ;Q $ZHEX(HEX_"H")
  ;
-WR4HTTP ; open file to save HTTP response
- I $$UP($ZV)["CACHE" O "VPRJT.TXT":"WNS"
- I $$UP($ZV)["GT.M" O "VPRJT.TXT":(newversion)
- U "VPRJT.TXT"
- Q
-RD4HTTP() ; read HTTP body from file and return as value
- N X
- I $$UP($ZV)["CACHE" O "VPRJT.TXT":"RSD" ; read sequential and delete afterwards
- I $$UP($ZV)["GT.M" O "VPRJT.TXT":(readonly:rewind) ; read sequential from the top.
- U "VPRJT.TXT"
- F  R X:1 S X=$TR(X,$C(13)) Q:'$L(X)  ; read lines until there is an empty one ($TR for GT.M)
- R X:2              ; now read the JSON object
- I $$UP($ZV)["GT.M" C "VPRJT.TXT":(delete) U $P
- I $$UP($ZV)["CACHE" D C4HTTP
- Q X
- ;
-C4HTTP ; close file used for HTTP response
- C "VPRJT.TXT" U $P
- Q
 CRC32(string,seed) ;
  ; Polynomial X**32 + X**26 + X**23 + X**22 +
  ;          + X**16 + X**12 + X**11 + X**10 +
@@ -404,22 +340,6 @@ ADDCRLF(RESULT) ; Add CRLF to each line
  . N V S V=$NA(RESULT) F  S V=$Q(@V) Q:V=""  S @V=@V_$C(13,10)
  QUIT
  ;
-TESTCRLF
- S RESULT=$NA(^TMP($J))
- K @RESULT
- S ^TMP($J,1)="HELLO"
- S ^TMP($J,2)="WORLD"
- S ^TMP($J,3)=""
- D ADDCRLF(.RESULT)
- ZWRITE @RESULT@(*)
- K RESULT
- S RESULT="HELLO"
- S RESULT(1)="WORLD"
- S RESULT(2)="BYE"
- S RESULT(3)=""
- D ADDCRLF(.RESULT)
- ZWRITE RESULT
- QUIT
 UNKARGS(ARGS,LIST) ; returns true if any argument is unknown
  N X,UNKNOWN
  S UNKNOWN=0,LIST=","_LIST_","

@@ -1,8 +1,8 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2018-09-07  11:56 AM
+WWWINIT ; VEN/SMH - Initialize Web Server;2019-01-22  11:54 AM
  ;;0.1.5;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %W on Cache
- DO CACHEMAP("%W")
+ DO CACHEMAP("%web")
  ;
  ; Set-up TLS on Cache
  DO CACHETLS
@@ -25,7 +25,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2018-09-07  11:56 AM
  I PORT=0 QUIT
  ;
  ; Start Server
- D JOB^VPRJREQ(PORT)
+ D job^%webreq(PORT)
  ;
  W !!,"Mumps Web Services is now listening to port "_PORT,!
  N SERVER S SERVER="http://localhost:"_PORT_"/"

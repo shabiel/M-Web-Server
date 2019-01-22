@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-01-21  4:41 PM
+%webtest ; ose/smh - Web Services Tester;2019-01-22  11:36 AM
  ; (c) Sam Habiel 2018
  ; Licensed under Apache 2.0
  ;
@@ -13,9 +13,10 @@ test if $text(^%ut)="" quit
 STARTUP ;
  set acvc="SM1234;CATDOG.44"
  kill ^%wtrace,^%wcohort,^%wsurv
- kill ^VPRHTTP("log")
- kill ^VPRHTTP(0,"logging")
- job START^VPRJREQ(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ VIEW "TRACE":1:"^%wtrace"
+ kill ^%webhttp("log")
+ kill ^%webhttp(0,"logging")
+ job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
  quit
@@ -28,10 +29,11 @@ SHUTDOWN ;
  ;
  kill acvc,myJob
  ;
+ VIEW "TRACE":0:"^%wtrace"
  quit
  ;
 tdebug ; @TEST Debug Entry Point
- job START^VPRJREQ(55729,1,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%webreq(55729,1,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  h .1
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55729/")
@@ -49,7 +51,7 @@ thome ; @TEST Test Home Page
  ;
 tgetr ; @TEST Test Get Handler Routine
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/r/%25webutils0")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/r/%25webapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["divergence in case an index is requested")
  quit
@@ -91,7 +93,7 @@ tgzip ; @TEST Test gzip encoding
  n httpStatus,return,headers
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://[::1]:55728/r/%25webutils0",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://[::1]:55728/r/%25webapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers["Content-Encoding: gzip")
  do CHKTF^%ut(return[$C(0))
@@ -201,34 +203,34 @@ tInt ; @TEST ZInterrupt
  use "p" r x:1
  close "p"
  h .1
- d CHKTF^%ut($d(^VPRHTTP("processlog",$p($h,","))))
- k ^VPRHTTP("processlog")
+ d CHKTF^%ut($d(^%webhttp("processlog",$p($h,","))))
+ k ^%webhttp("processlog")
  QUIT
  ;
 tLog1 ; @TEST Set HTTPLOG to 1
- S ^VPRHTTP(0,"logging")=1
- K ^VPRHTTP("log",+$H)
+ S ^%webhttp(0,"logging")=1
+ K ^%webhttp("log",+$H)
  n httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/ping")
- n s s s=$o(^VPRHTTP("log",+$h,""))
- d CHKTF^%ut(^VPRHTTP("log",+$h,s,1,"raw"))
- d CHKTF^%ut(^VPRHTTP("log",+$h,s,1,"req","header"))
+ n s s s=$o(^%webhttp("log",+$h,""))
+ d CHKTF^%ut(^%webhttp("log",+$h,s,1,"raw"))
+ d CHKTF^%ut(^%webhttp("log",+$h,s,1,"req","header"))
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
- S ^VPRHTTP(0,"logging")=2
- K ^VPRHTTP("log",+$H)
+ S ^%webhttp(0,"logging")=2
+ K ^%webhttp("log",+$H)
  n httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/ping")
- n s s s=$o(^VPRHTTP("log",+$h,""))
- d CHKTF^%ut(^VPRHTTP("log",+$h,s,1,"raw"))
- d CHKTF^%ut(^VPRHTTP("log",+$h,s,1,"req","header"))
+ n s s s=$o(^%webhttp("log",+$h,""))
+ d CHKTF^%ut(^%webhttp("log",+$h,s,1,"raw"))
+ d CHKTF^%ut(^%webhttp("log",+$h,s,1,"req","header"))
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
  i $text(^XUS)="" quit  ; VistA not installed
- S ^VPRHTTP(0,"logging")=3
- K ^VPRHTTP("log",+$H)
+ S ^%webhttp(0,"logging")=3
+ K ^%webhttp("log",+$H)
  n httpStatus,return
  n payload s payload="['A','1']"
  n % s %("'")=""""
@@ -241,35 +243,43 @@ tLog3 ; @TEST Set HTTPLOG to 3
  ; output like: "63^Cprs,User"_$C(13,10)_"1^Manager,System"_$C(13,10)_"137^Pharmacist,Unknown Synthea"_$C(13,10)_".5^Postmaster"_$C(13,10)_"136^Provider,Unknown Synthea"_$C(13,10)
  d CHKTF^%ut(+return)
  d CHKTF^%ut(return[$C(13,10))
- n s s s=$o(^VPRHTTP("log",+$h,""))
- d CHKTF^%ut($d(^VPRHTTP("log",+$h,s,1,"response")))
+ n s s s=$o(^%webhttp("log",+$h,""))
+ d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"response")))
  quit
  ;
 tDCLog ; @TEST Test Disconnecting from the Server w/o talking while logging
- S ^VPRHTTP(0,"logging")=3
- K ^VPRHTTP("log",+$H)
+ S ^%webhttp(0,"logging")=3
+ K ^%webhttp("log",+$H)
  open "sock":(connect="[::1]:55728:TCP":attach="client"):1:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  h .1
- n s s s=$o(^VPRHTTP("log",+$h,""))
- d CHKTF^%ut($d(^VPRHTTP("log",+$h,s,1,"disconnect")))
+ n s s s=$o(^%webhttp("log",+$h,""))
+ d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"disconnect")))
  quit
  ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
- VIEW "TRACE":1:"^%wtrace"
- do STOP^VPRJREQ
- VIEW "TRACE":0:"^%wtrace"
+ do stop^%webreq
  quit
  ;
  ;
 cov ; [Private: Calculate Coverage]
- n rtn
- s rtn("VPRJREQ")=""
- s rtn("VPRJRSP")=""
- s rtn("%webutils0")=""
+ n rtn,t1,t2 f i=1:1 s t1=$t(covlist+i),t2=$p(t1,";;",2) quit:t2=""  s rtn(t2)=""
  d RTNANAL^%ut1(.rtn,$na(^%wcohort))
  k ^%wsurv m ^%wsurv=^%wcohort
  d COVCOV^%ut1($na(^%wsurv),$na(^%wtrace)) ; Venn diagram matching between globals
  d COVRPT^%ut1($na(^%wcohort),$na(^%wsurv),$na(^%wtrace),2)
  quit
+ ;
+XTROU ;
+ ;;%webjsonEncodeTest
+ ;;%webjsonDecodeTest
+ ;;
+covlist ; Coverage List for ACTIVE (non-test) routines
+ ;;%webreq
+ ;;%webrsp
+ ;;%webapi
+ ;;%webutils
+ ;;%webjson
+ ;;%webjsonDecode
+ ;;%webjsonEncode

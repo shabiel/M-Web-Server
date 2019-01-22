@@ -1,4 +1,4 @@
-%webutils0 ; OSE/SMH - Infrastructure web services hooks;2019-01-21  3:29 PM
+%webapi ; OSE/SMH - Infrastructure web services hooks;2019-01-22  11:13 AM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
@@ -8,13 +8,13 @@ R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  N RTN S RTN=$G(ARGS("routine"))
  N OFF,I
  I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S @RESULT@(I)=LN_$C(13,10)
- E  K RESULT("mime") D SETERROR^VPRJRUT(404,"Routine not found")
+ E  K RESULT("mime") D setError^%webutils(404,"Routine not found")
  QUIT
  ;
 PR(ARGS,BODY,RESULT) ; [Public] PUT /r/{routine} Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  N PARSED ; Parsed array which stores each line on a separate node.
- D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
+ D PARSE10^%webutils(.BODY,.PARSED) ; Parser
  N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
  Q "/r/"_ARGS("routine")
  ;
@@ -36,17 +36,17 @@ ERR(RESULT,ARGS) ; GET /error Force M Error
  N X S X=1/0
  ;
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
- I $$UNKARGS^VPRJRUT(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
+ I $$UNKARGS^%webutils(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser
  N FILE S FILE=$G(ARGS("file")) ; se
  N IENS S IENS=$G(ARGS("iens")) ; se
  N FIELD S FIELD=$G(ARGS("field")) ; se
  I IENS?1A.AN D LISTER(.RESULTS,.ARGS) QUIT
  S RESULTS=$$GET1^DIQ(FILE,IENS,FIELD,,$NA(^TMP($J))) ; double trouble.
- I $D(^TMP("DIERR",$J)) D SETERROR^VPRJRUT(404,"File or field not found") QUIT
+ I $D(^TMP("DIERR",$J)) D SETERROR^%webutils(404,"File or field not found") QUIT
  ; if results is a regular field, that's the value we will get.
  ; if results is a WP field, RESULTS becomes the global ^TMP($J).
- I $D(^TMP($J)) D ADDCRLF^VPRJRUT(.RESULTS) ; crlf the result
+ I $D(^TMP($J)) D ADDCRLF^%webutils(.RESULTS) ; crlf the result
  ;ZSHOW "D":^KBANDEV
  QUIT
  ;
@@ -107,7 +107,7 @@ LISTER(RESULTS,ARGS) ; FV divergence in case an index is requested.
  ; K ^KBANRPC ZSHOW "*":^KBANRPC
  ;
  ;
- I $D(DIERR) D SETERROR^VPRJRUT("500","Lister error") Q
+ I $D(DIERR) D SETERROR^%webutils("500","Lister error") Q
  N MAP S MAP=%WRES("DILIST",0,"MAP")
  S MAP=$$REMAP(MAP,FILE)
  N %WRES2
@@ -120,8 +120,8 @@ LISTER(RESULTS,ARGS) ; FV divergence in case an index is requested.
  . K %WRES("DILIST",I,0)
  K %WRES("DILIST",0)
  N %WJSON,%WERR
- D ENCODE^VPRJSON($NA(%WRES2),$NA(%WJSON),$NA(%WERR))
- I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
+ D encode^%webjson($NA(%WRES2),$NA(%WJSON),$NA(%WERR))
+ I $D(%WERR) D SETERROR^%webutils("500","Error in JSON conversion") Q
  M RESULTS=%WJSON
  QUIT
  ;
@@ -144,20 +144,20 @@ LISTERT
  QUIT
  ;
 F(RESULT,ARGS) ; handles fileman/{file}/{iens}
- I $$UNKARGS^VPRJRUT(.ARGS,"file,iens") Q  ; Is any of these not passed?
+ I $$UNKARGS^%webutils(.ARGS,"file,iens") Q  ; Is any of these not passed?
  N FILE S FILE=$G(ARGS("file")) ; se
  N IENS S IENS=$G(ARGS("iens")) ; se
  N %WRTN,%WERR
  N DIERR
  D GETS^DIQ(FILE,IENS,"*","RN",$NA(%WRTN),$NA(%WERR))
- I $D(DIERR) D SETERROR^VPRJRUT("500","Error in GETS^DIQ Selection") Q
+ I $D(DIERR) D SETERROR^%webutils("500","Error in GETS^DIQ Selection") Q
  N %WERR
- D ENCODE^VPRJSON($NA(%WRTN(FILE,IENS_",")),$NA(RESULT),$NA(%WERR))
+ D encode^%webjson($NA(%WRTN(FILE,IENS_",")),$NA(RESULT),$NA(%WERR))
  ; debug
  ;K ^KBANRPC 
  ;ZSHOW "V":^KBANRPC
  ; debug
- I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
+ I $D(%WERR) D SETERROR^%webutils("500","Error in JSON conversion") Q
  QUIT
  ;
 POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
@@ -165,7 +165,7 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
  N %WFDA S %WFDA(6.6002,"?+1,",.01)=IEN D UPDATE^DIE("",$NA(%WFDA))
  S RESULT="/fileman/6.6002/"_IEN_"/"_1 ; Stored URL
  N PARSED ; Parsed array which stores each line on a separate node.
- D PARSE10^VPRJRUT(.BODY,.PARSED) ; Parser
+ D PARSE10^%webutils(.BODY,.PARSED) ; Parser
  D WP^DIE(6.6002,IEN_",",1,"K",$NA(PARSED)) ; File WP field; lock record in process.
  ; ZSHOW "V":^KBANPARSED
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
@@ -174,17 +174,17 @@ POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
 RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
  ; Very simple... no security checking
  N RP S RP=$G(ARGS("rpc"))
- I '$L(RP) D SETERROR^VPRJRUT("400","Remote procedure not specified") Q ""
+ I '$L(RP) D SETERROR^%webutils("400","Remote procedure not specified") Q ""
  ;
  N DIQUIET S DIQUIET=1 D DT^DICRW ; Set up "^" as U
  ;
  N XWB
  S XWB(2,"RPC")=RP
  N % S %=$$RPC^XWBPRS()
- I % D SETERROR^VPRJRUT("404","Remote procedure not found") Q ""
+ I % D SETERROR^%webutils("404","Remote procedure not found") Q ""
  ;
  N PARAMS,%WERR
- I $D(BODY) D DECODE^VPRJSON($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ I $D(BODY) D decode^%webjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
  ;
  ; debug
  ;K ^KBANRPC 
@@ -192,7 +192,7 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ;ZSHOW "V":^KBANRPC
  ; debug
  ;
- I $D(%WERR) D SETERROR^VPRJRUT("400","Input parameters not correct")
+ I $D(%WERR) D SETERROR^%webutils("400","Input parameters not correct")
  ;
  ; Loop through the PARAMS and construct an argument list
  ; TODO: Two uncommonly used types are global and reference parameter. Need to do if we want to emulate broker completely.
@@ -215,7 +215,7 @@ RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc
  ;
  X %WCALL ; Action!
  ;
- if ARGS("rpc")'["JSON" D ADDCRLF^VPRJRUT(.RPCRESULT) ; Add CRLF to each line if not JSON
+ if ARGS("rpc")'["JSON" D ADDCRLF^%webutils(.RPCRESULT) ; Add CRLF to each line if not JSON
  ;
  M RESULT=RPCRESULT
  ;
@@ -229,7 +229,7 @@ rpc2(result,rpcName,start,direction,body) ; Demo entry point using parameters
  ;
  n rpcResult
  d NEWPERS^ORWU(.rpcResult,start,direction)
- D ADDCRLF^VPRJRUT(.rpcResult)
+ D ADDCRLF^%webutils(.rpcResult)
  m result=rpcResult
  s result("mime")="text/plain; charset=utf-8" ; Character set of the return
  Q "/rpc2/ORWU NEWPERS"
@@ -237,23 +237,23 @@ rpc2(result,rpcName,start,direction,body) ; Demo entry point using parameters
 RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ; Very simple... no security checking
  N RP S RP=$G(ARGS("rpc"))
- I '$L(RP) D SETERROR^VPRJRUT("400","Remote procedure not specified") Q
+ I '$L(RP) D SETERROR^%webutils("400","Remote procedure not specified") Q
  ;
  N RPIEN S RPIEN=$$FIND1^DIC(8994,,"QX",RP,"B") ; Find eXact, Quick (no transforms) in B index
- I 'RPIEN D SETERROR^VPRJRUT("404","Remote procedure not found") Q
+ I 'RPIEN D SETERROR^%webutils("404","Remote procedure not found") Q
  ;
  ;
  N %WRTN,%WERR
  D GETS^DIQ(8994,RPIEN,"**","RN",$NA(%WRTN)) ; Get all fields; resolve to external names and omit nulls
  N ROU,TAG S ROU=%WRTN(8994,RPIEN_",","ROUTINE"),TAG=%WRTN(8994,RPIEN_",","TAG")
  I $L($T(@(TAG_"^"_ROU))) S %WRTN(8994,RPIEN_",","FORMALLINE")=$T(@(TAG_"^"_ROU))
- D ENCODE^VPRJSON($NA(%WRTN(8994,RPIEN_",")),$NA(RESULT),$NA(%WERR))
+ D encode^%webjson($NA(%WRTN(8994,RPIEN_",")),$NA(RESULT),$NA(%WERR))
  ; debug
  ;K ^KBANRPC 
  ;S ^KBANRPC=RP
  ;ZSHOW "V":^KBANRPC
  ; debug
- I $D(%WERR) D SETERROR^VPRJRUT("500","Error in JSON conversion") Q
+ I $D(%WERR) D SETERROR^%webutils("500","Error in JSON conversion") Q
  ;
  QUIT
  ;
@@ -340,5 +340,5 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
 FILESYSE ; 500
  S $EC=""
- D SETERROR^VPRJRUT("500",$S(+$SY=47:$ZS,1:$ZE))
+ D SETERROR^%webutils("500",$S(+$SY=47:$ZS,1:$ZE))
  QUIT

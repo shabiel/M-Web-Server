@@ -1,4 +1,4 @@
-%webhome ; VEN/SMH - Home page processor;2019-01-21  9:44 AM
+%webhome ; VEN/SMH - Home page processor;2019-01-22  10:24 AM
  ;;
  ;
 en(RESULT) ; PEP
@@ -6,7 +6,7 @@ en(RESULT) ; PEP
  N CRLF S CRLF=$C(13,10)
  N ARGS S ARGS("*")="index.html"
  ; Retrieve index.html from filesystem before returning default page
- D FILESYS^%webutils0(.RESULT,.ARGS)
+ D FILESYS^%webapi(.RESULT,.ARGS)
  I $D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT
@@ -19,7 +19,7 @@ en(RESULT) ; PEP
  ... S RESULT(J)="<td>"_^%W(17.6001,IEN,0)_"</td>",J=J+.0001
  ... S RESULT(J)="<td>"_^%W(17.6001,IEN,1)_"</td>",J=J+.0001
  ... ;
- ... N EP S EP=^%W(17.6001,IEN,2) N RTN S RTN=$P(EP,"^",2),RTN=$$URLENC^VPRJRUT(RTN)
+ ... N EP S EP=^%W(17.6001,IEN,2) N RTN S RTN=$P(EP,"^",2),RTN=$$URLENC^%webutils(RTN)
  ... S RESULT(J)="<td><a href=""r/"_RTN_""">"_EP_"</td>",J=J+.0001
  ... ;
  ... N AUTH S AUTH=$P($G(^%W(17.6001,IEN,"AUTH")),"^",1),AUTH=$S(AUTH:"YES",1:"NO")

@@ -1,14 +1,10 @@
-VPRJSON ;SLC/KCM -- Decode/Encode JSON
+%webjson ;SLC/KCM -- Decode/Encode JSON;2019-01-22  11:06 AM
  ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
- ;
- ; Unit Tests
- D ^VPRJUJD
- D ^VPRJUJE
- QUIT
  ;
  ; Note:  Since the routines use closed array references, VVROOT and VVERR
  ;        are used to reduce risk of naming conflicts on the closed array.
  ;
+decode(VVJSON,VVROOT,VVERR) G DIRECT^%webjsonDecode
 DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
  ; Examples: D DECODE^VPRJSON("MYJSON","LOCALVAR","LOCALERR")
  ;           D DECODE^VPRJSON("^MYJSON(1)","^GLO(99)","^TMP($J)")
@@ -21,8 +17,9 @@ DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
  ; VVSTACK: manages stack of subscripts
  ;  VVPROP: true if next string is property name, otherwise treat as value
  ;
- G DIRECT^VPRJSOND
+ G DIRECT^%webjsonDecode
  ;
+encode(VVROOT,VVJSON,VVERR) G DIRECT^%webjsonEncode
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ; Examples:  D ENCODE^VPRJSON("^GLO(99,2)","^TMP($J)")
  ;            D ENCODE^VPRJSON("LOCALVAR","MYJSON","LOCALERR")
@@ -31,14 +28,16 @@ ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ; VVJSON: destination variable for the string array formatted as JSON
  ;  VVERR: contains error messages, defaults to ^TMP("VPRJERR",$J)
  ;
- G DIRECT^VPRJSONE
+ G DIRECT^%webjsonEncode
  ;
  ;
+esc(x) Q $$ESC^%webjsonEncode(X)
 ESC(X) ; Escape string for JSON
- Q $$ESC^VPRJSONE(X)
+ Q $$ESC^%webjsonEncode(X)
  ;
+ues(x) Q $$UES^%webjsonDecode(X)
 UES(X) ; Unescape JSON string
- Q $$UES^VPRJSOND(X)
+ Q $$UES^%webjsonDecode(X)
  ;
 ERRX(ID,VAL) ; Set the appropriate error message
  ; switch (ID) -- XERRX ends statement

@@ -1,4 +1,4 @@
-VPRJRSP ;SLC/KCM -- Handle HTTP Response;2019-01-21  4:19 PM
+%webrsp ;SLC/KCM -- Handle HTTP Response;2019-01-22  11:38 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -82,9 +82,9 @@ QSPLIT(QPARAMS,QUERY) ; parses and decodes query fragment into array
  ; .QUERY will contain query parameters as subscripts: QUERY("name")=value
  N I,X,NAME,VALUE
  F I=1:1:$L(QPARAMS,"&") D
- . S X=$$URLDEC^VPRJRUT($P(QPARAMS,"&",I))
+ . S X=$$URLDEC^%webutils($P(QPARAMS,"&",I))
  . S NAME=$P(X,"="),VALUE=$P(X,"=",2,999)
- . I $L(NAME) S QUERY($$LOW^VPRJRUT(NAME))=VALUE
+ . I $L(NAME) S QUERY($$LOW^%webutils(NAME))=VALUE
  Q
 BODYASSTR(BODY)
  N BSTR S BSTR=""
@@ -112,7 +112,7 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
  ;
  ; Okay. Do we have a routine to execute?
- I ROUTINE="" D SETERROR^VPRJRUT(404,"Not Found") QUIT
+ I ROUTINE="" D SETERROR^%webutils(404,"Not Found") QUIT
  ;
  I +$G(AUTHNODE) D  ; Web Service has authorization node
  . ;
@@ -122,7 +122,7 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  . ; First, user must authenticate
  . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
  . N AUTHEN S AUTHEN=$$AUTHEN($G(HTTPREQ("header","authorization"))) ; Try to authenticate
- . I 'AUTHEN D SETERROR^VPRJRUT(401) QUIT  ; Unauthoirzed
+ . I 'AUTHEN D SETERROR^%webutils(401) QUIT  ; Unauthoirzed
  . ;
  . ; DEBUG.ASSERT that DUZ is greater than 0
  . I $G(DUZ)'>0 S $EC=",U-NO-DUZ,"
@@ -130,19 +130,19 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  . ; Then user must have security key
  . N KEY S KEY=$P(AUTHNODE,"^",2)    ; Get Key pointer
  . I KEY S KEY=$P($G(^DIC(19.1,KEY,0)),"^") ; Get Key name from Security Key file
- . I $L(KEY),'$D(^XUSEC(KEY,DUZ)) D SETERROR^VPRJRUT(405,"Missing security key "_KEY) QUIT  ; Method not allowed
+ . I $L(KEY),'$D(^XUSEC(KEY,DUZ)) D SETERROR^%webutils(405,"Missing security key "_KEY) QUIT  ; Method not allowed
  . K KEY
  . ;
  . ; And not have reverse security key
  . N RKEY S RKEY=$P(AUTHNODE,"^",3)  ; Get Key pointer
  . I RKEY S RKEY=$P($G(^DIC(19.1,RKEY,0)),"^") ; Get Reverse Key name from Security Key file
- . I $L(RKEY),$D(^XUSEC(RKEY,DUZ)) D SETERROR^VPRJRUT(405,"Holding exclusive key "_RKEY) QUIT  ; Method not allowed
+ . I $L(RKEY),$D(^XUSEC(RKEY,DUZ)) D SETERROR^%webutils(405,"Holding exclusive key "_RKEY) QUIT  ; Method not allowed
  . K RKEY
  . ;
  . ; And have access to the menu option indicated
  . N OPTION S OPTION=$P(AUTHNODE,"^",4)  ; Get Option pointer
  . I OPTION N OPTIONNM S OPTIONNM=$P($G(^DIC(19,OPTION,0)),"^") ; Get Option name from Option file
- . I OPTION,$L($T(ACCESS^XQCHK)),'$$ACCESS^XQCHK(DUZ,OPTION) D SETERROR^VPRJRUT(405,"No access to option "_OPTIONNM)  ; Method not allowed
+ . I OPTION,$L($T(ACCESS^XQCHK)),'$$ACCESS^XQCHK(DUZ,OPTION) D SETERROR^%webutils(405,"No access to option "_OPTIONNM)  ; Method not allowed
  . K OPTION,OPTIONNM
  QUIT
  ;
@@ -156,7 +156,7 @@ MATCHF(ROUTINE,ARGS,PARAMS,AUTHNODE) ; Match against a file...
  I METHOD="HEAD" S METHOD="GET" ; just for here
  ;
  N DONE S DONE=0
- N PATH1 S PATH1=$$URLDEC^VPRJRUT($P(PATH,"/",1),1) ; get first / piece of path; and decode.
+ N PATH1 S PATH1=$$URLDEC^%webutils($P(PATH,"/",1),1) ; get first / piece of path; and decode.
  N PATTERN S PATTERN=PATH1  ; looper variable; start at first piece of path.
  I $D(^%web(17.6001,"B",METHOD,PATTERN)) D  ; if path isn't just a simple full path that already exists
  . S ROUTINE=$O(^%web(17.6001,"B",METHOD,PATTERN,""))
@@ -166,7 +166,7 @@ MATCHF(ROUTINE,ARGS,PARAMS,AUTHNODE) ; Match against a file...
  . . ;
  . . ; TODO: only matches 1st piece then *. Second piece can be different.
  . . N I F I=2:1:$L(PATTERN,"/") D
- . . . N PATTSEG S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
+ . . . N PATTSEG S PATTSEG=$$URLDEC^%webutils($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
  . . . I PATTSEG="*" S ARGS("*")=$P(PATH,"/",I,999) QUIT
  . . ;
  . . I $D(ARGS("*")) S DONE=1 QUIT  ; We are done if we found the *
@@ -175,9 +175,9 @@ MATCHF(ROUTINE,ARGS,PARAMS,AUTHNODE) ; Match against a file...
  . . K ARGS
  . . N FAIL S FAIL=0
  . . N I F I=2:1:$L(PATH,"/") D  Q:FAIL  ; we have matched the first piece; now, do every piece after that.
- . . . N PATHSEG S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)  ; Path Segment url-decoded
- . . . N PATTSEG S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
- . . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q  ; if not mumps pattern, just string equality
+ . . . N PATHSEG S PATHSEG=$$URLDEC^%webutils($P(PATH,"/",I),1)  ; Path Segment url-decoded
+ . . . N PATTSEG S PATTSEG=$$URLDEC^%webutils($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
+ . . . I $E(PATTSEG)'="{" S FAIL=($$LOW^%webutils(PATHSEG)'=$$LOW^%webutils(PATTSEG)) Q  ; if not mumps pattern, just string equality
  . . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; else, extract pattern by getting rid of curly braces
  . . . N ARGUMENT,TEXT S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2) ; get pattern match
  . . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL  ; run pattern match
@@ -208,9 +208,9 @@ MATCHR(ROUTINE,ARGS) ; Match against this routine
  . S ROUTINE=$P(PATTERN," ",3),PATMETHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
  . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
  . F I=1:1:$L(PATH,"/") D  Q:FAIL
- . . S PATHSEG=$$URLDEC^VPRJRUT($P(PATH,"/",I),1)
- . . S PATTSEG=$$URLDEC^VPRJRUT($P(PATTERN,"/",I),1)
- . . I $E(PATTSEG)'="{" S FAIL=($$LOW^VPRJRUT(PATHSEG)'=$$LOW^VPRJRUT(PATTSEG)) Q
+ . . S PATHSEG=$$URLDEC^%webutils($P(PATH,"/",I),1)
+ . . S PATTSEG=$$URLDEC^%webutils($P(PATTERN,"/",I),1)
+ . . I $E(PATTSEG)'="{" S FAIL=($$LOW^%webutils(PATHSEG)'=$$LOW^%webutils(PATTSEG)) Q
  . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; get rid of curly braces
  . . S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2)
  . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL
@@ -237,15 +237,15 @@ SENDATA ; write out the data as an HTTP response
  . K @ARY
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
- I RSPTYPE=1 S SIZE=$$VARSIZE^VPRJRUT(.HTTPRSP)
- I RSPTYPE=2 S SIZE=$$REFSIZE^VPRJRUT(.HTTPRSP)
+ I RSPTYPE=1 S SIZE=$$VARSIZE^%webutils(.HTTPRSP)
+ I RSPTYPE=2 S SIZE=$$REFSIZE^%webutils(.HTTPRSP)
  ;
  ; TODO: Handle HEAD requests differently
  ;       (put HTTPRSP in ^XTMP and return appropriate header)
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
  D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
- D W("Date: "_$$GMT^VPRJRUT_$C(13,10)) ; RFC 1123 date
+ D W("Date: "_$$GMT^%webutils_$C(13,10)) ; RFC 1123 date
  I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("cache")) D W("Cache-Control: max-age="_HTTPRSP("cache")_$C(13,10)) K HTTPRSP("cache") ; Browser caching
@@ -340,7 +340,7 @@ GZIP ; EP to write gzipped content
  QUIT
  ;
 RSPERROR ; set response to be an error response
- D ENCODE^VPRJSON("^TMP(""HTTPERR"",$J,1)","^TMP(""HTTPERR"",$J,""JSON"")")
+ D encode^%webjson("^TMP(""HTTPERR"",$J,1)","^TMP(""HTTPERR"",$J,""JSON"")")
  S HTTPRSP="^TMP(""HTTPERR"",$J,""JSON"")"
  K HTTPRSP("pageable")
  Q
@@ -370,17 +370,18 @@ XML(RESULT,ARGS) ; text XML
  QUIT
  ;
 URLMAP ; map URLs to entry points (HTTP methods handled within entry point)
- ;;GET ping PING^VPRJRSP
+ ;;GET ping PING^%webrsp
+ ;;GET xml XML^%webrsp
  ;;zzzzz
  ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
  ;
  ; We only support Basic authentication right now
  N P1,P2 S P1=$P(HTTPAUTH," "),P2=$P(HTTPAUTH," ",2)
- I $$UP^VPRJRUT(P1)'="BASIC" Q 0 ; We don't support that authentication
+ I $$UP^%webutils(P1)'="BASIC" Q 0 ; We don't support that authentication
  ;
  ; Decode Base64 encoded un:pwd
- N ACVC S ACVC=$$DECODE64^VPRJRUT(P2)
+ N ACVC S ACVC=$$DECODE64^%webutils(P2)
  S ACVC=$TR(ACVC,":",";") ; switch the : so that it's now ac;vc
  ; TODO: Check if there is more than one colon in the ACVC
  ;
