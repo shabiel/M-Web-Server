@@ -1,5 +1,5 @@
-%WINIT3 ; ; 22-NOV-2013
- ;;0.2;MASH WEB SERVER;;NOV 22, 2013
+%webINI3 ; ; 22-JAN-2019
+ ;;1.0;MUMPS WEB SERVER;;JAN 22, 2019
  ;
  ;
  K ^UTILITY("DIFROM",$J) S DIC(0)="LX",(DIC,DLAYGO)=3.6,N="BUL" D ADD:$D(^XMB(3.6,0))
@@ -7,7 +7,7 @@
  I $D(^DIC(9.4,0))#2,^(0)?1"PACK".E S N="PKG",(DIC,DLAYGO)=9.4 D ADD
  G NP:'$D(DA) S %=+$O(^DIC(9.4,DA,22,"B",DIFROM,0)) I $D(^DIC(9.4,DA,22,%,0)) S $P(^(0),U,3)=DT
  I $D(^DIC(9.4,DA,0))#2 S %=$P(^(0),U,4) I %]"" S %=$O(^DIC(9.2,"B",%,0)) S:%]"" $P(^DIC(9.4,DA,0),U,4)=%
-OR I $D(^ORD(100.99))&$O(^UTILITY(U,$J,"OR","")) D EN^%WINIT4
+OR I $D(^ORD(100.99))&$O(^UTILITY(U,$J,"OR","")) D EN^%webINI4
 NP K DIC,^UTILITY("DIFROM",$J) S DIC(0)="LX" I $D(^DIC(19,0))#2,^(0)?1"OPTION".E S (DIC,DLAYGO)=19,N="OPT" D ADD,OP
  I $D(^DIC(19.1,0))#2,($P(^(0),U)?1"SECUR".E)!($P(^(0),U)="KEY") S (DIC,DLAYGO)=19.1,N="KEY" D ADD K ^UTILITY("DIFROM",$J)
  I $D(^DIC(9.8,0))#2,^(0)?1"ROUTINE^".E S (DIC,DLAYGO)=9.8,N="RTN" D ADD
