@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-01-22  11:36 AM
+%webtest ; ose/smh - Web Services Tester;2019-01-22  3:37 PM
  ; (c) Sam Habiel 2018
  ; Licensed under Apache 2.0
  ;
@@ -16,6 +16,7 @@ STARTUP ;
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
+ do resetURLs
  job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
@@ -271,6 +272,23 @@ cov ; [Private: Calculate Coverage]
  d COVRPT^%ut1($na(^%wcohort),$na(^%wsurv),$na(^%wtrace),2)
  quit
  ;
+resetURLs ; Reset all the URLs; Called upon start-up
+ d deleteService^%webutils("GET","r/{routine?.1""%25"".32AN}")
+ d deleteService^%webutils("PUT","r/{routine?.1""%25"".32AN}")
+ d deleteService^%webutils("GET","error")
+ d deleteService^%webutils("POST","rpc/{rpc}")
+ d deleteService^%webutils("OPTIONS","rpc/{rpc}")
+ d deleteService^%webutils("POST","rpc2/{rpc}")
+ ;
+ do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
+ do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
+ do addService^%webutils("GET","error","ERR^%webapi")
+ do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
+ do addService^%webutils("OPTIONS","rpc/{rpc}","RPCO^%webapi")
+ n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
+ do addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
+ quit
+ ;
 XTROU ;
  ;;%webjsonEncodeTest
  ;;%webjsonDecodeTest
@@ -283,3 +301,4 @@ covlist ; Coverage List for ACTIVE (non-test) routines
  ;;%webjson
  ;;%webjsonDecode
  ;;%webjsonEncode
+ ;;

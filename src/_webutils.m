@@ -1,4 +1,4 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-22  11:22 AM
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-22  3:30 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -372,3 +372,83 @@ DECODE64(X) ;
  .S RGZ1=RGZ1_RGZ6
  Q $E(RGZ1,1,$L(RGZ1)-$L(X,"=")+1)
 INIT64() Q "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+ ;
+addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: Add Service Entry Point]
+ ; pass all by value except params by ref
+ ; do or $$; return if $$ is 0 for failure and ien for success
+ ; param format:
+ ; - param(1)="U^rpc" URL Component named RPC
+ ; - param(2)="F^start" Form Body variable called start
+ ; - param(3)="Q^dir" HTTP Query variable called dir
+ ; - param(4)="B"     Pass the body
+ set method=$get(method)
+ set urlPattern=$get(urlPattern)
+ set routine=$get(routine)
+ ;
+ ; validate method
+ if "^GET^POST^PUT^OPTIONS^DELETE^TRACE^"'["^"_method_"^" quit:$q 0 q
+ ;
+ ; if urlPattern or routine are empty, bad call
+ if urlPattern=""!(routine="") quit:$q 0 q
+ ;
+ ; Lock for edits
+ if $P($SY,",")=47 tstart ():serial
+ else  lock +^%webutils:1 else  quit:$q 0 q
+ ;
+ ; does it already exist; or add new entry
+ new ien
+ if $data(^%web(17.6001,"B",method,urlPattern)) do
+ . new routine set routine=$order(^%web(17.6001,"B",method,urlPattern,""))
+ . set ien=$order(^%web(17.6001,"B",method,urlPattern,routine,0))
+ . kill ^%web(17.6001,"B",method,urlPattern)
+ . set $piece(^%web(17.6001,0),"^",3)=ien
+ else  do 
+ . set ien=$o(^%web(17.6001," "),-1)+1
+ . set $piece(^%web(17.6001,0),"^",3,4)=ien_"^"_ien
+ ;
+ ; now add the entry at this ien
+ ; kill old one first
+ kill ^%web(17.6001,ien)
+ ;
+ ; Add new one
+ set ^%web(17.6001,ien,0)=method
+ set ^%web(17.6001,ien,1)=urlPattern
+ set ^%web(17.6001,ien,2)=routine
+ set ^%web(17.6001,"B",method,urlPattern,routine,ien)=""
+ ;
+ ; Add Auth nodes
+ if $g(auth)           set $piece(^%web(17.6001,ien,"AUTH"),"^",1)=1
+ if $g(authKey)'=""    set $piece(^%web(17.6001,ien,"AUTH"),"^",2)=$$FIND1^DIC(19.1,,"QX",authKey,"B")
+ if $g(authOption)'="" set $piece(^%web(17.6001,ien,"AUTH"),"^",3)=$$FIND1^DIC(19,,"QX",authOption,"B")
+ ;
+ ; Add Params
+ if $order(params("")) do
+ . new n for n=0:0 set n=$order(params(n)) quit:'n  set ^%web(17.6001,ien,"PARAMS",n,0)=params(n)
+ . new lastn s lastn=+$order(params(""),-1)
+ . set ^%web(17.6001,ien,"PARAMS",0)="^17.60012S^"_lastn_"^"_lastn
+ ;
+ ; Commit our changes and unlock
+ if $P($SY,",")=47 tcommit
+ else  lock -^%webutils
+ ;
+ ; Return IEN
+ quit:$quit ien quit
+ ;
+deleteService(method,urlPattern) ; [Public: Delete Service]
+ set method=$get(method)
+ set urlPattern=$get(urlPattern)
+ if method="" quit
+ if urlPattern="" quit
+ ;
+ new ien
+ if $P($SY,",")=47 tstart ():serial
+ if $data(^%web(17.6001,"B",method,urlPattern)) do
+ . new routine set routine=$order(^%web(17.6001,"B",method,urlPattern,""))
+ . set ien=$order(^%web(17.6001,"B",method,urlPattern,routine,0))
+ . kill ^%web(17.6001,"B",method,urlPattern)
+ . kill ^%web(17.6001,ien)
+ . set $piece(^%web(17.6001,0),"^",3)=ien
+ . set $piece(^%web(17.6001,0),"^",4)=$piece(^%web(17.6001,0),"^",4)-1
+ if $P($SY,",")=47 tcommit
+ ;
+ quit
