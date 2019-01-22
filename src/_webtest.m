@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-01-22  3:37 PM
+%webtest ; ose/smh - Web Services Tester;2019-01-22  5:12 PM
  ; (c) Sam Habiel 2018
  ; Licensed under Apache 2.0
  ;
@@ -6,6 +6,7 @@
  ; Requires M-Unit
  ;
 test if $text(^%ut)="" quit
+ if $p($sy,",")'=47 quit
  do EN^%ut($t(+0),3)
  do cov
  quit
@@ -257,6 +258,32 @@ tDCLog ; @TEST Test Disconnecting from the Server w/o talking while logging
  h .1
  n s s s=$o(^%webhttp("log",+$h,""))
  d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"disconnect")))
+ quit
+ ;
+tWebPage ; @TEST Test Getting a web page
+ new oldDir set oldDir=$g(^%webhome)
+ set ^%webhome="/tmp/"
+ zsy "mkdir -p /tmp/foo"
+ new random s random=$R(9817234)
+ open "/tmp/foo/boo.html":(newversion)
+ use "/tmp/foo/boo.html"
+ write "<!DOCTYPE html>",!
+ write "<html>",!
+ write "<body>",!
+ write "<h1>My First Heading</h1>",!
+ write "<p>My first paragraph."_random_"</p>",!
+ write "</body>",!
+ write "</html>",!
+ close "/tmp/foo/boo.html"
+ n httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/foo/boo.html")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ set ^%webhome="/tmp"
+ d &libcurl.curl(.httpStatus,.return,"GET","http://[::1]:55728/foo/boo.html")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ set ^%webhome=oldDir
  quit
  ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.

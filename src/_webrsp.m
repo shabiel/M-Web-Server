@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;2019-01-22  11:38 AM
+%webrsp ;SLC/KCM -- Handle HTTP Response;2019-01-22  5:34 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -11,7 +11,10 @@ RESPOND ; find entry point to handle request and call it
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%webhome(.HTTPRSP) QUIT  ; Home page requested.
  ;
  ; Resolve the URL and authenticate if necessary
- D MATCH(.ROUTINE,.HTTPARGS,.PARAMS,.AUTHNODE) I $G(HTTPERR) QUIT
+ D MATCH(.ROUTINE,.HTTPARGS,.PARAMS,.AUTHNODE)
+ ;
+ I $G(HTTPERR)    QUIT  ; Error in matching
+ I $O(HTTPRSP(0)) QUIT  ; File on file system found matching path
  ;
  ; Split the query string
  D QSPLIT(HTTPREQ("query"),.HTTPARGS) I $G(HTTPERR) QUIT
@@ -110,6 +113,9 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  ;
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
+ ;
+ ; If both of these fail, try matching against a file on the file system
+ I ROUTINE="" DO MATCHFS(.ROUTINE)
  ;
  ; Okay. Do we have a routine to execute?
  I ROUTINE="" D SETERROR^%webutils(404,"Not Found") QUIT
@@ -219,7 +225,11 @@ MATCHR(ROUTINE,ARGS) ; Match against this routine
  . S:FAIL ROUTINE="" S:'FAIL DONE=1
  QUIT
  ;
- ;
+MATCHFS(ROUTINE) ; Match against the file system
+ N ARGS S ARGS("*")=$E(HTTPREQ("path"),2,9999)
+ D FILESYS^%webapi(.HTTPRSP,.ARGS)
+ I $O(HTTPRSP(0)) S ROUTINE="FILESYS^%webapi"
+ quit
  ;
 SENDATA ; write out the data as an HTTP response
  ; expects HTTPERR to contain the HTTP error code, if any
