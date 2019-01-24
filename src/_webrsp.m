@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;2019-01-22  5:34 PM
+%webrsp ;SLC/KCM -- Handle HTTP Response;2019-01-23  5:12 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -21,7 +21,7 @@ RESPOND ; find entry point to handle request and call it
  ;
  ; %WNULL Support for VistA - Use this device to prevent VistA from writing to you.
  N %WNULL S %WNULL=""
- I +$SY=47 S %WNULL="/dev/null"
+ I $P($SY,",")=47 S %WNULL="/dev/null"
  I $L($SY,":")=2 D
  . I $ZVERSION(1)=2 s %WNULL="//./nul"
  . I $ZVERSION(1)=3 s %WNULL="/dev/null"
@@ -103,8 +103,8 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  ; .PARAMS will contain whether the routine should be called with the default
  ;  argument structure of , it will either contain zero or the number of
  ;      default (no params specified)
- ;      		- PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
- ;      		- GET (.HTTPRSP,.HTTPARGS)
+ ;                      - PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
+ ;                      - GET (.HTTPRSP,.HTTPARGS)
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
@@ -250,8 +250,6 @@ SENDATA ; write out the data as an HTTP response
  I RSPTYPE=1 S SIZE=$$VARSIZE^%webutils(.HTTPRSP)
  I RSPTYPE=2 S SIZE=$$REFSIZE^%webutils(.HTTPRSP)
  ;
- ; TODO: Handle HEAD requests differently
- ;       (put HTTPRSP in ^XTMP and return appropriate header)
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
  D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
@@ -263,7 +261,7 @@ SENDATA ; write out the data as an HTTP response
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
- I +$SY=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
+ I $P($SY,",")=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty
@@ -291,7 +289,8 @@ SENDATA ; write out the data as an HTTP response
 W(DATA) ; EP to write data
  ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
  S %WBUFF=%WBUFF_DATA
- I $L(%WBUFF)>32000 D FLUSH
+ I $P($SY,",")=47,$ZL(%WBUFF)>32000 D FLUSH
+ I '$P($SY,",")=47,$L(%WBUFF)>32000 D FLUSH
  QUIT
  ;
 FLUSH ; EP to flush written data
@@ -337,7 +336,7 @@ GZIP ; EP to write gzipped content
  ;
  ; Calculate new size (reset SIZE first)
  S SIZE=0
- N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  S SIZE=SIZE+$L(ZIPPED(I))
+ N I F I=0:0 S I=$O(ZIPPED(I)) Q:'I  S SIZE=SIZE+$ZL(ZIPPED(I))
  ;
  ; Write out the content headings for gzipped file.
  D W("Content-Encoding: gzip"_$C(13,10))

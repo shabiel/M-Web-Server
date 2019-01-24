@@ -1,4 +1,4 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-22  3:30 PM
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-23  5:04 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; Various mods to support GT.M. See diff with original for full listing.
@@ -144,20 +144,6 @@ setError1 ;
  ;
  ; Cache specific functions (selected one support GT.M too!)
  ;
-LCLHOST() ; return TRUE if the peer connection is localhost
- I $E($I,1,5)'="|TCP|" Q 0
- N VER,ADDR
- S VER=$P($P($ZV,") ",2),"(")
- I VER<2011 S ADDR=$ZU(111,0),ADDR=$A(ADDR,1)_"."_$A(ADDR,2)_"."_$A(ADDR,3)_"."_$A(ADDR,4) I 1
- E  S ADDR=$SYSTEM.TCPDevice.PeerAddr(0)
- I ADDR="127.0.0.1" Q 1
- I ADDR="0:0:0:0:0:0:0:1" Q 1
- I ADDR="::1" Q 1
- Q 0
- ;
-HASH(X) ; return CRC-32 of string contained in X
- Q $$CRC32(X) ; return the CRC-32 value; works on both Cache 
- ;
 GMT() ; return HTTP date string (this is really using UTC instead of GMT)
  N TM,DAY
  I $$UP($ZV)["CACHE" D  Q $P(DAY," ")_", "_$ZDATETIME(TM,2)_" GMT"
@@ -173,19 +159,6 @@ GMT() ; return HTTP date string (this is really using UTC instead of GMT)
  ;
  QUIT "UNIMPLEMENTED"
  ;
-SYSID() ; return a likely unique system ID
- S X=$SYSTEM_":"_$G(^VPRHTTP("port"),9080) ; VPR web server port number
- QUIT $$CRC16HEX(X) ; return CRC-16 in hex
- ;
- ;
-CRC16HEX(X) ; return CRC-16 in hexadecimal
- QUIT $$BASE($$CRC16(X),10,16) ; return CRC-16 in hex
- ;
- ;
-CRC32HEX(X) ; return CRC-32 in hexadecimal
- QUIT $$BASE($$CRC32(X),10,16) ; return CRC-32 in hex
- ;
- ;
  ;
 DEC2HEX(NUM) ; return a decimal number as hex
  Q $$BASE(NUM,10,16)
@@ -195,30 +168,6 @@ HEX2DEC(HEX) ; return a hex number as decimal
  Q $$BASE(HEX,16,10)
  ;Q $ZHEX(HEX_"H")
  ;
-CRC32(string,seed) ;
- ; Polynomial X**32 + X**26 + X**23 + X**22 +
- ;          + X**16 + X**12 + X**11 + X**10 +
- ;          + X**8  + X**7  + X**5  + X**4 +
- ;          + X**2  + X     + 1
- N I,J,R
- I '$D(seed) S R=4294967295
- E  I seed'<0,seed'>4294967295 S R=4294967295-seed
- E  S $ECODE=",M28,"
- F I=1:1:$L(string) D
- . S R=$$XOR($A(string,I),R,8)
- . F J=0:1:7 D
- . . I R#2 S R=$$XOR(R\2,3988292384,32)
- . . E  S R=R\2
- . . Q
- . Q
- Q 4294967295-R
-XOR(a,b,w) N I,M,R
- S R=b,M=1
- F I=1:1:w D
- . S:a\M#2 R=R+$S(R\M#2:-M,1:M)
- . S M=M+M
- . Q
- Q R
 BASE(%X1,%X2,%X3) ;Convert %X1 from %X2 base to %X3 base
  I (%X2<2)!(%X2>16)!(%X3<2)!(%X3>16) Q -1
  Q $$CNV($$DEC(%X1,%X2),%X3)
@@ -230,20 +179,6 @@ CNV(N,B) ;Cnv N from 10 to B
  Q:B=10 N N I,Y S Y=""
  F I=1:1 S Y=$E("0123456789ABCDEF",N#B+1)_Y,N=N\B Q:N<1
  Q Y
-CRC16(string,seed) ;
- ; Polynomial x**16 + x**15 + x**2 + x**0
- N I,J,R
- I '$D(seed) S R=0
- E  I seed'<0,seed'>65535 S R=seed\1
- E  S $ECODE=",M28,"
- F I=1:1:$L(string) D
- . S R=$$XOR($A(string,I),R,8)
- . F J=0:1:7 D
- . . I R#2 S R=$$XOR(R\2,40961,16)
- . . E  S R=R\2
- . . Q
- . Q
- Q R
  ;
 HTFM(%H,%F) ;$H to FM, %F=1 for date only
  N X,%,%T,%Y,%M,%D S:'$D(%F) %F=0
@@ -386,7 +321,7 @@ addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: 
  set routine=$get(routine)
  ;
  ; validate method
- if "^GET^POST^PUT^OPTIONS^DELETE^TRACE^"'["^"_method_"^" quit:$q 0 q
+ if "^GET^POST^PUT^OPTIONS^DELETE^TRACE^HEAD^CONNECT^"'["^"_method_"^" quit:$q 0 q
  ;
  ; if urlPattern or routine are empty, bad call
  if urlPattern=""!(routine="") quit:$q 0 q
@@ -417,9 +352,10 @@ addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: 
  set ^%web(17.6001,"B",method,urlPattern,routine,ien)=""
  ;
  ; Add Auth nodes
- if $g(auth)           set $piece(^%web(17.6001,ien,"AUTH"),"^",1)=1
- if $g(authKey)'=""    set $piece(^%web(17.6001,ien,"AUTH"),"^",2)=$$FIND1^DIC(19.1,,"QX",authKey,"B")
- if $g(authOption)'="" set $piece(^%web(17.6001,ien,"AUTH"),"^",3)=$$FIND1^DIC(19,,"QX",authOption,"B")
+ if $text(^XUS)'="" do
+ . if $g(auth)           set $piece(^%web(17.6001,ien,"AUTH"),"^",1)=1
+ . if $g(authKey)'=""    set $piece(^%web(17.6001,ien,"AUTH"),"^",2)=$$FIND1^DIC(19.1,,"QX",authKey,"B")
+ . if $g(authOption)'="" set $piece(^%web(17.6001,ien,"AUTH"),"^",3)=$$FIND1^DIC(19,,"QX",authOption,"B")
  ;
  ; Add Params
  if $order(params("")) do

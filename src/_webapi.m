@@ -1,4 +1,4 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;2019-01-22  11:13 AM
+%webapi ; OSE/SMH - Infrastructure web services hooks;2019-01-24  9:57 AM
  ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
@@ -259,30 +259,32 @@ RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
  ;
 FILESYS(RESULT,ARGS) ; Handle filesystem/*
  I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
+ N ISGTM S ISGTM=$P($SY,",")=47
+ N ISCACHE S ISCACHE=$L($SY,":")=2
  N PATH
  ;
  ; Vhere is our home? If any home!
- I $D(^%webhome)#2 D
- . I +$SY=47 S $ZD=^%webhome ; GT.M
- . I +$SY=0 N % S %=$ZU(168,^%webhome) ; Cache
+ if $get(^%webhome)'="" D
+ . I ISGTM S $ZD=^%webhome ; GT.M
+ . I ISCACHE N % S %=$ZU(168,^%webhome) ; Cache
  ;
  ; Ok, get the actual path
- I +$SY=47 S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
- I +$SY=0 S PATH=$ZU(168)_ARGS("*") ; Cache Only!
+ I ISGTM S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
+ I ISCACHE S PATH=$ZU(168)_ARGS("*") ; Cache Only!
  ;
  ; GT.M errors out on FNF; Cache blocks. Need timeout and else.
  N $ET S $ET="G FILESYSE"
  ;
  ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
- I +$SY=47 O PATH:(REWIND:READONLY:FIXED:CHSET="M") 
+ I ISGTM O PATH:(REWIND:READONLY:FIXED:CHSET="M")
  ;
  ; This mess for Cache!
  N POP S POP=0
- I +$SY=0 O PATH:("RU"):0  E  S POP=1  ; Cache must have a timeout; U = undefined.
+ I ISCACHE O PATH:("RU"):0  E  S POP=1  ; Cache must have a timeout; U = undefined.
  I POP G FILESYSE
  ;
  ; Prevent End of file Errors for Cache. Set DSM mode for that.
- I +$SY=0 D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
+ I ISCACHE D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
  ;
  ; Set content-cache value; defaults to one week.
  set RESULT("cache")=604800
@@ -293,7 +295,7 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; found on an M Web Server. A few common Microsoft types are supported, but
  ; few other vendor-specific types are. Also, there are a few Mumps-centric
  ; types added below (under the x- prefix). If it's an unrecognized file
- ; extension, no MIME type is set.
+ ; extension, it's set to text.
  new MIMELKUP
  set MIMELKUP("aif")="audio/aiff"
  set MIMELKUP("aiff")="audio/aiff"
@@ -330,6 +332,7 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  set MIMELKUP("zip")="application/zip"
  new EXT set EXT=$PIECE(PATH,".",$LENGTH(PATH,"."))
  if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
+ else  set RESULT("mime")=MIMELKUP("txt")
  ;
  ; Read operation
  U PATH
@@ -340,5 +343,5 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
 FILESYSE ; 500
  S $EC=""
- D SETERROR^%webutils("500",$S(+$SY=47:$ZS,1:$ZE))
+ D setError^%webutils("500",$S($P($SY,",")=47:$ZS,1:$ZE))
  QUIT

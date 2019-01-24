@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;2019-01-22  11:35 AM
+%webreq ;SLC/KCM -- Listen for HTTP requests;2019-01-23  3:49 PM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
@@ -46,8 +46,8 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE) ; set up listening for connections
  ; K. Now we are really really listening.
  S:'$G(NOGBL) ^%webhttp(0,"listener")="running"
  ;
- ; This is the same for GT.M and Cache
- U TCPIO
+ I %WOS="GT.M" U TCPIO:(CHSET="M")
+ E  U TCPIO
  ;
  I %WOS="GT.M" W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
@@ -141,7 +141,7 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
 CHILD(TLSCONFIG,NOGBL,TRACE) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
- N %WOS S %WOS=$S(+$SY=47:"GT.M",+$SY=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ N %WOS S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
  I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
  ;
@@ -171,7 +171,7 @@ NEXT ; begin next request
 WAIT ; wait for request on this connection
  I '$G(NOGBL)&$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
  X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
- X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10))" ; VEN/SMH - GT.M Delimiters
+ X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10):chset=""M"")" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;

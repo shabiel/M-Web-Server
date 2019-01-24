@@ -1,14 +1,14 @@
-%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;2019-01-22  11:03 AM
+%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;2019-01-23  11:01 AM
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  d EN^%ut($t(+0),3)
  quit
  ;
 STARTUP  ; Run once before all tests
- VIEW "TRACE":1:"^%wtrace"
+ if $p($sy,",")=47 VIEW "TRACE":1:"^%wtrace"
  Q
 SHUTDOWN ; Run once after all tests
- VIEW "TRACE":0:"^%wtrace"
+ if $p($sy,",")=47 VIEW "TRACE":0:"^%wtrace"
  Q
 SETUP    ; Run before each test
  Q
