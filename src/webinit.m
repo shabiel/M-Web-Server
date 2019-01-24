@@ -1,17 +1,17 @@
-WWWINIT ; VEN/SMH - Initialize Web Server;2019-01-22  11:54 AM
- ;;0.1.5;MASH WEB SERVER/WEB SERVICES
+webinit ; OSE/SMH - Initialize Web Server;2019-01-24  11:54 AM
+ ;;1.0.0;MASH WEB SERVER/WEB SERVICES
  ;
- ; Map %W on Cache
+ ; Map %web on Cache
  DO CACHEMAP("%web")
  ;
  ; Set-up TLS on Cache
  DO CACHETLS
  ;
  ; Install the package
- D INSTALLRO("https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/MWS.RSA")
+ D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.0.0/mws.rsa")
  ;
- ; If fileman is installed, do an init for the %W(17.001 file
- I $D(^DD) D ^%WINIT
+ ; If fileman is installed, do an init for the %web(17.001 file
+ I $D(^DD) D ^%webINIT
  ;
  ; Load the URLs
  D LOADHAND
@@ -37,7 +37,7 @@ WWWINIT ; VEN/SMH - Initialize Web Server;2019-01-22  11:54 AM
  QUIT
  ;
 CACHE() Q $L($SY,",")'=2
-GTM()   Q +$SY=47
+GTM()   Q $P($SY,",")=47
  ;
 INSTALLRO(URL) ; [Private] Download and Install RO files
  ; Get current directory (GT.M may need it to write routines later)
@@ -105,13 +105,11 @@ CACHEMAP(G) ; Map Globals and Routines away from %SYS in Cache
  ; the following is needed for the call to MapGlobals.Create below, is not set in above call
  S PROP("Database")=NMSP
  ;
- ; Map %ut globals away from %SYS
  N %
  S %=##class(Config.Configuration).GetGlobalMapping(NMSP,G,"",DBG,DBG)
  I '% S %=##class(Config.Configuration).AddGlobalMapping(NMSP,G,"",DBG,DBG)
  I '% W !,"Error="_$SYSTEM.Status.GetErrorText(%) S $EC=",U-CONFIG-FAIL," QUIT
  ;
- ; Map %ut routines away from %SYS
  N PROPRTN S PROPRTN("Database")=DBR
  N % S %=##Class(Config.MapRoutines).Get(NMSP,G,.PROPRTN)
  S PROPRTN("Database")=DBR  ; Cache seems to like deleting this
@@ -318,39 +316,18 @@ TESTDET ; Open File Error handler
  S $EC="" 
  QUIT 0
  ;
- ; Load URL handler
-LOADHAND N I F I=1:1 N LN S LN=$P($T(LH+I),";;",2,99) Q:LN=""  D  ; Read inline
- . N NREF S NREF=$P(LN,"=") ; variable name reference
- . I $E(NREF)="^" S NREF=$NA(@NREF) ; convert IEN to actual value
- . N TESTNODE S TESTNODE="" ; for $DATA testing
- . I $QS(NREF,2)="B" S TESTNODE=$NA(@NREF,5) ; Get all subs b4 IEN
- . I $L(TESTNODE),$D(@TESTNODE) DO  QUIT  ; If node exists in B index
- . . ; WRITE TESTNODE_" ALREADY INSTALLED",!  ; say so
- . . KILL ^%W(17.6001,IEN) ; and delete the stuff we entered
- . S @LN  ; okay to set.
- QUIT
-LH ;; START
- ;;^%W(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S"
- ;;IEN=$O(^%W(17.6001," "),-1)+1
- ;;^%W(17.6001,IEN,0)="GET"
- ;;^%W(17.6001,IEN,1)="xml"
- ;;^%W(17.6001,IEN,2)="XML^VPRJRSP"
- ;;^%W(17.6001,"B","GET","xml","XML^VPRJRSP",IEN)=""
- ;;IEN=IEN+1
- ;;^%W(17.6001,IEN,0)="GET"
- ;;^%W(17.6001,IEN,1)="r/{routine?.1""%25"".32AN}"
- ;;^%W(17.6001,IEN,2)="R^%W0"
- ;;^%W(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%W0",IEN)=""
- ;;IEN=IEN+1
- ;;^%W(17.6001,IEN,0)="GET"
- ;;^%W(17.6001,IEN,1)="filesystem/*"
- ;;^%W(17.6001,IEN,2)="FILESYS^%W0"
- ;;^%W(17.6001,IEN,"AUTH")="1"
- ;;^%W(17.6001,"B","GET","filesystem/*","FILESYS^%W0",IEN)=""
- ;;
-ENDLOAD
+ ; Load URL handlers
+LOADHAND ;
+ do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
+ do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
+ do addService^%webutils("GET","error","ERR^%webapi")
+ do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
+ do addService^%webutils("OPTIONS","rpc/{rpc}","RPCO^%webapi")
+ n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
+ do addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
+ quit
  ;
-HOMEDIR() ; Set ^%WHOME (0 = failure; 1 = success)
+HOMEDIR() ; Set ^%webhome (0 = failure; 1 = success)
  W !!!
  W "Enter the home directory where you will store the html, js, and css files"
  W !!
@@ -370,12 +347,12 @@ AGAIN ; Try again
  I DIR["^" QUIT:$Q 0 QUIT
  I $L(DIR),DIR["/",$E(DIR,$L(DIR))'="/" S $E(DIR,$L(DIR)+1)="/"
  I $L(DIR),DIR["\",$E(DIR,$L(DIR))'="\" S $E(DIR,$L(DIR)+1)="\"
- S ^%WHOME=$S($L(DIR):DIR,1:$$PWD())
- I '$$TESTD(^%WHOME) WRITE "Sorry, I can't write to this directory" G AGAIN
+ S ^%webhome=$S($L(DIR):DIR,1:$$PWD())
+ I '$$TESTD(^%webhome) WRITE "Sorry, I can't write to this directory" G AGAIN
  ;
  ; Create www directory; D = delimiter
- N D S D=$S(^%WHOME["/":"/",1:"\")
- I $P(^%WHOME,D,$L(^%WHOME,D)-1)'="www" D MKDIR(^%WHOME_"www") S ^%WHOME=^%WHOME_"www"_D
+ N D S D=$S(^%webhome["/":"/",1:"\")
+ I $P(^%webhome,D,$L(^%webhome,D)-1)'="www" D MKDIR(^%webhome_"www") S ^%webhome=^%webhome_"www"_D
  QUIT:$QUIT 1 QUIT
  ;
 MKDIR(DIR) ; Proc; Make directory; does not create parents
@@ -422,6 +399,19 @@ PORTOKER ; Error handler for open port
  I $ES QUIT
  S $EC=""
  QUIT 0
+ ;
+uninstallMWS ; Remove MWS completely
+ if $data(^DD) do
+ . do DT^DICRW
+ . set DIU="^%web(17.6001,",DIU(0)="SD" do EN^DIU2
+ do delRou("%web*")
+ kill ^%web,^%webhttp
+ quit
+ ;
+delRou(nmsp) ;
+ if $$GTM do DELRGTM(nmsp)
+ if $$CACHE do DELRCACH(nmsp)
+ quit
  ;
 TEST D EN^%ut($T(+0),3) QUIT
 GTMRITST ; @TEST - Test GT.M Routine Input
@@ -486,8 +476,7 @@ DELRCACH(NMSP) ; Delete routines for Cache - yahoo again
  ;
 LHTEST ; @TEST - Load hander test... make sure it loads okay even multiple times
  N I F I=1:1:30 D LOADHAND
- D CHKTF^%ut($O(^%W(17.6001," "),-1)<20) ; Should have just 3 entries
- D CHKTF^%ut($D(^%W(17.6001,"B","GET","xml","XML^VPRJRSP"))) ; Must be loaded
+ D CHKTF^%ut($O(^%web(17.6001," "),-1)<20) ; Should have just 6 entries
  QUIT
  ;
 WDTESTY ; @TEST - Successful write to a directory!
@@ -514,6 +503,7 @@ WDTESTN1 ; @TEST - Try to write to a directory that doesn't exist
  D CHKTF^%ut(OUT=0)
  QUIT
 PORTOKT ; @TEST - Test Port Okay
- D CHKEQ^%ut($$PORTOK(135),0)
- D CHKEQ^%ut($$PORTOK(61232),1)
+ n gtmDarwin s gtmDarwin=$$GTM&($ZV["Darwin")
+ I 'gtmDarwin do CHKEQ^%ut($$PORTOK(135),0)
+ do CHKEQ^%ut($$PORTOK(61232),1)
  QUIT
