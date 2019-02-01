@@ -145,7 +145,7 @@ STRINGS ;; @TEST force encoding as string
  D ASSERT($$TARGET("STRINGS"),JSON(1))
  Q
 LABELS ;; @TEST unusual labels
- ;;{"top":[{"10":"number 10",",":"comma",":":"colon","\":"backslash","a":"normal letter"}]}
+ ;;{"top":[{"10":"number 10",",":"comma",":":"colon","\\":"backslash","a":"normal letter"}]}
  ;
  ; NOTE: we don't allow a label to contain a quote (")
  N Y,JSON,ERR,Y2
