@@ -65,7 +65,7 @@ SERARY(VVROOT) ; Serialize into a JSON array
 SERNAME(VVSUB) ; Serialize the object name into JSON string
  I $E(VVSUB)="""" S VVSUB=$E(VVSUB,2,$L(VVSUB)) ; quote indicates numeric label
  I ($L(VVSUB)+$L(@VVJSON@(VVLINE)))>VVMAX S VVLINE=VVLINE+1,@VVJSON@(VVLINE)=""
- S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_""""_VVSUB_""""_":"
+ S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_""""_$$ESC(VVSUB)_""""_":"
  Q
 SERVAL(VVROOT,VVSUB) ; Serialize X into appropriate JSON representation
  N VVX,VVI,VVDONE

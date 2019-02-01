@@ -145,7 +145,7 @@ STRINGS ;; @TEST force encoding as string
  D ASSERT($$TARGET("STRINGS"),JSON(1))
  Q
 LABELS ;; @TEST unusual labels
- ;;{"top":[{"10":"number 10",",":"comma",":":"colon","\":"backslash","a":"normal letter"}]}
+ ;;{"top":[{"10":"number 10",",":"comma",":":"colon","\\":"backslash","a":"normal letter"}]}
  ;
  ; NOTE: we don't allow a label to contain a quote (")
  N Y,JSON,ERR,Y2
@@ -177,6 +177,12 @@ EXAMPLE ;; @TEST encode samples that are on JSON.ORG
  S TARGET=$$TARGET("EX4OUT")
  D ASSERT(TARGET,$E(JSON(1)_JSON(2)_JSON(3),1,215))
  D ASSERT(95,$L(JSON(1)))
+ Q
+KEYESC ;; @TEST keys should be escaped
+ N Y,JSON,TARGET
+ S Y("names","x(834038,""237745"":""240474"")")="AREG"
+ D ENCODE^%webjson("Y","JSON")
+ D ASSERT(JSON(1),"{""names"":{""x(834038,\""237745\"":\""240474\"")"":""AREG""}}")
  Q
 BUILDY(LABEL) ; build Y array based on LABEL
  ; expects Y from EXAMPLE
