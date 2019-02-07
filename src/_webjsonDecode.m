@@ -1,4 +1,4 @@
-%webjsonDecode ;SLC/KCM -- Decode JSON;2019-01-22  10:40 AM
+%webjsonDecode ;SLC/KCM -- Decode JSON;Feb 07, 2019@10:54
  ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
  ;
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
@@ -246,3 +246,19 @@ REALCHAR(C) ; Return actual character from escaped
 ERRX(ID,VAL) ; Set the appropriate error message
  D ERRX^%webjson(ID,$G(VAL))
  Q
+ ;
+ ; Portions of this code are public domain, but it was extensively modified
+ ; Copyright 2016 Accenture Federal Services
+ ; Copyright 2013-2019 Sam Habiel
+ ;
+ ;Licensed under the Apache License, Version 2.0 (the "License");
+ ;you may not use this file except in compliance with the License.
+ ;You may obtain a copy of the License at
+ ;
+ ;    http://www.apache.org/licenses/LICENSE-2.0
+ ;
+ ;Unless required by applicable law or agreed to in writing, software
+ ;distributed under the License is distributed on an "AS IS" BASIS,
+ ;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ;See the License for the specific language governing permissions and
+ ;limitations under the License.

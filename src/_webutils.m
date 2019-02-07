@@ -1,7 +1,5 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-01-23  5:04 PM
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;Feb 07, 2019@11:07
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
- ;
- ; Various mods to support GT.M. See diff with original for full listing.
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
@@ -388,3 +386,18 @@ deleteService(method,urlPattern) ; [Public: Delete Service]
  if $P($SY,",")=47 tcommit
  ;
  quit
+ ;
+ ; Portions of this code are public domain, but it was extensively modified
+ ; Copyright 2013-2019 Sam Habiel
+ ;
+ ;Licensed under the Apache License, Version 2.0 (the "License");
+ ;you may not use this file except in compliance with the License.
+ ;You may obtain a copy of the License at
+ ;
+ ;    http://www.apache.org/licenses/LICENSE-2.0
+ ;
+ ;Unless required by applicable law or agreed to in writing, software
+ ;distributed under the License is distributed on an "AS IS" BASIS,
+ ;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ;See the License for the specific language governing permissions and
+ ;limitations under the License.
