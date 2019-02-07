@@ -1,0 +1,12 @@
+M Web Server
+
+Portions of the code were originally authored by US Governement, and are thus
+in the public domain. However, most of these were modified/rewritten.
+
+Copyright 2013-2019 Sam Habiel
+Copyright 2018 Kenneth McLoghlen
+Copyright 2016 Accenture Federal Services
+Copyright 2019 Christopher Edwards
+
+All of the source code here is licensed under Apache 2.0. No external libraries
+are used.
