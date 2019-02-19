@@ -18,7 +18,7 @@ DIRECT ; TAG for use by DECODE^%webjson
  ;
  ; V4W/DLW - Changed VVMAX from 4000 to 100, same as in the encoder
  ; With the change to VVMAX, the following Unit Tests required changes:
- ; SPLITA^%webjsonDecodeTest, SPLITB^%webjsonDecodeTest, LONG^%webjsonDecodeTest, MAXNUM^%webjsonDecodeTest 
+ ; SPLITA^%webjsonDecodeTest, SPLITB^%webjsonDecodeTest, LONG^%webjsonDecodeTest, MAXNUM^%webjsonDecodeTest
  N VVMAX S VVMAX=100 ; limit document lines to 100 characters
  S VVERR=$G(VVERR,"^TMP(""%webjsonerr"",$J)")
  ; If a simple string is passed in, move it to an temp array (VVINPUT)
@@ -39,7 +39,7 @@ DIRECT ; TAG for use by DECODE^%webjson
  . . E  S VVPROP=1                                   ; or next property name
  . I VVTYPE=":" S VVPROP=0 D:'$L($G(VVSTACK(VVSTACK))) ERRX("MPN") Q
  . I VVTYPE="""" D  Q
- . . I VVPROP S VVSTACK(VVSTACK)=$$NAMPARS() I 1
+ . . I VVPROP S VVSTACK(VVSTACK)=$$UES($$NAMPARS(),1) I 1
  . . E  D ADDSTR
  . S VVTYPE=$TR(VVTYPE,"TFN","tfn")
  . I VVTYPE="t" D SETBOOL("t") Q
@@ -154,13 +154,13 @@ ISCLOSEQ(VVBLINE) ; return true if this is a closing, rather than escaped, quote
  Q VVBS#2=0  ; VVBS is even if this is a close quote
  ;
 NAMPARS() ; Return parsed name, advancing index past the close quote
- ; -- This assumes no embedded quotes are in the name itself --
- N VVEND,VVDONE,VVNAME
- S VVDONE=0,VVNAME=""
+ N VVEND,VVDONE,VVNAME,VVSTART
+ S VVDONE=0,VVNAME="",VVSTART=VVIDX
  F  D  Q:VVDONE  Q:VVERRORS
  . S VVEND=$F(@VVJSON@(VVLINE),"""",VVIDX)
- . I VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVIDX,VVEND-2),VVIDX=VVEND,VVDONE=1
- . I 'VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVIDX,$L(@VVJSON@(VVLINE)))
+ . I $E(@VVJSON@(VVLINE),VVEND-2)="\" S VVIDX=VVEND Q
+ . I VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVSTART,VVEND-2),VVIDX=VVEND,VVDONE=1
+ . I 'VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVSTART,$L(@VVJSON@(VVLINE)))
  . I 'VVEND!(VVEND>$L(@VVJSON@(VVLINE))) S VVLINE=VVLINE+1,VVIDX=1 I '$D(@VVJSON@(VVLINE)) D ERRX("ORN")
  ; prepend quote if label collates as numeric -- assumes no quotes in label
  I VVNAME']]$C(1) S VVNAME=""""""_VVNAME
@@ -214,7 +214,7 @@ CURNODE() ; Return a global/local variable name based on VVSTACK
  . E  S VVSUBS=VVSUBS_""""_VVSTACK(VVI)_""""
  Q VVROOT_VVSUBS_")"
  ;
-UES(X) ; Unescape JSON string
+UES(X,KEY) ; Unescape JSON string
  ; copy segments from START to POS-2 (right before \)
  ; translate target character (which is at $F position)
  N POS,Y,START
@@ -226,11 +226,12 @@ UES(X) ; Unescape JSON string
  . N TGT
  . S TGT=$E(X,POS),Y=Y_$E(X,START,POS-2)
  . I TGT="u" S Y=Y_$C($$DEC^%webutils($E(X,POS+1,POS+4),16)),POS=POS+4 Q
- . S Y=Y_$$REALCHAR(TGT)
+ . S Y=Y_$$REALCHAR(TGT,$G(KEY))
  Q Y
  ;
-REALCHAR(C) ; Return actual character from escaped
- I C="""" Q """"
+REALCHAR(C,KEY) ; Return actual character from escaped
+ I C=""""&'$G(KEY) Q """" ; Used in the value part and doesn't need double quotes
+ I C=""""&$G(KEY) Q """""" ; Used as part of a set statement and needs double quotes
  I C="/" Q "/"
  I C="\" Q "\"
  I C="b" Q $C(8)

@@ -267,6 +267,16 @@ ESCQ ;; @TEST escaped quote across lines
  D ASSERT(0,$D(ERR))
  D ASSERT(42,$L(Y("bjw")))
  Q
+KEYQUOTE ;; @TEST keys with quotes
+ N ENCODE,JSON,Y,ERR
+ S JSON="{""a(1,3:\""\"")"":""AREG""}"
+ D DECODE^%webjson("JSON","Y","ERR")
+ D ASSERT(0,$D(ERR))
+ D ASSERT("AREG",$G(Y("a(1,3:"""")")))
+ K ERR
+ D ENCODE^%webjson("Y","ENCODE","ERR")
+ D ASSERT(ENCODE(1),JSON)
+ Q
 BUILD(TAG,JSON) ; Build array of strings in JSON for TAG
  N X,I,LINE
  S LINE=1,JSON(LINE)=""
