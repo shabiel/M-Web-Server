@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;Feb 07, 2019@11:05
+%webrsp ;SLC/KCM -- Handle HTTP Response;2/20/19 9:19am
  ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
@@ -288,9 +288,9 @@ SENDATA ; write out the data as an HTTP response
  ;
 W(DATA) ; EP to write data
  ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
+ I $P($SY,",")=47,$L(%WBUFF)+$L(DATA)>32000 D FLUSH
+ I $L($SY,":")=2,$L(%WBUFF)+$L(DATA)>32000 D FLUSH
  S %WBUFF=%WBUFF_DATA
- I $P($SY,",")=47,$ZL(%WBUFF)>32000 D FLUSH
- I '$P($SY,",")=47,$L(%WBUFF)>32000 D FLUSH
  QUIT
  ;
 FLUSH ; EP to flush written data
