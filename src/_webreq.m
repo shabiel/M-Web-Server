@@ -1,5 +1,4 @@
 %webreq ;SLC/KCM -- Listen for HTTP requests;Feb 07, 2019@11:04
- ;;1.0;JSON DATA STORE;;Sep 01, 2012;Build 6
  ;
  ; Listener Process ---------------------------------------
  ;

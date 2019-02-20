@@ -1,5 +1,4 @@
 %webapi ; OSE/SMH - Infrastructure web services hooks;Feb 07, 2019@11:03
- ;;1.0;MUMPS ADVANCED SHELL;;Sep 01, 2012;Build 6
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"

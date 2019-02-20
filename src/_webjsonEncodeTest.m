@@ -1,5 +1,4 @@
 %webjsonEncodeTest ;SLC/KCM -- Unit tests for JSON encoding;Feb 07, 2019@11:02
- ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  D EN^%ut($T(+0),3)
  quit

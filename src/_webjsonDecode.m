@@ -1,5 +1,4 @@
 %webjsonDecode ;SLC/KCM -- Decode JSON;Feb 07, 2019@10:54
- ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
  ;
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;

@@ -1,5 +1,4 @@
 %webrsp ;SLC/KCM -- Handle HTTP Response;2/20/19 9:19am
- ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ; -- prepare and send RESPONSE
  ;

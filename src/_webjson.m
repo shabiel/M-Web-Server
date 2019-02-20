@@ -1,5 +1,4 @@
 %webjson ;SLC/KCM -- Decode/Encode JSON;Feb 07, 2019@10:51
- ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
  ;
  ; Note:  Since the routines use closed array references, VVROOT and VVERR
  ;        are used to reduce risk of naming conflicts on the closed array.

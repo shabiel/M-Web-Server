@@ -1,5 +1,4 @@
 VPRJUJ01 ;SLC/KCM -- Sample data for JSON decoding;Feb 07, 2019@10:56
- ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
  ;
  ; Portions of this code are public domain, but it was extensively modified

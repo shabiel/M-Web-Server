@@ -1,5 +1,4 @@
 %webjsonEncode ;SLC/KCM -- Encode JSON;Feb 07, 2019@11:01
- ;;1.0;VIRTUAL PATIENT RECORD;**2,3**;Sep 01, 2011;Build 50
  ;
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ;

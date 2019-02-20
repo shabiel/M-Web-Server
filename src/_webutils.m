@@ -1,5 +1,4 @@
 %webutils ;SLC/KCM -- Utilities for HTTP communications ;Feb 07, 2019@11:07
- ;;1.0;JSON DATA STORE;;Sep 01, 2012
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
