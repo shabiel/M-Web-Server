@@ -11,6 +11,7 @@ webinit ; OSE/SMH - Initialize Web Server;Feb 07, 2019@10:37
  D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.0.0/mws.rsa")
  ;
  ; If fileman is installed, do an init for the %web(17.001 file
+post ; [Public] Run this entry point if you don't want to download the code.
  I $D(^DD) D ^%webINIT
  ;
  ; Load the URLs
