@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;Feb 07, 2019@11:06
+%webtest ; ose/smh - Web Services Tester;2019-02-21  11:52 AM
  ; (c) Sam Habiel 2018
  ; Licensed under Apache 2.0
  ;
@@ -122,6 +122,14 @@ terr2 ; @TEST crashing the error trap
  do CHKEQ^%ut(httpStatus,500)
  quit
  ;
+tlong ; @TEST get a long message
+ ; Exercises the flushing
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/bigoutput")
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKEQ^%ut($l(return),32769)
+ quit
+ ;
 trpc1 ; @TEST Run a VistA RPC w/o authentication - should fail
  n httpStatus,return
  i $text(^XUS)="" quit  ; VistA not installed
@@ -164,7 +172,7 @@ trpc3 ; @TEST Run the VPR RPC (XML Version)
 trpc4 ; @TEST Run the VPR RPC (JSON Version)
  n httpStatus,return
  i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="[{'patientId': '23', 'domain': ''}]"
+ n payload s payload="[{'patientId': '50', 'domain': ''}]"
  n % s %("'")=""""
  s payload=$$REPLACE^XLFSTR(payload,.%)
  d &libcurl.init
@@ -318,6 +326,7 @@ resetURLs ; Reset all the URLs; Called upon start-up
  d deleteService^%webutils("GET","r/{routine?.1""%25"".32AN}")
  d deleteService^%webutils("PUT","r/{routine?.1""%25"".32AN}")
  d deleteService^%webutils("GET","error")
+ d deleteService^%webutils("GET","bigoutput")
  d deleteService^%webutils("POST","rpc/{rpc}")
  d deleteService^%webutils("OPTIONS","rpc/{rpc}")
  d deleteService^%webutils("POST","rpc2/{rpc}")
@@ -325,6 +334,7 @@ resetURLs ; Reset all the URLs; Called upon start-up
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
  do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
  do addService^%webutils("GET","error","ERR^%webapi")
+ do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  do addService^%webutils("OPTIONS","rpc/{rpc}","RPCO^%webapi")
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"

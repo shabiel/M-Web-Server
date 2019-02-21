@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;2/20/19 9:19am
+%webrsp ;SLC/KCM -- Handle HTTP Response;2019-02-21  11:40 AM
  ;
  ; -- prepare and send RESPONSE
  ;
@@ -287,7 +287,7 @@ SENDATA ; write out the data as an HTTP response
  ;
 W(DATA) ; EP to write data
  ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
- I $P($SY,",")=47,$L(%WBUFF)+$L(DATA)>32000 D FLUSH
+ I $P($SY,",")=47,$ZL(%WBUFF)+$ZL(DATA)>32000 D FLUSH
  I $L($SY,":")=2,$L(%WBUFF)+$L(DATA)>32000 D FLUSH
  S %WBUFF=%WBUFF_DATA
  QUIT

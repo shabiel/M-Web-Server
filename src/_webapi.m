@@ -1,4 +1,4 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;Feb 07, 2019@11:03
+%webapi ; OSE/SMH - Infrastructure web services hooks;2019-02-21  11:35 AM
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -33,6 +33,16 @@ SAVE(RN) ; [Private] Save a routine
 ERR(RESULT,ARGS) ; GET /error Force M Error
  I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
  N X S X=1/0
+ ;
+bigoutput(result,args) ; GET /bigoutput - Used by Unit Tests to ensure large output is handled appropriately
+ n a,b,c
+ s $p(a,"a",2**10)="a"
+ n i for i=1:1:32 s result(i)=a
+ s result(32)=$e(result(32),1,$l(result(32))-1)
+ s b=$c(13,10)
+ s result(33)=b
+ s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
+ quit
  ;
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
  I $$UNKARGS^%webutils(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
