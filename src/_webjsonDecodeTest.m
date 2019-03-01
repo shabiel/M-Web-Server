@@ -1,4 +1,4 @@
-%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;Feb 07, 2019@10:55
+%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;2019-03-01  10:44 AM
  ;
  d EN^%ut($t(+0),3)
  quit
@@ -77,6 +77,20 @@ SPLITC ;; @TEST multiple line JSON input with lines split inside boolean value
  D ASSERT("SQA,ONE",$G(Y("assignToName")))
  D ASSERT("urn:va:user:2C0A:1134",$G(Y("assignToCode")))
  Q
+SPLITD ;; @TEST multiple line JSON input with key split
+ n json,y,err
+ s json(1)="{ ""boo"": ""foo"", ""code"" : ""22-2""}"
+ d decode^%webjson("json","y","err")
+ D ASSERT(0,$D(err))
+ D ASSERT(y("code"),"22-2")
+ n json,y,err
+ s json(1)="{ ""boo"": ""foo"", ""c"
+ s json(2)="ode"": ""22-2""}"
+ d decode^%webjson("json","y","err")
+ D ASSERT(0,$D(err))
+ D ASSERT(y("code"),"22-2")
+ quit
+ ;
 LONG ;; @TEST long document that must be saved across extension nodes
  N JSON,Y,ERR,I,LINE,CCNT1,CCNT2
  S JSON(1)="{""title"":""long document"",""size"":""rather large"",""document"":"""

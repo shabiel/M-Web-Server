@@ -1,4 +1,4 @@
-%webjsonDecode ;SLC/KCM -- Decode JSON;Feb 07, 2019@10:54
+%webjsonDecode ;SLC/KCM -- Decode JSON;2019-03-01  10:44 AM
  ;
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
@@ -160,7 +160,7 @@ NAMPARS() ; Return parsed name, advancing index past the close quote
  . I $E(@VVJSON@(VVLINE),VVEND-2)="\" S VVIDX=VVEND Q
  . I VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVSTART,VVEND-2),VVIDX=VVEND,VVDONE=1
  . I 'VVEND S VVNAME=VVNAME_$E(@VVJSON@(VVLINE),VVSTART,$L(@VVJSON@(VVLINE)))
- . I 'VVEND!(VVEND>$L(@VVJSON@(VVLINE))) S VVLINE=VVLINE+1,VVIDX=1 I '$D(@VVJSON@(VVLINE)) D ERRX("ORN")
+ . I 'VVEND!(VVEND>$L(@VVJSON@(VVLINE))) S VVLINE=VVLINE+1,(VVIDX,VVSTART)=1 I '$D(@VVJSON@(VVLINE)) D ERRX("ORN")
  ; prepend quote if label collates as numeric -- assumes no quotes in label
  I VVNAME']]$C(1) S VVNAME=""""""_VVNAME
  Q VVNAME
