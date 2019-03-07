@@ -27,10 +27,17 @@
 # Sets the following variables:
 #  CMAKE_MUMPS_COMPILER
 
-find_path(YOTTADB_INCLUDE_DIR NAMES libyottadb.h
-          HINTS $ENV{ydb_dist} $ENV{gtm_dist})
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_YOTTADB QUIET yottadb)
+endif()
 
-set(YOTTADB_INCLUDE_DIRS ${YOTTADB_INCLUDE_DIR})
+# If $ydb_dist is defined, use that as YottaDB dir, if not check $gtm_dist (for a pure-GT.M version build)
+# and if neither is defined, check if pkg-config found YottaDB installed.
+# Note: We check for "mumps" executable (instead of say "libyottadb.h") since this is guaranteed to be present
+#       both in a YottaDB and GT.M build/install directory.
+find_path(mumps_dir NAMES mumps
+	HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_INCLUDEDIR} )
 
 if(MUMPS_UTF8_MODE)
   find_program(ICUCONFIG NAMES icu-config)
@@ -78,10 +85,10 @@ if(MUMPS_UTF8_MODE)
   else()
     message(FATAL_ERROR "Unable to find 'locale'.  Set LOCALECFG in CMake cache.")
   endif()
-  set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/utf8/mumps)
+  set(CMAKE_MUMPS_COMPILER ${mumps_dir}/utf8/mumps)
   set(ydb_chset "UTF-8")
 else()
-  set(CMAKE_MUMPS_COMPILER ${YOTTADB_INCLUDE_DIRS}/mumps)
+  set(CMAKE_MUMPS_COMPILER ${mumps_dir}/mumps)
 endif()
 
 

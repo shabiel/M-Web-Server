@@ -27,17 +27,23 @@
 #  YOTTADB_INCLUDE_DIRS - The YottaDB include directories
 #  YOTTADB_LIBRARIES - The libraries needed to use YottaDB
 
-find_path(YOTTADB_INCLUDE_DIR NAMES libyottadb.h
-          HINTS $ENV{ydb_dist} $ENV{gtm_dist})
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_YOTTADB QUIET yottadb)
+endif()
 
-find_library(YOTTADB_LIBRARY NAMES yottadb gtmshr
-             HINTS $ENV{ydb_dist} $ENV{gtm_dist})
+# If $ydb_dist is defined, use that as YottaDB dir, if not check $gtm_dist (for a GT.M version build)
+# and if neither is defined, check if pkg-config found YottaDB installed.
+# Note: We check for "mumps" executable (instead of say "libyottadb.h") since this is guaranteed to be present
+#       both in a YottaDB and GT.M build/install directory.
+find_path(YOTTADB_INCLUDE_DIRS NAMES mumps
+	HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_INCLUDEDIR} )
 
-set(YOTTADB_LIBRARIES ${YOTTADB_LIBRARY})
-set(YOTTADB_INCLUDE_DIRS ${YOTTADB_INCLUDE_DIR})
+# For YottaDB, the directory where we install header files is same as directory where we install libraries
+set(YOTTADB_LIBRARIES ${YOTTADB_INCLUDE_DIRS})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(YOTTADB  DEFAULT_MSG
-                                  YOTTADB_LIBRARY YOTTADB_INCLUDE_DIR)
+                                  YOTTADB_LIBRARIES YOTTADB_INCLUDE_DIRS)
 
-mark_as_advanced(YOTTADB_INCLUDE_DIR YOTTADB_LIBRARY)
+mark_as_advanced(YOTTADB_INCLUDE_DIRS YOTTADB_LIBRARIES)
