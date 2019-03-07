@@ -29,6 +29,17 @@
 
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
+    # On cmake versions 3.12.1 thru at least 3.13.4, we noticed the following error in pkg_check_modules()
+    # when trying to build the posix_plugin.
+    #
+    # CMake Error: Error required internal CMake variable not set, cmake may not be built correctly.
+    # Missing variable is:
+    # CMAKE_FIND_LIBRARY_PREFIXES
+    #
+    # It is suspected to be a cmake bug so for now we define the variables that show up as Missing to work around this.
+    # Hence the "set" commands below before the pkg_check_modules() call.
+    set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "so")
     pkg_check_modules(PC_YOTTADB QUIET yottadb)
 endif()
 

@@ -29,6 +29,9 @@
 
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
+    # See comment in ydbcmake/CMakeDetermineMUMPSCompiler.cmake for why the below two set commands are needed.
+    set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "so")
     pkg_check_modules(PC_YOTTADB QUIET yottadb)
 endif()
 
