@@ -31,7 +31,7 @@ find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     # See comment in ydbcmake/CMakeDetermineMUMPSCompiler.cmake for why the below two set commands are needed.
     set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES "so")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".so;.a")
     pkg_check_modules(PC_YOTTADB QUIET yottadb)
 endif()
 
@@ -41,9 +41,11 @@ endif()
 #       both in a YottaDB and GT.M build/install directory.
 find_path(YOTTADB_INCLUDE_DIRS NAMES mumps
 	HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_INCLUDEDIR} )
+find_library(YOTTADB_LIBRARY NAMES yottadb gtmshr
+  HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_LIBS} )
 
 # For YottaDB, the directory where we install header files is same as directory where we install libraries
-set(YOTTADB_LIBRARIES ${YOTTADB_INCLUDE_DIRS})
+set(YOTTADB_LIBRARIES ${YOTTADB_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(YOTTADB  DEFAULT_MSG
