@@ -42,10 +42,10 @@ endif()
 find_path(YOTTADB_INCLUDE_DIRS NAMES mumps
 	HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_INCLUDEDIR} )
 find_library(YOTTADB_LIBRARY NAMES yottadb gtmshr
-  HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_LIBS} )
+  HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_LIBRARY_DIRS} )
 
-# For YottaDB, the directory where we install header files is same as directory where we install libraries
 set(YOTTADB_LIBRARIES ${YOTTADB_LIBRARY})
+set(YOTTADB_PLUGIN_DIR "${YOTTADB_INCLUDE_DIRS}/plugin/")
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(YOTTADB  DEFAULT_MSG
