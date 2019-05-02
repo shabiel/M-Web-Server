@@ -113,6 +113,10 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
  ;
+ I $L($T(^SYNRGSHM))>0 D  ; RGNet DHP Shim
+ . Q:'$D(^RGNET)
+ . DO MATCHRG^SYNRGSHM(.ROUTINE,.ARGS,.AUTHNODE)
+ ;
  ; If both of these fail, try matching against a file on the file system
  I ROUTINE="" DO MATCHFS(.ROUTINE)
  ;
