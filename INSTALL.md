@@ -498,6 +498,26 @@ Ignore this error.
 	 - http://localhost:9080/xml
 	 - http://localhost:9080/ping
 
+## Installation as a YottaDB Plugin
+
+When installed as a YottaDB plugin the %W.zwr is not imported.
+
+Also, the tests and other initialization routines are not imported as the
+plugin support is intended to be ran on production envrionments.
+
+Create a build directory:
+
+    mkdir build
+    cd build
+
+Run cmake to generate the Makefiles
+
+    cmake ../
+
+Install the plugin
+
+    make install
+
 ## Starting and Stopping the Server
 Once you are done having fun, you can stop the server using `STOP^VPRJREQ`.
 
