@@ -27,40 +27,26 @@ include_directories("${YOTTADB_INCLUDE_DIRS}")
 
 set(ydb_install_dir ${YOTTADB_INCLUDE_DIRS}/plugin)
 
+set(source_files
+  src/_webapi.m
+  src/_webhome.m
+  src/_webjson.m
+  src/_webjsonDecode.m
+  src/_webjsonEncode.m
+  src/_webreq.m
+  src/_webrsp.m
+  src/_webutils.m
+)
+
 # Add commands to compile .m files
-add_library(_ydbmwebserver SHARED
-  src/_WC.m
-  src/_webapi.m
-  src/_webhome.m
-  src/_webjson.m
-  src/_webjsonDecode.m
-  src/_webjsonEncode.m
-  src/_webreq.m
-  src/_webrsp.m
-  src/_webutils.m
-)
+add_library(ydbmwebserver SHARED ${source_files})
 
-SET_TARGET_PROPERTIES(_ydbmwebserver PROPERTIES PREFIX "")
+SET_TARGET_PROPERTIES(ydbmwebserver PROPERTIES PREFIX "")
 
-install(FILES
-  src/_WC.m
-  src/_webapi.m
-  src/_webhome.m
-  src/_webjson.m
-  src/_webjsonDecode.m
-  src/_webjsonEncode.m
-  src/_webreq.m
-  src/_webrsp.m
-  src/_webutils.m
-  DESTINATION ${ydb_install_dir}/r/
-)
+install(FILES ${source_files} DESTINATION ${ydb_install_dir}/r/)
 
 if(MUMPS_UTF8_MODE)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_ydbmwebserver.so
-    DESTINATION ${ydb_install_dir}/o/utf8
-  )
+  install(TARGETS ydbmwebserver DESTINATION ${ydb_install_dir}/o/utf8)
 else()
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_ydbmwebserver.so
-    DESTINATION ${ydb_install_dir}/o/
-  )
+  install(TARGETS ydbmwebserver DESTINATION ${ydb_install_dir}/o/)
 endif()
