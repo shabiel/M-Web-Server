@@ -39,7 +39,7 @@ if(PKG_CONFIG_FOUND)
     # It is suspected to be a cmake bug so for now we define the variables that show up as Missing to work around this.
     # Hence the "set" commands below before the pkg_check_modules() call.
     set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".so;.a")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".so;.a;.dylib")
     pkg_check_modules(PC_YOTTADB QUIET yottadb)
 endif()
 
