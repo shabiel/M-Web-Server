@@ -23,7 +23,7 @@ see the home page.
 
 To stop the web server after it is automatically started, type
 
-	D STOP^VPRJREQ
+	D STOP^%webreq
 
 The installation is divided into 3 sections. One for GT.M/Any Unix, one for
 Cache/Windows, and one for Cache/Any Unix.
@@ -519,7 +519,7 @@ Install the plugin
     make install
 
 ## Starting and Stopping the Server
-Once you are done having fun, you can stop the server using `STOP^VPRJREQ`.
+Once you are done having fun, you can stop the server using `STOP^%webreq`.
 
-To start it again, run `D JOB^VPRJREQ(portno)`, substituting a port number
-of your choice. If you run `D ^VPRJREQ`, it will start at port number 9080.
+To start it again, run `D JOB^%webreq(portno)`, substituting a port number
+of your choice. If you run `D ^%webreq`, it will start at port number 9080.

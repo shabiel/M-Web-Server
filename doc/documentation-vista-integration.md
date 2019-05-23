@@ -99,7 +99,7 @@ For now, we will do the simplest thing possible in our routine:
 	 ;
 	gets(result,args) ; runs v1/fileman/{file}/{iens}/{fields} to get data
 	 ;
-	 I $$UNKARGS^VPRJRUT(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
+	 I $$UNKARGS^%webutils(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
 	 ;
 	 n file s file=args("file")
 	 n iens s iens=args("iens")
@@ -132,13 +132,13 @@ doesn't work. You need to decode these in your code: like this:
 	 ;
 	gets(result,args) ; runs v1/fileman/{file}/{iens}/{fields} to get data
 	 ;
-	 I $$UNKARGS^VPRJRUT(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
+	 I $$UNKARGS^%webutils(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
 	 ;
 	 n file s file=args("file")
 	 n iens s iens=args("iens")
 	 n fields s fields=args("fields")
 	 ;
-	 n decodedFields s decodedFields=$$URLDEC^VPRJRUT(fields)
+	 n decodedFields s decodedFields=$$URLDEC^%webutils(fields)
 	 ;
 	 s result=$$GET1^DIQ(file,iens,decodedFields)
 	 ;
@@ -170,19 +170,19 @@ So, let's see what we can do to get there:
 	 ;
 	gets(result,args) ; runs v1/fileman/{file}/{iens}/{fields} to get data
 	 ;
-	 I $$UNKARGS^VPRJRUT(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
+	 I $$UNKARGS^%webutils(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
 	 ;
 	 n file s file=args("file")
 	 n iens s iens=args("iens")
 	 n fields s fields=args("fields")
 	 ;
-	 n decodedFields s decodedFields=$$URLDEC^VPRJRUT(fields)
+	 n decodedFields s decodedFields=$$URLDEC^%webutils(fields)
 	 ;
 	 n value s value=$$GET1^DIQ(file,iens,decodedFields)
 	 ;
 	 n outArray s outArray(decodedFields)=value
 	 ;
-	 d ENCODE^VPRJSON($name(outArray),$name(result))
+	 d ENCODE^%webjson($name(outArray),$name(result))
 	 ;
 	 QUIT
 
@@ -203,13 +203,13 @@ on how I do that.
 	 ;
 	gets(result,args) ; runs v1/fileman/{file}/{iens}/{fields} to get data
 	 ;
-	 I $$UNKARGS^VPRJRUT(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
+	 I $$UNKARGS^%webutils(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
 	 ;
 	 n file s file=args("file")
 	 n iens s iens=args("iens")
 	 n fields s fields=args("fields")
 	 ;
-	 n decodedFields s decodedFields=$$URLDEC^VPRJRUT(fields)
+	 n decodedFields s decodedFields=$$URLDEC^%webutils(fields)
 	 ;
 	 n wp ; word processing field
 	 ;
@@ -219,7 +219,7 @@ on how I do that.
 	 if value=$name(wp) merge outArray(decodedFields)=wp
 	 else  s outArray(decodedFields)=value
 	 ;
-	 d ENCODE^VPRJSON($name(outArray),$name(result))
+	 d ENCODE^%webjson($name(outArray),$name(result))
 	 ;
 	 QUIT
 
@@ -320,26 +320,26 @@ Let's try that:
 	 ;
 	gets(result,args) ; runs v1/fileman/{file}/{iens}/{fields} to get data
 	 ;
-	 I $$UNKARGS^VPRJRUT(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
+	 I $$UNKARGS^%webutils(.args,"file,iens,fields") QUIT  ; Is any of these not passed?
 	 ;
 	 n file s file=args("file")
 	 n iens s iens=args("iens")
 	 n fields s fields=args("fields")
 	 ;
-	 n decodedFields s decodedFields=$$URLDEC^VPRJRUT(fields)
+	 n decodedFields s decodedFields=$$URLDEC^%webutils(fields)
 	 ;
 	 n wp ; word processing field
 	 ;
 	 n value s value=$$GET1^DIQ(file,iens,decodedFields,,$name(wp))
 	 ;
 	 ; only get the first error in ^TMP("DIERR") if we have an error
-	 if $data(DIERR) D SETERROR^VPRJRUT(400,^TMP("DIERR",$J,1,"TEXT",1)) QUIT
+	 if $data(DIERR) D SETERROR^%webutils(400,^TMP("DIERR",$J,1,"TEXT",1)) QUIT
 	 ;
 	 new outArray
 	 if value=$name(wp) merge outArray(decodedFields)=wp
 	 else  s outArray(decodedFields)=value
 	 ;
-	 d ENCODE^VPRJSON($name(outArray),$name(result))
+	 d ENCODE^%webjson($name(outArray),$name(result))
 	 ;
 	 QUIT
 
@@ -368,5 +368,3 @@ to make:
  * Support a range of fields or multiple fields
  * Implement Fileman Access Security so that users can only see files they
    are authorized to see.
-
-
