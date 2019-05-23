@@ -29,12 +29,23 @@ set(CMAKE_MUMPS_CREATE_STATIC_LIBRARY "")
 
 # Option to suppress mumps compiler warnings
 option(MUMPS_NOWARNING "Disable warnings and ignore status code from MUMPS compiler")
+option(MUMPS_EMBED_SOURCE "Embed source code in generated shared object" ON)
+option(MUMPS_DYNAMIC_LITERALS "Enable dynamic loading of source code literals" OFF)
+
 set(CMAKE_MUMPS_COMPILE_OBJECT "LC_ALL=\"${LC_ALL}\" ydb_chset=\"${ydb_chset}\" ydb_icu_version=\"${icu_version}\" <CMAKE_MUMPS_COMPILER> -object=<OBJECT>")
 
+if(MUMPS_EMBED_SOURCE)
+  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT} -embed_source")
+endif()
+
+if(MUMPS_DYNAMIC_LITERALS)
+  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT} -dynamic_literals")
+endif()
+
 if(MUMPS_NOWARNING)
-  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT}  -nowarning <SOURCE> || true")
+  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT} -nowarning <SOURCE> || true")
 else()
-  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT}  <SOURCE>")
+  set(CMAKE_MUMPS_COMPILE_OBJECT "${CMAKE_MUMPS_COMPILE_OBJECT} <SOURCE>")
 endif()
 
 set(CMAKE_MUMPS_LINK_EXECUTABLE "")
