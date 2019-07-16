@@ -1,4 +1,4 @@
-%webjsonDecode ;SLC/KCM -- Decode JSON;2019-03-01  10:44 AM
+%webjsonDecode ;SLC/KCM -- Decode JSON;2019-07-16  2:17 PM
  ;
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
@@ -29,10 +29,16 @@ DIRECT ; TAG for use by DECODE^%webjson
  F  S VVTYPE=$$NXTKN() Q:VVTYPE=""  D  I VVERRORS Q
  . I VVTYPE="{" S VVSTACK=VVSTACK+1,VVSTACK(VVSTACK)="",VVPROP=1 D:VVSTACK>64 ERRX("STL{") Q
  . I VVTYPE="}" D  QUIT
- . . I VVSTACK(VVSTACK)?1n.n,VVSTACK(VVSTACK) D ERRX("OBM") ; Numeric and true only
- . . S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF}")
+ . . I VVSTACK'>0 D ERRX("SUF}") Q  ; Extra Brace. Nothing to pop.
+ . . I VVSTACK(VVSTACK)?1n.n,VVSTACK(VVSTACK) D ERRX("OBM") Q  ; Numeric and true only
+ . . S VVSTACK=VVSTACK-1
  . I VVTYPE="[" S VVSTACK=VVSTACK+1,VVSTACK(VVSTACK)=1 D:VVSTACK>64 ERRX("STL[") Q
  . I VVTYPE="]" D:'VVSTACK(VVSTACK) ERRX("ARM") S VVSTACK=VVSTACK-1 D:VVSTACK<0 ERRX("SUF]") Q
+ . ;
+ . ; At this point, we should be in a brace or a bracket (indicated by VVSTACK>0)
+ . ; If not we have an error condition
+ . I VVSTACK'>0 D ERRX("TRL",VVTYPE) Q
+ . ;
  . I VVTYPE="," D  Q
  . . I +VVSTACK(VVSTACK)=VVSTACK(VVSTACK),VVSTACK(VVSTACK) S VVSTACK(VVSTACK)=VVSTACK(VVSTACK)+1  ; VEN/SMH - next in array
  . . E  S VVPROP=1                                   ; or next property name
