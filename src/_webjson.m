@@ -1,4 +1,4 @@
-%webjson ;SLC/KCM -- Decode/Encode JSON;Feb 07, 2019@10:51
+%webjson ;SLC/KCM -- Decode/Encode JSON;2019-07-16  2:17 PM
  ;
  ; Note:  Since the routines use closed array references, VVROOT and VVERR
  ;        are used to reduce risk of naming conflicts on the closed array.
@@ -63,6 +63,7 @@ ERRX(ID,VAL) ; Set the appropriate error message
  I ID="OR#" S ERRMSG="Overrun while scanning number." G XERRX
  I ID="ORB" S ERRMSG="Overrun while scanning boolean." G XERRX
  I ID="ESC" S ERRMSG="Escaped character not recognized"_VAL G XERRX
+ I ID="TRL" S ERRMSG="Trailing characters in JSON object: "_VAL G XERRX
  ;
  ; Encode Error Messages
  ;

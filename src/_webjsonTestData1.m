@@ -1,4 +1,4 @@
-VPRJUJ01 ;SLC/KCM -- Sample data for JSON decoding;Feb 07, 2019@10:56
+VPRJUJ01 ;SLC/KCM -- Sample data for JSON decoding;2019-07-16  2:18 PM
  ;
  ;
  ; Portions of this code are public domain, but it was extensively modified
@@ -56,6 +56,14 @@ BADSLASH ;;
  ;;and other escaped characters such as \n  and a few tabs \t\t\t\t and
  ;; a piece of \"quoted text\"", "nextLineQuote":"here is another string
  ;;"}
+ ;;#####
+ ;
+BADBRACE ;;
+ ;;{"test":[4,3,2]}}
+ ;;#####
+ ;
+BADCOMMA ;;
+ ;;{"test":[4,3,2]},
  ;;#####
  ;
 PSNUM ;; Psudo-neumeric tests

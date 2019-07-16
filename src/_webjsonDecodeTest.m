@@ -1,4 +1,4 @@
-%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;2019-03-01  10:44 AM
+%webjsonDecodeTest ;SLC/KCM -- Unit tests for JSON decoding;2019-07-16  2:17 PM
  ;
  d EN^%ut($t(+0),3)
  quit
@@ -168,6 +168,16 @@ BADQUOTE ;; @TEST poorly formed JSON (missing close quote on LABEL)
 BADSLASH ;; @TEST poorly formed JSON (non-escaped backslash)
  N JSON,Y,ERR
  D BUILD("BADSLASH",.JSON) D DECODE^%webjson("JSON","Y","ERR")
+ D ASSERT(1,$D(ERR)>0)
+ Q
+BADBRACE ;; @TEST poorly formed JSON (Extra Brace)
+ N JSON,Y,ERR
+ D BUILD("BADBRACE",.JSON) D DECODE^%webjson("JSON","Y","ERR")
+ D ASSERT(1,$D(ERR)>0)
+ Q
+BADCOMMA ;; @TEST poorly formed JSON (Extra Comma)
+ N JSON,Y,ERR
+ D BUILD("BADCOMMA",.JSON) D DECODE^%webjson("JSON","Y","ERR")
  D ASSERT(1,$D(ERR)>0)
  Q
 PSNUM ;; @TEST subjects that look like a numbers shouldn't be encoded as numbers
