@@ -1,7 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-02-21  11:52 AM
- ; (c) Sam Habiel 2018
- ; Licensed under Apache 2.0
- ;
+%webtest ; ose/smh - Web Services Tester;2019-08-09  14:40
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -309,6 +306,57 @@ tINIT ; @TEST Test Fileman INIT code
  do CHKTF^%ut($data(^DD("IX","F",17.6001)))
  quit
  ;
+ ; NOGBL tests:
+ ; %webapi - Where is our home?
+ ; %webhome - kill of ^TMP("HTTPERR",$J),HTTPERR,RESULT
+ ;            return "NO INDEX FOUND!"
+ ; %webreq - stop the listener on $E(^%webhttp(0,"listener"),1,4)=stop
+ ;         - passing of USERPASS
+ ;         - HTTPLOG=0
+ ;         - SETERROR^%webutils(501,"Log ID:")
+ ;         - RSPERROR^%webutils
+ ; %webrsp - ^%web(17.6001) matching
+ ;         - RSPERROR is skipped (nothing in ^TMP("HTTPERR",$J))
+ ;
+CORS ; @TEST Make sure CORS headers are returned
+ k ^%webhttp("log",+$H)
+ n httpStatus,return,headers,headerarray
+ d &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/r/kbbotest.m",,,,.headers)
+ ;
+ ; Split the headers apart using carriage return line feed delimiter
+ f i=1:1:$L(headers,$C(13,10)) D
+ . ; Change to name based subscripts by using ": " delimiter
+ . s:($p($p(headers,$C(13,10),i),": ",1)'="")&($p($p(headers,$C(13,10),i),": ",2)'="") headerarray($p($p(headers,$C(13,10),i),": ",1))=$p($p(headers,$C(13,10),i),": ",2)
+ ;
+ ; Now make sure all required bits are correct
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Methods")),"OPTIONS, POST")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Headers")),"Content-Type")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Max-Age")),"86400")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Origin")),"*")
+ quit
+ ;
+USERPASS ; @TEST Test that passing a username/password works
+ k ^%webhttp("log",+$H)
+ n httpStatus,return
+ ;
+ ; Positive test
+ d &libcurl.init
+ d &libcurl.auth("Basic","admin:admin")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
+ d &libcurl.cleanup
+ w !
+ zwr httpStatus,return
+ ;
+ ; Negative test
+ d &libcurl.init
+ d &libcurl.auth("Basic","admin:12345")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
+ d &libcurl.cleanup
+ w !
+ zwr httpStatus,return
+ quit
+ ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  do stop^%webreq
  quit
@@ -357,7 +405,8 @@ covlist ; Coverage List for ACTIVE (non-test) routines
  ;;
 EOR ;
  ;
- ; Copyright 2019 Sam Habiel
+ ; Copyright 2018-2019 Sam Habiel
+ ; Copyright 2019 Christopher Edwards
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

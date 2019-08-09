@@ -127,7 +127,7 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  I $L($G(USERPASS)) S AUTHNODE=1
  I +$G(AUTHNODE) D  ; Web Service has authorization node
  . ;
- . I $d(USERPASS) D  QUIT
+ . I $D(USERPASS) D  QUIT
  . . ; First, user must authenticate
  . . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
  . . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%webutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
