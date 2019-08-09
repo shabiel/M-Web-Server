@@ -306,18 +306,6 @@ tINIT ; @TEST Test Fileman INIT code
  do CHKTF^%ut($data(^DD("IX","F",17.6001)))
  quit
  ;
- ; NOGBL tests:
- ; %webapi - Where is our home?
- ; %webhome - kill of ^TMP("HTTPERR",$J),HTTPERR,RESULT
- ;            return "NO INDEX FOUND!"
- ; %webreq - stop the listener on $E(^%webhttp(0,"listener"),1,4)=stop
- ;         - passing of USERPASS
- ;         - HTTPLOG=0
- ;         - SETERROR^%webutils(501,"Log ID:")
- ;         - RSPERROR^%webutils
- ; %webrsp - ^%web(17.6001) matching
- ;         - RSPERROR is skipped (nothing in ^TMP("HTTPERR",$J))
- ;
 CORS ; @TEST Make sure CORS headers are returned
  k ^%webhttp("log",+$H)
  n httpStatus,return,headers,headerarray
@@ -338,25 +326,52 @@ CORS ; @TEST Make sure CORS headers are returned
  ;
 USERPASS ; @TEST Test that passing a username/password works
  k ^%webhttp("log",+$H)
+ n passwdJob
+ ;
+ ; Now start a webserver with a passed username/password
+ j start^%webreq(55730,"",,,,"admin:admin")
+ h .1
+ s passwdJob=$zjob
+ ;
  n httpStatus,return
  ;
  ; Positive test
  d &libcurl.init
  d &libcurl.auth("Basic","admin:admin")
- d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
  d &libcurl.cleanup
- w !
- zwr httpStatus,return
+ d CHKEQ^%ut(httpStatus,200)
  ;
  ; Negative test
  d &libcurl.init
  d &libcurl.auth("Basic","admin:12345")
- d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
  d &libcurl.cleanup
- w !
- zwr httpStatus,return
+ d CHKEQ^%ut(httpStatus,401)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ kill passwdJob
  quit
  ;
+NOGBL ; @TEST Test to make sure no globals are used during webserver operations
+ ; NOGBL tests:
+ ; %webapi - Where is our home?
+ ; %webhome - kill of ^TMP("HTTPERR",$J),HTTPERR,RESULT
+ ;            return "NO INDEX FOUND!"
+ ; %webreq - stop the listener on $E(^%webhttp(0,"listener"),1,4)=stop
+ ;         - passing of USERPASS
+ ;         - HTTPLOG=0
+ ;         - SETERROR^%webutils(501,"Log ID:")
+ ;         - RSPERROR^%webutils
+ ; %webrsp - ^%web(17.6001) matching
+ ;         - RSPERROR is skipped (nothing in ^TMP("HTTPERR",$J))
+ ;
+ quit
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  do stop^%webreq
  quit

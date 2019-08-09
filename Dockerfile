@@ -22,7 +22,7 @@ RUN git clone https://github.com/joelivey/M-Unit.git munit
 RUN cd munit && \
     mkdir r && \
     cd Routines && \
-    for file in %*.m; mv "$file" /data/munit/r/"$(echo "$file" | sed s/\%/\_/)"; done
+    for file in %*.m; do mv "$file" /data/munit/r/"$(echo "$file" | sed s/\%/\_/)"; done
 
 # Install M-Web-Server
 COPY ./src /mwebserver/r
