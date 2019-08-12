@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-08-09  14:40
+%webtest ; ose/smh - Web Services Tester;2019-08-12  4:56 PM
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -178,13 +178,6 @@ trpc4 ; @TEST Run the VPR RPC (JSON Version)
  d &libcurl.cleanup
  d CHKEQ^%ut(httpStatus,201)
  d CHKTF^%ut(return["{")
- quit
-trpcOptions ; @TEST Get RPC Options
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- d &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/rpc/ORWU%20NEWPERS")
- do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(return["NEWPERS(ORY,ORFROM,")
  quit
  ;
 tParams ; @TEST Test a web service with parameters
@@ -446,7 +439,6 @@ resetURLs ; Reset all the URLs; Called upon start-up
  d deleteService^%webutils("GET","error")
  d deleteService^%webutils("GET","bigoutput")
  d deleteService^%webutils("POST","rpc/{rpc}")
- d deleteService^%webutils("OPTIONS","rpc/{rpc}")
  d deleteService^%webutils("POST","rpc2/{rpc}")
  ;
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
@@ -454,7 +446,6 @@ resetURLs ; Reset all the URLs; Called upon start-up
  do addService^%webutils("GET","error","ERR^%webapi")
  do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
- do addService^%webutils("OPTIONS","rpc/{rpc}","RPCO^%webapi")
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  n ien s ien=$$addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
  quit

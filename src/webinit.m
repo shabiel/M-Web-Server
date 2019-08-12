@@ -1,5 +1,5 @@
-webinit ; OSE/SMH - Initialize Web Server;2019-05-06  11:06 AM
- ;;1.0.3;MASH WEB SERVER/WEB SERVICES
+webinit ; OSE/SMH - Initialize Web Server;2019-08-12  4:56 PM
+ ;;1.1.0;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %web on Cache
  DO CACHEMAP("%web")
@@ -324,7 +324,6 @@ LOADHAND ;
  do addService^%webutils("GET","error","ERR^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
- do addService^%webutils("OPTIONS","rpc/{rpc}","RPCO^%webapi")
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  do addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
  quit

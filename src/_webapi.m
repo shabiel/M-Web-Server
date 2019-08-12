@@ -1,4 +1,4 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;2019-02-21  11:35 AM
+%webapi ; OSE/SMH - Infrastructure web services hooks;2019-08-12  4:51 PM
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -242,29 +242,6 @@ rpc2(result,rpcName,start,direction,body) ; Demo entry point using parameters
  m result=rpcResult
  s result("mime")="text/plain; charset=utf-8" ; Character set of the return
  Q "/rpc2/ORWU NEWPERS"
- ;
-RPCO(RESULT,ARGS) ; Get Remote Procedure Information; handles OPTIONS rpc/{rpc}
- ; Very simple... no security checking
- N RP S RP=$G(ARGS("rpc"))
- I '$L(RP) D SETERROR^%webutils("400","Remote procedure not specified") Q
- ;
- N RPIEN S RPIEN=$$FIND1^DIC(8994,,"QX",RP,"B") ; Find eXact, Quick (no transforms) in B index
- I 'RPIEN D SETERROR^%webutils("404","Remote procedure not found") Q
- ;
- ;
- N %WRTN,%WERR
- D GETS^DIQ(8994,RPIEN,"**","RN",$NA(%WRTN)) ; Get all fields; resolve to external names and omit nulls
- N ROU,TAG S ROU=%WRTN(8994,RPIEN_",","ROUTINE"),TAG=%WRTN(8994,RPIEN_",","TAG")
- I $L($T(@(TAG_"^"_ROU))) S %WRTN(8994,RPIEN_",","FORMALLINE")=$T(@(TAG_"^"_ROU))
- D encode^%webjson($NA(%WRTN(8994,RPIEN_",")),$NA(RESULT),$NA(%WERR))
- ; debug
- ;K ^KBANRPC 
- ;S ^KBANRPC=RP
- ;ZSHOW "V":^KBANRPC
- ; debug
- I $D(%WERR) D SETERROR^%webutils("500","Error in JSON conversion") Q
- ;
- QUIT
  ;
 FILESYS(RESULT,ARGS) ; Handle filesystem/*
  I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
