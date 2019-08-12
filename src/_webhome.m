@@ -20,9 +20,11 @@ en(RESULT) ; PEP
  N ARGS S ARGS("*")="index.html"
  ; Retrieve index.html from filesystem before returning default page
  D FILESYS^%webapi(.RESULT,.ARGS)
- I $D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
+ I ('$G(NOGBL)),$D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT
+ ; If we are in no global mode quit as well as the below loop won't tell us anything
+ I $G(NOGBL) S RESULT(1)="NO INDEX FOUND!" QUIT
  ; return default index.html
  S RESULT("mime")="text/html; charset=utf-8"
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D

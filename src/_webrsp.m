@@ -8,6 +8,7 @@ RESPOND ; find entry point to handle request and call it
  K:'$G(NOGBL) ^TMP($J)
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY,PARAMS,AUTHNODE
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%webhome(.HTTPRSP) QUIT  ; Home page requested.
+ I HTTPREQ("method")="OPTIONS" S HTTPRSP="OPTIONS,POST" QUIT ; Always repond to OPTIONS to give CORS header info
  ;
  ; Resolve the URL and authenticate if necessary
  D MATCH(.ROUTINE,.HTTPARGS,.PARAMS,.AUTHNODE)
@@ -108,7 +109,7 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
  ; If we have the %W file for mapping...
- IF $D(^%web(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.PARAMS,.AUTHNODE)
+ IF ('$G(NOGBL)),$D(^%web(17.6001)) DO MATCHF(.ROUTINE,.ARGS,.PARAMS,.AUTHNODE)
  ;
  ; Using built-in table if routine is still empty.
  I ROUTINE="" DO MATCHR(.ROUTINE,.ARGS)
@@ -123,7 +124,14 @@ MATCH(ROUTINE,ARGS,PARAMS,AUTHNODE) ; evaluate paths in sequence until match fou
  ; Okay. Do we have a routine to execute?
  I ROUTINE="" D SETERROR^%webutils(404,"Not Found") QUIT
  ;
+ I $L($G(USERPASS)) S AUTHNODE=1
  I +$G(AUTHNODE) D  ; Web Service has authorization node
+ . ;
+ . I $D(USERPASS) D  QUIT
+ . . ; First, user must authenticate
+ . . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
+ . . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%webutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
+ . . I 'AUTHEN D SETERROR^%webutils(401) QUIT  ; Unauthoirzed
  . ;
  . ; If there is no File 200, forget the whole thing. Pretend it didn't happen.
  . I '$D(^VA(200)) QUIT
@@ -264,6 +272,12 @@ SENDATA ; write out the data as an HTTP response
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
+ ; Add CORS Header
+ I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Methods: OPTIONS, POST"_$C(13,10))
+ I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Headers: Content-Type"_$C(13,10))
+ I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
+ D W("Access-Control-Allow-Origin: *"_$C(13,10))
+ ;
  I $P($SY,",")=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
@@ -352,6 +366,7 @@ GZIP ; EP to write gzipped content
  QUIT
  ;
 RSPERROR ; set response to be an error response
+ Q:$G(NOGBL)
  D encode^%webjson("^TMP(""HTTPERR"",$J,1)","^TMP(""HTTPERR"",$J,""JSON"")")
  S HTTPRSP="^TMP(""HTTPERR"",$J,""JSON"")"
  K HTTPRSP("pageable")
@@ -410,6 +425,7 @@ AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Heade
  ;
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2018-2019 Christopher Edwards
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

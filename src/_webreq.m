@@ -7,12 +7,13 @@ go ; start up REST listener with defaults
  D job(PORT)
  QUIT
  ;
-job(PORT,TLSCONFIG,NOGBL) ; Convenience entry point
- I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL)):(IN="/dev/null":OUT="vprjreq.mjo":ERR="vprjreq.mje"):5  ; no in and out files please.
- E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL)) ; Cache can't accept an empty string in the second argument
+job(PORT,TLSCONFIG,NOGBL,USERPASS) ; Convenience entry point
+ I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
+ I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS)):(IN="/dev/null":OUT="/dev/null":ERR="webreq.mje"):5  ; no in and out files please.
+ E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS)) ; Cache can't accept an empty string in the second argument
  QUIT
  ;
-start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE) ; set up listening for connections
+start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
@@ -55,13 +56,13 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE) ; set up listening for connections
  I $G(DEBUG) D DEBUG($G(TLSCONFIG))
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
- I '$G(NOGBL)&$E(^%webhttp(0,"listener"),1,4)="stop" C TCPIO S ^%webhttp(0,"listener")="stopped" Q
+ I '$G(NOGBL),$E(^%webhttp(0,"listener"),1,4)="stop" C TCPIO S ^%webhttp(0,"listener")="stopped" Q
  ;
  ; ---- CACHE CODE ----
  I %WOS="CACHE" D  G LOOP
  . R *X:10
  . E  QUIT  ; Loop back again when listening and nobody on the line
- . J CHILD($G(TLSCONFIG)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
+ . J CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
  . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
  ; ---- END CACHE CODE ----
  ;
@@ -73,10 +74,10 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . ;
  . ; Wait until we have a connection (inifinte wait). 
  . ; Stop if the listener asked us to stop.
- . FOR  W /WAIT(10) Q:$KEY]""  Q:('$G(NOGBL)&$E(^%webhttp(0,"listener"),1,4)="stop")
+ . FOR  W /WAIT(10) Q:$KEY]""  Q:$G(NOGBL)  Q:($E(^%webhttp(0,"listener"),1,4)="stop")
  . ;
  . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
- . I '$G(NOGBL)&$E(^%webhttp(0,"listener"),1,4)="stop" QUIT
+ . I '$G(NOGBL),$E(^%webhttp(0,"listener"),1,4)="stop" QUIT
  . ; 
  . ; At connection, job off the new child socket to be served away.
  . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
@@ -85,7 +86,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE)):(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS)):(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
@@ -137,14 +138,15 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD(TLSCONFIG,NOGBL,TRACE) ; handle HTTP requests on this connection
+CHILD(TLSCONFIG,NOGBL,TRACE,USERPASS) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
  N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  N %WOS S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
  I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
  ;
- S HTTPLOG=$G(^%webhttp(0,"logging"),0) ; HTTPLOG remains set throughout
+ S:'$G(NOGBL) HTTPLOG=$G(^%webhttp(0,"logging"),0) ; HTTPLOG remains set throughout
+ S:$G(NOGBL) HTTPLOG=0
  S HTTPLOG("DT")=+$H
  D INCRLOG ; set unique request id for log
  N $ET S $ET="G ETSOCK^%webreq"
@@ -168,7 +170,7 @@ NEXT ; begin next request
  K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
  ;
 WAIT ; wait for request on this connection
- I '$G(NOGBL)&$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
+ I '$G(NOGBL),$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
  X:%WOS="CACHE" "U %WTCP:(::""CT"")" ;VEN/SMH - Cache Only line; Terminators are $C(10,13)
  X:%WOS="GT.M" "U %WTCP:(delim=$C(13,10):chset=""M"")" ; VEN/SMH - GT.M Delimiters
  R TCPX:10 I '$T G ETDC
@@ -282,8 +284,8 @@ ETCODE ; error trap when calling out to routines
  I $D(%WNULL) C %WNULL
  U %WTCP
  D LOGERR
- D SETERROR^%webutils(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
- D RSPERROR^%webrsp  ; switch to error response
+ D:'$G(NOGBL) SETERROR^%webutils(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
+ D:'$G(NOGBL) RSPERROR^%webrsp  ; switch to error response
  D SENDATA^%webrsp
  ; Leave $ECODE as non-null so that the error handling continues.
  ; This next line will 'unwind' the stack and got back to listening
@@ -362,10 +364,11 @@ LOGDC ; log client disconnection; VEN/SMH
  QUIT
  ;
 LOGERR ; log error information
+ Q:$G(NOGBL)
  N %D,%I
  S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
  N ISGTM S ISGTM=$P($SYSTEM,",")=47
- S:'$G(NOGBL) ^%webhttp("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
+ S ^%webhttp("log",%D,$J,%I,"error")=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
  N %LVL,%TOP,%N
  S %TOP=$STACK(-1)-1,%N=0
  F %LVL=0:1:%TOP S %N=%N+1,^%webhttp("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
@@ -382,6 +385,7 @@ stop ; tell the listener to stop running
  ;
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2018-2019 Christopher Edwards
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

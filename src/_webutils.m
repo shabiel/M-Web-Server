@@ -101,7 +101,7 @@ setError1 ;
  I ERRCODE=111 S ERRNAME="Unrecognized parameter"
  I ERRCODE=112 S ERRNAME="Filter required"
  ; update errors (200-299)
- I ERRCODE=201 S ERRNAME="Unknown collection" ; unused?
+ I ERRCODE=201 S ERRNAME="Unable to encode JSON"
  I ERRCODE=202 S ERRNAME="Unable to decode JSON"
  I ERRCODE=203 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Unable to determine patient"
  I ERRCODE=204 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Unable to determine collection" ; unused?
@@ -115,6 +115,8 @@ setError1 ;
  I ERRCODE=214 S HTTPERR=404,ERRNAME="Patient ID not found in database"
  I ERRCODE=215 S ERRNAME="Missing collection name"
  I ERRCODE=216 S ERRNAME="Incomplete deletion of collection"
+ ; Generic Errors
+ I ERRCODE=301 S ERRNAME="Required variable undefined"
  ; HTTP errors
  I ERRCODE=400 S ERRNAME="Bad Request"
  I ERRCODE=401 S ERRNAME="Unauthorized" ; VEN/SMH

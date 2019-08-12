@@ -1,7 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-02-21  11:52 AM
- ; (c) Sam Habiel 2018
- ; Licensed under Apache 2.0
- ;
+%webtest ; ose/smh - Web Services Tester;2019-08-09  14:40
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -309,6 +306,127 @@ tINIT ; @TEST Test Fileman INIT code
  do CHKTF^%ut($data(^DD("IX","F",17.6001)))
  quit
  ;
+CORS ; @TEST Make sure CORS headers are returned
+ k ^%webhttp("log",+$H)
+ n httpStatus,return,headers,headerarray
+ d &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/r/kbbotest.m",,,,.headers)
+ ;
+ ; Split the headers apart using carriage return line feed delimiter
+ f i=1:1:$L(headers,$C(13,10)) D
+ . ; Change to name based subscripts by using ": " delimiter
+ . s:($p($p(headers,$C(13,10),i),": ",1)'="")&($p($p(headers,$C(13,10),i),": ",2)'="") headerarray($p($p(headers,$C(13,10),i),": ",1))=$p($p(headers,$C(13,10),i),": ",2)
+ ;
+ ; Now make sure all required bits are correct
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Methods")),"OPTIONS, POST")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Headers")),"Content-Type")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Max-Age")),"86400")
+ d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Origin")),"*")
+ quit
+ ;
+USERPASS ; @TEST Test that passing a username/password works
+ k ^%webhttp("log",+$H)
+ n passwdJob
+ ;
+ ; Now start a webserver with a passed username/password
+ j start^%webreq(55730,"",,,,"admin:admin")
+ h .1
+ s passwdJob=$zjob
+ ;
+ n httpStatus,return
+ ;
+ ; Positive test
+ d &libcurl.init
+ d &libcurl.auth("Basic","admin:admin")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
+ d &libcurl.cleanup
+ d CHKEQ^%ut(httpStatus,200)
+ ;
+ ; Negative test
+ d &libcurl.init
+ d &libcurl.auth("Basic","admin:12345")
+ d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
+ d &libcurl.cleanup
+ d CHKEQ^%ut(httpStatus,401)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ kill passwdJob
+ quit
+ ;
+NOGBL ; @TEST Test to make sure no globals are used during webserver operations
+ k ^%webhttp("log",+$H)
+ k ^%webhttp(0,"listener")
+ n nogblJob
+ ;
+ ; Now start a webserver with a passed username/password
+ j start^%webreq(55731,"",,1)
+ h .1
+ s nogblJob=$zjob
+ ;
+ n httpStatus,return,headers
+ ;
+ ; check to make sure ^%webhome isn't used
+ ; The default is the current directory
+ new random s random=$R(9817234)
+ s ^%webhome="/tmp/"_random
+ open "test.html":(newversion)
+ use "test.html"
+ write "<!DOCTYPE html>",!
+ write "<html>",!
+ write "<body>",!
+ write "<h1>My First Heading</h1>",!
+ write "<p>My first paragraph."_random_"</p>",!
+ write "</body>",!
+ write "</html>",!
+ close "test.html"
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test.html")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ open "p":(command="rm test.html")::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ ; Make sure that the default index.html isn't returned
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/index.html")
+ d CHKEQ^%ut(httpStatus,404)
+ ;
+ ; Make sure there is nothing in ^TMP("HTTPERR",$J)
+ k ^TMP("HTTPERR")
+ k httpStatus,return
+ ; known invalid URL
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/asdf.html")
+ d CHKEQ^%ut(httpStatus,404)
+ d CHKEQ^%ut($d(^TMP("HTTPERR")),0)
+ ;
+ ; Make sure HTTP Listener status doesn't control anything
+ d CHKEQ^%ut($d(^%webhttp(0,"listener")),0)
+ s ^%webhttp(0,"listener")="stop"
+ h .1
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
+ d CHKEQ^%ut(httpStatus,200)
+ ;
+ ; Make sure ^%web(17.6001) isn't used
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/bigoutput")
+ do CHKEQ^%ut(httpStatus,404)
+ do CHKEQ^%ut($l(return),0)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ kill nogblJob
+ quit
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  do stop^%webreq
  quit
@@ -357,7 +475,8 @@ covlist ; Coverage List for ACTIVE (non-test) routines
  ;;
 EOR ;
  ;
- ; Copyright 2019 Sam Habiel
+ ; Copyright 2018-2019 Sam Habiel
+ ; Copyright 2019 Christopher Edwards
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
