@@ -359,18 +359,73 @@ USERPASS ; @TEST Test that passing a username/password works
  quit
  ;
 NOGBL ; @TEST Test to make sure no globals are used during webserver operations
- ; NOGBL tests:
- ; %webapi - Where is our home?
- ; %webhome - kill of ^TMP("HTTPERR",$J),HTTPERR,RESULT
- ;            return "NO INDEX FOUND!"
- ; %webreq - stop the listener on $E(^%webhttp(0,"listener"),1,4)=stop
- ;         - passing of USERPASS
- ;         - HTTPLOG=0
- ;         - SETERROR^%webutils(501,"Log ID:")
- ;         - RSPERROR^%webutils
- ; %webrsp - ^%web(17.6001) matching
- ;         - RSPERROR is skipped (nothing in ^TMP("HTTPERR",$J))
+ k ^%webhttp("log",+$H)
+ k ^%webhttp(0,"listener")
+ n nogblJob
  ;
+ ; Now start a webserver with a passed username/password
+ j start^%webreq(55731,"",,1)
+ h .1
+ s nogblJob=$zjob
+ ;
+ n httpStatus,return,headers
+ ;
+ ; check to make sure ^%webhome isn't used
+ ; The default is the current directory
+ new random s random=$R(9817234)
+ s ^%webhome="/tmp/"_random
+ open "test.html":(newversion)
+ use "test.html"
+ write "<!DOCTYPE html>",!
+ write "<html>",!
+ write "<body>",!
+ write "<h1>My First Heading</h1>",!
+ write "<p>My first paragraph."_random_"</p>",!
+ write "</body>",!
+ write "</html>",!
+ close "test.html"
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test.html")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ open "p":(command="rm test.html")::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ ; Make sure that the default index.html isn't returned
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/index.html")
+ d CHKEQ^%ut(httpStatus,404)
+ ;
+ ; Make sure there is nothing in ^TMP("HTTPERR",$J)
+ k ^TMP("HTTPERR")
+ k httpStatus,return
+ ; known invalid URL
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/asdf.html")
+ d CHKEQ^%ut(httpStatus,404)
+ d CHKEQ^%ut($d(^TMP("HTTPERR")),0)
+ ;
+ ; Make sure HTTP Listener status doesn't control anything
+ d CHKEQ^%ut($d(^%webhttp(0,"listener")),0)
+ s ^%webhttp(0,"listener")="stop"
+ h .1
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
+ d CHKEQ^%ut(httpStatus,200)
+ ;
+ ; Make sure ^%web(17.6001) isn't used
+ k httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/bigoutput")
+ do CHKEQ^%ut(httpStatus,404)
+ do CHKEQ^%ut($l(return),0)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ kill nogblJob
  quit
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  do stop^%webreq
