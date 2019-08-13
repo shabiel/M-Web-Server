@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-08-12  4:56 PM
+%webtest ; ose/smh - Web Services Tester;2019-08-12  5:47 PM
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -8,8 +8,9 @@ test if $text(^%ut)="" quit
  do cov
  quit
  ;
-STARTUP ;
+STARTUP ; [Adjust the acvc and dfn to suit your environment]
  set acvc="SM1234;SM1234!!"
+ set dfn=463
  kill ^%wtrace,^%wcohort,^%wsurv
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
@@ -169,7 +170,7 @@ trpc3 ; @TEST Run the VPR RPC (XML Version)
 trpc4 ; @TEST Run the VPR RPC (JSON Version)
  n httpStatus,return
  i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="[{'patientId': '50', 'domain': ''}]"
+ n payload s payload="[{'patientId': '"_dfn_"', 'domain': ''}]"
  n % s %("'")=""""
  s payload=$$REPLACE^XLFSTR(payload,.%)
  d &libcurl.init
