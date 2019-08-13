@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-13  12:27 PM
+%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-13  2:04 PM
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -224,8 +224,8 @@ WAIT ; wait for request on this connection
  ;
  ; Remove DUZ from ST and Logout if we logged into VistA
  I $G(DUZ) D
- . K DUZ
  . D LOGOUT^XUSRB
+ . K DUZ
  ;
  I %WOS="GT.M"&$G(HTTPLOG) ZGOTO 0:NEXT^%webreq ; unlink all routines; only for debug mode
  G NEXT
