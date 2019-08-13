@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;Feb 07, 2019@11:04
+%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-12  5:14 PM
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -24,7 +24,7 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS) ; set up listening for conne
  ;
  I '$G(NOGBL),$D(^DD) ; This just opens the main mumps.dat file so it can appear in lsof
  ;
- N %WOS S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
  I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace"
  ;
@@ -140,8 +140,8 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ;
 CHILD(TLSCONFIG,NOGBL,TRACE,USERPASS) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
- N %WTCP S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
- N %WOS S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
+ S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
+ S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
  ;
  I %WOS="GT.M",'$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
  ;
