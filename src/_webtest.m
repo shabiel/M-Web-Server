@@ -366,6 +366,7 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  ; check to make sure ^%webhome isn't used
  ; The default is the current directory
  new random s random=$R(9817234)
+ new oldDir set oldDir=$g(^%webhome)
  s ^%webhome="/tmp/"_random
  open "test.html":(newversion)
  use "test.html"
@@ -417,7 +418,7 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  use "p" r x:1
  close "p"
  w !,x,!
- ;
+ set ^%webhome=oldDir
  kill nogblJob
  quit
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
