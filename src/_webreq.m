@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-12  5:14 PM
+%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-13  12:27 PM
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -10,7 +10,7 @@ go ; start up REST listener with defaults
 job(PORT,TLSCONFIG,NOGBL,USERPASS) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
  I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS)):(IN="/dev/null":OUT="/dev/null":ERR="webreq.mje"):5  ; no in and out files please.
- E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS)) ; Cache can't accept an empty string in the second argument
+ E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),"",$G(USERPASS)) ; Cache can't accept empty arguments. Change to empty strings.
  QUIT
  ;
 start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS) ; set up listening for connections
