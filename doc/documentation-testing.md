@@ -1,5 +1,5 @@
 # Testing
-## Automated Testing
+## Automated Testing on VistA Instance
 %webtest is the main testing routine. It only works on GTM/YDB, and requires
 the libcurl plugin (https://github.com/shabiel/fis-gtm-plugins/tree/master/libcurl).
 
@@ -273,6 +273,135 @@ BY ROUTINE:
     setError         100.00%  1 out of 1
     setError1        100.00%  49 out of 49
 ```
+
+## Automated Tesing Using Docker as standalone
+```
+saichiko:M-Web-Server sam$ docker build .
+Sending build context to Docker daemon  3.002MB
+Step 1/11 : FROM yottadb/yottadb-base:latest
+ ---> 03171a83c00b
+Step 2/11 : ARG DEBIAN_FRONTEND=noninteractive
+ ---> Using cache
+ ---> ee0980d6f836
+Step 3/11 : RUN apt update &&     apt upgrade -y &&     apt install -y     libcurl4-openssl-dev     git
+ ---> Using cache
+ ---> 9aca15f79848
+Step 4/11 : RUN git clone https://github.com/shabiel/fis-gtm-plugins.git
+ ---> Using cache
+ ---> 747ea2f8d399
+Step 5/11 : ENV LD_LIBRARY_PATH /opt/yottadb/current
+ ---> Using cache
+ ---> 6623b66582e8
+Step 6/11 : RUN cd fis-gtm-plugins/libcurl &&     . /opt/yottadb/current/ydb_env_set &&     export gtm_dist=$ydb_dist &&     make install
+ ---> Using cache
+ ---> eb4614500719
+Step 7/11 : RUN git clone https://github.com/joelivey/M-Unit.git munit
+ ---> Using cache
+ ---> 42d694ef26d1
+Step 8/11 : RUN cd munit &&     mkdir r &&     cd Routines &&     for file in %*.m; do mv "$file" /data/munit/r/"$(echo "$file" | sed s/\%/\_/)"; done
+ ---> Using cache
+ ---> e9d64e0104d7
+Step 9/11 : COPY ./src /mwebserver/r
+ ---> 4a01e511cb59
+Step 10/11 : ENV GTMXC_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
+ ---> Running in 667c4e890bc9
+Removing intermediate container 667c4e890bc9
+ ---> 25cd79119660
+Step 11/11 : RUN . /opt/yottadb/current/ydb_env_set &&     export ydb_routines="/mwebserver/r /data/munit/r $ydb_routines" &&     mumps -r ^%webtest
+ ---> Running in 2531e569c375
+ ---------------------------------- %webtest ----------------------------------
+tdebug - Debug Entry Point..----------------------------------  [OK]  150.463ms
+thome - Test Home Page..--------------------------------------  [OK]   15.992ms
+tgetr - Test Get Handler Routine..----------------------------  [OK]   31.241ms
+tputr - Put a Routine-----------------------------------------  [OK]    0.103ms
+tgetxml - Test Get Handler XML..------------------------------  [OK]   10.817ms
+tgzip - Test gzip encoding...---------------------------------  [OK]   23.777ms
+tping - Ping..------------------------------------------------  [OK]   12.186ms
+terr - generating an error.-----------------------------------  [OK]   14.214ms
+terr2 - crashing the error trap.------------------------------  [OK]    7.736ms
+tlong - get a long message..----------------------------------  [OK]    9.730ms
+trpc1 - Run a VistA RPC w/o authentication - should fail------  [OK]    0.093ms
+trpc2 - Run a VistA RPC (requires authentication - ac/vc provided)
+ -------------------------------------------------------------  [OK]    0.087ms
+trpc3 - Run the VPR RPC (XML Version)-------------------------  [OK]    0.090ms
+trpc4 - Run the VPR RPC (JSON Version)------------------------  [OK]    0.086ms
+tParams - Test a web service with parameters------------------  [OK]    0.076ms
+tDC - Test Disconnecting from the Server w/o talking----------  [OK]  102.467ms
+tInt - ZInterrupt.--------------------------------------------  [OK]  106.481ms
+tLog1 - Set HTTPLOG to 1..------------------------------------  [OK]   11.018ms
+tLog2 - Set HTTPLOG to 2..------------------------------------  [OK]   11.020ms
+tLog3 - Set HTTPLOG to 3--------------------------------------  [OK]    0.341ms
+tDCLog - Test Disconnecting from the Server w/o talking while logging.
+ -------------------------------------------------------------  [OK]  204.767ms
+tWebPage - Test Getting a web page....------------------------  [OK]   25.397ms
+tINIT - Test Fileman INIT code--------------------------------  [OK]    0.177ms
+CORS - Make sure CORS headers are returned.....---------------  [OK]   12.438ms
+USERPASS - Test that passing a username/password works..
+STOP issued to process 116
+--------------------------------------------------------------  [OK]  133.566ms
+NOGBL - Test to make sure no globals are used during webserver operations..
+
+.......
+STOP issued to process 130
+--------------------------------------------------------------  [OK]  258.625ms
+tStop - Stop the Server. MUST BE LAST TEST HERE.--------------  [OK]    0.286ms
+STOP issued to process 37
+
+
+ ----------------------------- %webjsonEncodeTest -----------------------------
+NUMERIC - is numeric function............---------------------  [OK]    2.313ms
+NEARZERO - encode of numbers near 0.--------------------------  [OK]    0.852ms
+JSONESC - create JSON escaped string.........-----------------  [OK]    2.045ms
+BASIC - encode basic object as JSON.--------------------------  [OK]    2.228ms
+VALS - encode simple values only object as JSON.--------------  [OK]    1.039ms
+LONG - encode object with continuation nodes for value....----  [OK]    3.882ms
+PRE - encode object where parts are already JSON encoded.-----  [OK]    0.951ms
+WP - word processing nodes inside object..--------------------  [OK]    2.804ms
+LTZERO - leading / trailing zeros get preserved.--------------  [OK]    0.975ms
+STRINGS - force encoding as string..--------------------------  [OK]    1.053ms
+LABELS - unusual labels..-------------------------------------  [OK]    1.491ms
+EXAMPLE - encode samples that are on JSON.ORG.....------------  [OK]   15.676ms
+KEYESC - keys should be escaped.------------------------------  [OK]    0.532ms
+
+ ----------------------------- %webjsonDecodeTest -----------------------------
+JSONUES - unescape JSON encoded string........----------------  [OK]    4.072ms
+SPLITA - JSON input with escaped characters on single line (uses BUILD)......
+ -------------------------------------------------------------  [OK]    2.901ms
+SPLITB - multiple line JSON input with lines split across tokens (uses BUILDA)......
+ -------------------------------------------------------------  [OK]    2.403ms
+SPLITC - multiple line JSON input with lines split inside boolean value......
+ -------------------------------------------------------------  [OK]    2.857ms
+SPLITD - multiple line JSON input with key split....----------  [OK]    1.464ms
+LONG - long document that must be saved across extension nodes.........
+ -------------------------------------------------------------  [OK]   12.578ms
+FRAC - multiple lines with fractional array elements..--------  [OK]    2.185ms
+VALONLY - passing in value only -- not array...---------------  [OK]    2.222ms
+NUMERIC - passing in numeric types and strings......----------  [OK]    1.190ms
+NEARZERO - decoding numbers near 0......----------------------  [OK]    1.193ms
+BADQUOTE - poorly formed JSON (missing close quote on LABEL).-  [OK]    1.165ms
+BADSLASH - poorly formed JSON (non-escaped backslash).--------  [OK]    1.390ms
+BADBRACE - poorly formed JSON (Extra Brace).------------------  [OK]    0.686ms
+BADCOMMA - poorly formed JSON (Extra Comma).------------------  [OK]    0.662ms
+PSNUM - subjects that look like a numbers shouldn't be encoded as numbers....
+ -------------------------------------------------------------  [OK]    2.068ms
+NUMLABEL - label that begins with numeric..-------------------  [OK]    2.196ms
+PURENUM - label that is purely numeric.......-----------------  [OK]    4.798ms
+STRTYPES - strings that may be confused with other types..----  [OK]    1.193ms
+ESTRING - a value that looks like an exponents, other numerics.......
+ -------------------------------------------------------------  [OK]    4.039ms
+SAM1 - decode sample 1 from JSON.ORG...-----------------------  [OK]    2.192ms
+SAM2 - decode sample 2 from JSON.ORG...-----------------------  [OK]    5.117ms
+SAM3 - decode sample 3 from JSON.ORG....----------------------  [OK]    5.386ms
+SAM4 - decode sample 4 from JSON.ORG......--------------------  [OK]   18.673ms
+SAM5 - decode sample 5 from JSON.ORG....----------------------  [OK]    8.901ms
+MAXNUM - encode large string that looks like number.....------  [OK]    4.797ms
+ESCQ - escaped quote across lines....-------------------------  [OK]    2.903ms
+KEYQUOTE - keys with quotes...--------------------------------  [OK]    1.242ms
+
+Ran 3 Routines, 67 Entry Tags
+Checked 199 tests, with 0 failures and encountered 0 errors.
+```
+
 ## Manual Testing
 On Cache, there are no manual tests available. Here is a list of manual
 tests to perform: Adjust AC/VC, patients, and paths as appropriate.
@@ -312,7 +441,8 @@ Tests with VistA:
 - curl localhost:9080/error?foo=crash2
 - curl localhost:9080/bigoutput
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/ORWU%20NEWPERS' -d '["A", "1"]'
-- curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/VPR%20GET%20PATIENT%20DATA' -d '[{"patientId":"1","domain":""}]'
+- curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/VPR%20GET%20PATIENT%20DATA' -d '["1"]' 
+- curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/VPR%20GET%20PATIENT%20DATA%20JSON' -d '[{"patientId":"1","domain":""}]'
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
 - nc -v localhost 9080 # CTRL-C after that
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
