@@ -56,7 +56,7 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS) ; set up listening for conne
  I $G(DEBUG) D DEBUG($G(TLSCONFIG))
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
- I '$G(NOGBL),$E(^%webhttp(0,"listener"),1,4)="stop" C TCPIO S ^%webhttp(0,"listener")="stopped" Q
+ I ('$G(NOGBL)),$E(^%webhttp(0,"listener"),1,4)="stop" C TCPIO S ^%webhttp(0,"listener")="stopped" Q
  ;
  ; ---- CACHE CODE ----
  I %WOS="CACHE" D  G LOOP
