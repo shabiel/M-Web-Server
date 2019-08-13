@@ -284,6 +284,7 @@ Tests without VistA:
 - curl localhost:9080/xml
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
+- do resetURLs^%webtest
 - curl localhost:9080/error
 - curl localhost:9080/error?foo=crash2
 - curl localhost:9080/bigoutput
@@ -325,3 +326,4 @@ Tests with VistA:
 - kill ^%webhome
 - curl localhost:9080/cache.lck
 ```
+
