@@ -8,7 +8,7 @@ webinit ; OSE/SMH - Initialize Web Server;2019-08-12  4:56 PM
  DO CACHETLS
  ;
  ; Install the package
- D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.0.4/mws.rsa")
+ D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.1.0/mws.rsa")
  ;
  ; If fileman is installed, do an init for the %web(17.001 file
 post ; [Public] Run this entry point if you don't want to download the code.
