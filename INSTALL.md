@@ -23,7 +23,7 @@ see the home page.
 
 To stop the web server after it is automatically started, type
 
-	D STOP^%webreq
+	D stop^%webreq
 
 The installation is divided into 3 sections. One for GT.M/Any Unix, one for
 Cache/Windows, and one for Cache/Any Unix.
@@ -38,7 +38,7 @@ in your shell. If you see anything other than a blank, you are ready to go.
 
 On the linux terminal, Use cURL to download the bootstrap routine.
 
-    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.0/webinit.rsa > /tmp/webinit.rsa
 
 Run GT.M using `$gtm_dist/mumps -dir`.
 
@@ -49,7 +49,7 @@ Once inside GT.M, find your routine directory in GT.M:
 
 Your results will differ. In my case, the routines directory is just `r`.
 
-Import `WWWINIT.RSA` into your routines directory. DO NOT FORGET THE TRAILING
+Import `webinit.rsa` into your routines directory. DO NOT FORGET THE TRAILING
 SLASH IN YOUR OUTPUT DIRECTORY:
     
     GTM>D ^%RI
@@ -57,7 +57,7 @@ SLASH IN YOUR OUTPUT DIRECTORY:
     Routine Input Utility - Converts RO file to *.m files.
     
     Formfeed delimited <No>? 
-    Input device: <terminal>: /tmp/WWWINIT.RSA
+    Input device: <terminal>: /tmp/webinit.rsa
     
     Init routine for 0.1.5
     GT.M 01-JAN-2014 14:03:54
@@ -65,18 +65,18 @@ SLASH IN YOUR OUTPUT DIRECTORY:
     
     Output directory : r/
     
-    WWWINIT   
+    webinit   
     
     
     Restored 482 lines in 1 routine.
 
-Now run ^WWWINIT to install and configure the server. ^WWWINIT will download
+Now run ^webinit to install and configure the server. ^webinit will download
 the necessary files and configure the system.
 
 It's a good idea to accept the defaults. If you have Fileman installed, 
-^WWWINIT will configure the Web Services file.
+^webinit will configure the Web Services file.
 
-    GTM>D ^WWWINIT
+    GTM>D ^webinit
              Q:+$SY=0 $ZU(168)
                        ^-----
                     At column 12, line 54, source module /var/local/wvtest/r/WWWINIT.m
@@ -330,14 +330,14 @@ Then download the bootstrap file as follows:
 
 	C:\Users\VISTAEXPERTISE>cd %temp%
 
-	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA
+	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://github.com/shabiel/M-Web-Server/releases/download/1.1.0/webinit.rsa
 
 Open the Cache Terminal from the Cache Cube, or use another method to get in. Read the routine archive in. Cache will complain that it doesn't recoginze GT.M's format. Ignore this error.
 
 	TEST1>D ^%RI
 	 
 	Input routines from Sequential
-	Device: C:\Users\VISTAE~1\AppData\Local\Temp\WWWINIT.RSA
+	Device: C:\Users\VISTAE~1\AppData\Local\Temp\webinit.rsa
 	Parameters? "R" =>
 	 
 		*****  W A R N I N G   *****
@@ -380,13 +380,13 @@ Open the Cache Terminal from the Cache Cube, or use another method to get in. Re
 	- indicates routines which have not been filed.
 	 
 	 
-	WWWINIT.INT@
+	webinit.rsa@
 	 
 	1 routine processed.
 
 Once done, run the bootstrap routine to download everything else and start the server.
 
-	TEST1>D ^WWWINIT
+	TEST1>D ^webinit
 	TLS/SSL client configured on Cache as config name 'client'
 	Enter the home directory where you will store the html, js, and css files
 	 
@@ -419,7 +419,7 @@ Open the Linux Terminal.
 
 Use cURL to download the bootstrap routine.
 
-    curl -L https://raw.github.com/shabiel/M-Web-Server/0.1.5/dist/WWWINIT.RSA > /tmp/WWWINIT.RSA
+    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.0/webinit.rsa > /tmp/webinit.rsa
 
 Open the Cache Terminal using `csession CACHE`, and switch to the appropriate
 namespace.
@@ -473,10 +473,10 @@ Ignore this error.
 	- indicates routines which have not been filed.
 
 
-	WWWINIT.INT@    
+	webinit.INT@    
 
 	1 routine processed.
-	TEST2>D ^WWWINIT
+	TEST2>D ^webinit
 	TLS/SSL client configured on Cache as config name 'client'
 	Enter the home directory where you will store the html, js, and css files
 
@@ -519,7 +519,7 @@ Install the plugin
     make install
 
 ## Starting and Stopping the Server
-Once you are done having fun, you can stop the server using `STOP^%webreq`.
+You can stop the server using `do stop^%webreq`.
 
-To start it again, run `D JOB^%webreq(portno)`, substituting a port number
-of your choice. If you run `D ^%webreq`, it will start at port number 9080.
+To start it again, run `D job^%webreq(portno)`, substituting a port number
+of your choice. If you run `D [start]^%webreq`, it will start at port number 9080.
