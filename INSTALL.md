@@ -2,6 +2,7 @@
 
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
+* [Platform and Dependencies](#platform-and-dependencies)
 * [Installation for GT.M](#installation-for-gtm)
 * [Installation on Cache/Windows](#installation-on-cachewindows)
 * [Installation on Cache/Unix](#installation-on-cacheunix)
@@ -27,6 +28,23 @@ To stop the web server after it is automatically started, type
 
 The installation is divided into 3 sections. One for GT.M/Any Unix, one for
 Cache/Windows, and one for Cache/Any Unix.
+
+## Platform and Dependencies
+The M Web Server (MWS) runs on GT.M (Unix) and Caché (Windows and Unix). The
+instructions assume a GT.M or equivalent YottaDB version >= 6.1; however, it
+possible to run it as well with xinetd for any GT.M version.
+
+MWS is completely self-contained and does not have any internal dependencies on
+VistA. However, if VistA is present, the follow features are enabled:
+
+- Web Server URLs are stored in a Fileman file
+- BASIC HTTP Authentication is enabled against VistA's File 200
+- The RPC web service is operational
+
+MWS has some external dependencies
+
+- GT.M/YottaDB: Operational: gzip, date, sed. Installer only: curl, perl, mkdir.
+- Caché: Operational: none. Installer only: mkdir.
 
 ## Installation for GT.M
 Open a linux terminal and source your GT.M environment file first. To check

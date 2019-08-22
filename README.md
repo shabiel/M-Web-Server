@@ -12,25 +12,27 @@ resources that can take advantage of the web services.
 This project is based off code contained in the [Health Management Platform (HMP)
 JSON store](https://github.com/OSEHRA-Sandbox/Health-Management-Platform/tree/master/hmp/hmp-main/src/main/mumps/dbj).
 
-## Install
+## Install & Dependencies
 See [INSTALL.md](INSTALL.md).
 
 ## Developer Documentation
 See the [doc](doc) folder.
 
-## Packaging
-This section is to help the maintainer remember how to package this when it
-gets updated. We rely on the github tag for automated installation. The OSEHRA
-VistA repo contains the PackRO script which is used here.
+To make a new version, see [packaging.md](doc/packaging.md).
 
- * After editing and committing the routines, update webinit with the new version number to be.
- * `../VistA/Scripts/PackRO.py src/webinit.m > webinit.rsa`
- * `../VistA/Scripts/PackRO.py $(find src -name '*.m' -not -name 'webinit.m') > mws.rsa`
- * Update the Install Documentation with the new version number.
- * Commit and push
- * git tag the new version number; and git push --tags
- * Attach code to the new version in releases.
- * Test on GT.M and Cache
+## Testing Documentation
+There are extensive [unit tests](doc/documentation-testing.md) covering 80% of
+the code.
+
+## Future work
+A lot of work needs to be put it to make this software more user friendly.
+
+A list of issues can be [found
+here](https://github.com/shabiel/M-Web-Server/issues).
+
+## XINDEX Note
+The code does not pass XINDEX checks due to its extensive use of OS specific
+calls. It should be treated as a vendor utility for the purposes of SAC Compliance.
 
 ## Links
 * OSEHRA Homepage: http://osehra.org
