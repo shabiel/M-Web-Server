@@ -220,7 +220,7 @@ MATCHR(ROUTINE,ARGS) ; Match against this routine
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  N SEQ,PATMETHOD
  N DONE S DONE=0
- F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ),";;",2,99) Q:PATTERN="zzzzz"  D  Q:DONE
+ F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ^%weburl),";;",2,99) Q:PATTERN="zzzzz"  D  Q:DONE
  . K ARGS
  . S ROUTINE=$P(PATTERN," ",3),PATMETHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
  . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
@@ -395,11 +395,6 @@ XML(RESULT,ARGS) ; text XML
  S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
  S ^TMP($J,7)="</note>"
  QUIT
- ;
-URLMAP ; map URLs to entry points (HTTP methods handled within entry point)
- ;;GET ping PING^%webrsp
- ;;GET xml XML^%webrsp
- ;;zzzzz
  ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
  ;
