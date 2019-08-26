@@ -36,6 +36,7 @@ set(source_files
   src/_webreq.m
   src/_webrsp.m
   src/_webutils.m
+  src/_weburl.m
 )
 
 # Add commands to compile .m files
