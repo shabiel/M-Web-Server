@@ -15,7 +15,9 @@ STARTUP ; [Adjust the acvc and dfn to suit your environment]
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
+ kill ^%webhttp(0,"cors")
  do resetURLs
+ do setupCORS
  job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
@@ -139,7 +141,7 @@ trpc1 ; @TEST Run a VistA RPC w/o authentication - should fail
  d &libcurl.cleanup
  d CHKEQ^%ut(httpStatus,401)
  quit
- 
+ ;
 trpc2 ; @TEST Run a VistA RPC (requires authentication - ac/vc provided)
  n httpStatus,return
  i $text(^XUS)="" quit  ; VistA not installed
@@ -450,6 +452,14 @@ resetURLs ; Reset all the URLs; Called upon start-up
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  n ien s ien=$$addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
+ quit
+ ;
+setupCORS ; Set CORS Configuration
+ S ^%webhttp(0,"cors","enabled")="Y"
+ S ^%webhttp(0,"cors","credentials")="Y"
+ S ^%webhttp(0,"cors","method")="OPTIONS, POST"
+ S ^%webhttp(0,"cors","header")="Content-Type"
+ S ^%webhttp(0,"cors","origin")="*"
  quit
  ;
 XTROU ;

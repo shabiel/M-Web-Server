@@ -16,7 +16,7 @@ post ; [Public] Run this entry point if you don't want to download the code.
  ;
  ; Load the URLs
  D LOADHAND
- ; 
+ ;
  ; Set the home directory for the server
  N % S %=$$HOMEDIR
  I '% QUIT
@@ -24,6 +24,12 @@ post ; [Public] Run this entry point if you don't want to download the code.
  ; Set start port
  N PORT S PORT=$$PORT()
  I PORT=0 QUIT
+ ;
+ K ^%webhttp(0)
+ S ^%webhttp(0,"port")=PORT
+ ;
+ ; Set CORS config
+ D CORS()
  ;
  ; Start Server
  D job^%webreq(PORT)
@@ -314,7 +320,7 @@ TESTD47(DIR) ; $$ ; Can I write to this directory in GT.M?
  QUIT 1
  ;
 TESTDET ; Open File Error handler
- S $EC="" 
+ S $EC=""
  QUIT 0
  ;
  ; Load URL handlers
@@ -400,6 +406,44 @@ PORTOKER ; Error handler for open port
  I $ES QUIT
  S $EC=""
  QUIT 0
+ ;
+CORS() ; $$; set CORS configuration
+ S ^%webhttp(0,"cors","enabled")="N"
+ N TMP
+ R !,"Do you want to enable CORS: Y/N// ",TMP:30
+ I (TMP="Y")!(TMP="N") S ^%webhttp(0,"cors","enabled")=TMP
+ I ^%webhttp(0,"cors","enabled")="N" Q
+ N TMPORG
+ACAO ; Set Allowed Origins
+ N TMP
+ R !,"Access Control Allowed Origin: // ",TMP:30
+ I TMP'="" S TMPORG=$G(TMPORG)_TMP_","
+ N TMP
+ R !,"Add more origins: Y/N// ",TMP:30
+ I TMP="Y" GOTO ACAO
+ I '$G(TMPORG) S ^%webhttp(0,"cors","origin")=$E(TMPORG,0,$L(TMPORG)-1) ; Remove trailing comma
+ N TMP
+ R !,"Access Control Allow Credentials: true/false// ",TMP:30
+ I (TMP="true")!(TMP="false") S ^%webhttp(0,"cors","credentials")=TMP
+ N TMPMTH
+ACAM ; Set Allowed Methods
+ N TMP
+ R !,"Access Control Allowed Method: POST/PUT/GET/DELETE/OPTIONS// ",TMP:30
+ I (TMP="POST")!(TMP="PUT")!(TMP="GET")!(TMP="DELETE")!(TMP="OPTIONS") S TMPMTH=$G(TMPMTH)_TMP_","
+ N TMP
+ R !,"Add more methods: Y/N// ",TMP:30
+ I TMP="Y" GOTO ACAM
+ I '$G(TMPMTH) S ^%webhttp(0,"cors","method")=$E(TMPMTH,0,$L(TMPMTH)-1)
+ N TMPHDR
+ACAH ; Set Allowed Headers
+ N TMP
+ R !,"Access Control Allowed Header: // ",TMP:30
+ I TMP'="" S TMPHDR=$G(TMPHDR)_TMP_","
+ N TMP
+ R !,"Add more headers: Y/N// ",TMP:30
+ I TMP="Y" GOTO ACAH
+ I '$G(TMPHDR) S ^%webhttp(0,"cors","header")=$E(TMPHDR,0,$L(TMPHDR)-1)
+ Q
  ;
 uninstallMWS ; Remove MWS completely
  if $data(^DD) do
