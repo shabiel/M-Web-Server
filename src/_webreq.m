@@ -7,13 +7,13 @@ go ; start up REST listener with defaults
  D job(PORT)
  QUIT
  ;
-job(PORT,TLSCONFIG,NOGBL,USERPASS) ; Convenience entry point
+job(PORT,TLSCONFIG,NOGBL,USERPASS,CORSENAB,CORSHDRS,CORSMETH,CORSORG,CORSCRED) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS)):(IN="/dev/null":OUT="/dev/null":ERR="webreq.mje"):5  ; no in and out files please.
- E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),"",$G(USERPASS)) ; Cache can't accept empty arguments. Change to empty strings.
+ I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(CORSENAB),$G(CORSHDRS),$G(CORSMETH),$G(CORSORG),$G(CORSCRED)):(IN="/dev/null":OUT="/dev/null":ERR="webreq.mje"):5  ; no in and out files please.
+ E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),"",$G(USERPASS),$G(CORSENAB),$G(CORSHDRS),$G(CORSMETH),$G(CORSORG),$G(CORSCRED)) ; Cache can't accept empty arguments. Change to empty strings.
  QUIT
  ;
-start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS) ; set up listening for connections
+start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,CORSENAB,CORSHDRS,CORSMETH,CORSORG,CORSCRED) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
@@ -62,7 +62,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  I %WOS="CACHE" D  G LOOP
  . R *X:10
  . E  QUIT  ; Loop back again when listening and nobody on the line
- . J CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
+ . J CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS),$G(CORSENAB),$G(CORSHDRS),$G(CORSMETH),$G(CORSORG),$G(CORSCRED)):(:4:TCPIO:TCPIO):10 ; Send off the device to another job for input and output.
  . i $ZA\8196#2=1 W *-2  ; job failed to clear bit
  ; ---- END CACHE CODE ----
  ;
@@ -72,13 +72,13 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  ;I %WOS="GT.M" D  G LOOP:'GTMDONE,CHILD:GTMDONE
  I %WOS="GT.M" D  G LOOP
  . ;
- . ; Wait until we have a connection (inifinte wait). 
+ . ; Wait until we have a connection (inifinte wait).
  . ; Stop if the listener asked us to stop.
  . FOR  W /WAIT(10) Q:$KEY]""  Q:$G(NOGBL)  Q:($E(^%webhttp(0,"listener"),1,4)="stop")
  . ;
  . ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
  . I '$G(NOGBL),$E(^%webhttp(0,"listener"),1,4)="stop" QUIT
- . ; 
+ . ;
  . ; At connection, job off the new child socket to be served away.
  . ; I $P($KEY,"|")="CONNECT" QUIT ; before 6.1
  . I $P($KEY,"|")="CONNECT" D  ; >=6.1
@@ -86,7 +86,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS)):(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS),$G(CORSENAB),$G(CORSHDRS),$G(CORSMETH),$G(CORSORG),$G(CORSCRED)):(input="_ARG_":output="_ARG_")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
@@ -96,7 +96,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . ; JOB START^%webreq(TCPPORT):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  . ; SET GTMDONE=1  ; Will goto CHILD at the DO exist up above
  . ; ---- END GT.M CODE ----
- ; 
+ ;
  QUIT
  ;
 DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
@@ -138,7 +138,7 @@ GTMLNX  ;From Linux xinetd script; $P is the main stream
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD(TLSCONFIG,NOGBL,TRACE,USERPASS) ; handle HTTP requests on this connection
+CHILD(TLSCONFIG,NOGBL,TRACE,USERPASS,CORSENAB,CORSHDRS,CORSMETH,CORSORG,CORSCRED) ; handle HTTP requests on this connection
 CHILDDEBUG ; [Internal] Debugging entry point
  S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  S %WOS=$S($P($SY,",")=47:"GT.M",$P($SY,",")=50:"MV1",1:"CACHE") ; Get Mumps Virtual Machine
@@ -201,7 +201,16 @@ WAIT ; wait for request on this connection
  . D RDLEN(HTTPREQ("header","content-length"),99)
  . I HTTPLOG>2 D LOGBODY
  ;
- ; -- build response (map path to routine & call, otherwise 404)   
+ N CORS
+ I $G(NOGBL) D
+ . S CORS("enabled")=$G(CORSENAB)
+ . S CORS("credentials")=$G(CORSCRED)
+ . S CORS("method")=$G(CORSMETH)
+ . S CORS("header")=$G(CORSHDRS)
+ . S CORS("origin")=$G(CORSORG)
+ E  I $D(^%webhttp(0,"cors")) M CORS=^%webhttp(0,"cors")
+ ;
+ ; -- build response (map path to routine & call, otherwise 404)
  S $ETRAP="G ETCODE^%webreq"
  S HTTPERR=0
  D RESPOND^%webrsp
@@ -295,8 +304,8 @@ ETCODE ; error trap when calling out to routines
 ETDC ; error trap for client disconnect ; not a true M trap
  D:HTTPLOG LOGDC
  K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
- C $P  
- HALT ; Stop process 
+ C $P
+ HALT ; Stop process
  ;
 ETBAIL ; error trap of error traps
  U %WTCP

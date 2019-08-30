@@ -273,17 +273,13 @@ SENDATA ; write out the data as an HTTP response
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
  ; Add CORS Header
- I $G(NOGBL) D
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Methods: OPTIONS, POST"_$C(13,10))
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Headers: Content-Type"_$C(13,10))
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
- . D W("Access-Control-Allow-Origin: *"_$C(13,10))
- E  I $G(^%webhttp(0,"cors","enabled"))="Y"  D
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Credentials: "_^%webhttp(0,"cors","credentials")_$C(13,10))
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Methods: "_^%webhttp(0,"cors","method")_$C(13,10))
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Headers: "_^%webhttp(0,"cors","header")_$C(13,10))
- . I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
- . D W("Access-Control-Allow-Origin: "_^%webhttp(0,"cors","origin")_$C(13,10))
+ I $G(CORS("enabled"))="Y" D
+ . I $G(HTTPREQ("method"))="OPTIONS" D
+ . . D W("Access-Control-Allow-Credentials: "_CORS("credentials")_$C(13,10))
+ . . D W("Access-Control-Allow-Methods: "_CORS("method")_$C(13,10))
+ . . D W("Access-Control-Allow-Headers: "_CORS("header")_$C(13,10))
+ . . D W("Access-Control-Max-Age: 86400"_$C(13,10))
+ . D W("Access-Control-Allow-Origin: "_CORS("origin")_$C(13,10))
  ;
  I $P($SY,",")=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
