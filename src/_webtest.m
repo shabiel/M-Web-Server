@@ -15,9 +15,8 @@ STARTUP ; [Adjust the acvc and dfn to suit your environment]
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
- kill ^%webhttp(0,"cors")
  do resetURLs
- job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%webreq(55728,,,,1,,"Y","Content-Type","OPTIONS, POST","*","true"):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
  quit
@@ -303,7 +302,6 @@ tINIT ; @TEST Test Fileman INIT code
  ;
 CORS ; @TEST Make sure CORS headers are returned
  k ^%webhttp("log",+$H)
- do setupCORS
  n httpStatus,return,headers,headerarray
  d &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/r/kbbotest.m",,,,.headers)
  ;
@@ -318,25 +316,6 @@ CORS ; @TEST Make sure CORS headers are returned
  d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Headers")),"Content-Type")
  d CHKEQ^%ut($g(headerarray("Access-Control-Max-Age")),"86400")
  d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Origin")),"*")
- quit
- ;
-NOCORS ; @TEST Make sure CORS headers are not returned
- k ^%webhttp("log",+$H)
- kill ^%webhttp(0,"cors")
- n httpStatus,return,headers,headerarray
- d &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/r/kbbotest.m",,,,.headers)
- ;
- ; Split the headers apart using carriage return line feed delimiter
- f i=1:1:$L(headers,$C(13,10)) D
- . ; Change to name based subscripts by using ": " delimiter
- . s:($p($p(headers,$C(13,10),i),": ",1)'="")&($p($p(headers,$C(13,10),i),": ",2)'="") headerarray($p($p(headers,$C(13,10),i),": ",1))=$p($p(headers,$C(13,10),i),": ",2)
- ;
- ; Now make sure all required bits are correct
- d CHKEQ^%ut(httpStatus,200)
- d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Methods")),"")
- d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Headers")),"")
- d CHKEQ^%ut($g(headerarray("Access-Control-Max-Age")),"")
- d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Origin")),"")
  quit
  ;
 USERPASS ; @TEST Test that passing a username/password works
@@ -473,14 +452,6 @@ resetURLs ; Reset all the URLs; Called upon start-up
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  n ien s ien=$$addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
- quit
- ;
-setupCORS ; Set CORS Configuration
- S ^%webhttp(0,"cors","enabled")="Y"
- S ^%webhttp(0,"cors","credentials")="true"
- S ^%webhttp(0,"cors","method")="OPTIONS, POST"
- S ^%webhttp(0,"cors","header")="Content-Type"
- S ^%webhttp(0,"cors","origin")="*"
  quit
  ;
 XTROU ;

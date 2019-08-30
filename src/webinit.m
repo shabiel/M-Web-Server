@@ -29,10 +29,11 @@ post ; [Public] Run this entry point if you don't want to download the code.
  S ^%webhttp(0,"port")=PORT
  ;
  ; Set CORS config
- D CORS()
+ N CORS
+ D CORS(.CORS)
  ;
  ; Start Server
- D job^%webreq(PORT)
+ D job^%webreq(PORT,,,,CORS("enabled"),CORS("header"),CORS("method"),CORS("origin"),CORS("credentials"))
  ;
  W !!,"Mumps Web Services is now listening to port "_PORT,!
  N SERVER S SERVER="http://localhost:"_PORT_"/"
@@ -407,12 +408,12 @@ PORTOKER ; Error handler for open port
  S $EC=""
  QUIT 0
  ;
-CORS() ; $$; set CORS configuration
- S ^%webhttp(0,"cors","enabled")="N"
+CORS(CORS) ; $$; set CORS configuration
+ S CORS("enabled")="N"
  N TMP
  R !,"Do you want to enable CORS: Y/N// ",TMP:30
- I (TMP="Y")!(TMP="N") S ^%webhttp(0,"cors","enabled")=TMP
- I ^%webhttp(0,"cors","enabled")="N" Q
+ I (TMP="Y")!(TMP="N") S CORS("enabled")=TMP
+ I CORS("enabled")="N" Q
  N TMPORG
 ACAO ; Set Allowed Origins
  N TMP
@@ -421,10 +422,10 @@ ACAO ; Set Allowed Origins
  N TMP
  R !,"Add more origins: Y/N// ",TMP:30
  I TMP="Y" GOTO ACAO
- I '$G(TMPORG) S ^%webhttp(0,"cors","origin")=$E(TMPORG,0,$L(TMPORG)-1) ; Remove trailing comma
+ I '$G(TMPORG) S CORS("origin")=$E(TMPORG,0,$L(TMPORG)-1) ; Remove trailing comma
  N TMP
  R !,"Access Control Allow Credentials: true/false// ",TMP:30
- I (TMP="true")!(TMP="false") S ^%webhttp(0,"cors","credentials")=TMP
+ I (TMP="true")!(TMP="false") S CORS("credentials")=TMP
  N TMPMTH
 ACAM ; Set Allowed Methods
  N TMP
@@ -433,7 +434,7 @@ ACAM ; Set Allowed Methods
  N TMP
  R !,"Add more methods: Y/N// ",TMP:30
  I TMP="Y" GOTO ACAM
- I '$G(TMPMTH) S ^%webhttp(0,"cors","method")=$E(TMPMTH,0,$L(TMPMTH)-1)
+ I '$G(TMPMTH) S CORS("method")=$E(TMPMTH,0,$L(TMPMTH)-1)
  N TMPHDR
 ACAH ; Set Allowed Headers
  N TMP
@@ -442,7 +443,7 @@ ACAH ; Set Allowed Headers
  N TMP
  R !,"Add more headers: Y/N// ",TMP:30
  I TMP="Y" GOTO ACAH
- I '$G(TMPHDR) S ^%webhttp(0,"cors","header")=$E(TMPHDR,0,$L(TMPHDR)-1)
+ I '$G(TMPHDR) S CORS("header")=$E(TMPHDR,0,$L(TMPHDR)-1)
  Q
  ;
 uninstallMWS ; Remove MWS completely

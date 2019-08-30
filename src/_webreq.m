@@ -202,13 +202,11 @@ WAIT ; wait for request on this connection
  . I HTTPLOG>2 D LOGBODY
  ;
  N CORS
- I $G(NOGBL) D
- . S CORS("enabled")=$G(CORSENAB)
- . S CORS("credentials")=$G(CORSCRED)
- . S CORS("method")=$G(CORSMETH)
- . S CORS("header")=$G(CORSHDRS)
- . S CORS("origin")=$G(CORSORG)
- E  I $D(^%webhttp(0,"cors")) M CORS=^%webhttp(0,"cors")
+ S CORS("enabled")=$G(CORSENAB)
+ S CORS("credentials")=$G(CORSCRED)
+ S CORS("method")=$G(CORSMETH)
+ S CORS("header")=$G(CORSHDRS)
+ S CORS("origin")=$G(CORSORG)
  ;
  ; -- build response (map path to routine & call, otherwise 404)
  S $ETRAP="G ETCODE^%webreq"
