@@ -272,13 +272,20 @@ SENDATA ; write out the data as an HTTP response
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
  ;
- ; Add CORS Header
+ ; Access-Control-Allow-Origin :- specifies either a single origin, which tells browsers to allow that origin to access the resource;
+ ;        or else — for requests without credentials — the "*" wildcard, to tell browsers to allow any origin to access the resource
+ ; Access-Control-Max-Age :- indicates how long the results of a preflight request can be cached
+ ; Access-Control-Allow-Credentials :- indicates whether or not the response to the request can be exposed when the credentials flag is true
+ ; Access-Control-Allow-Methods :- specifies the method or methods allowed when accessing the resource
+ ; Access-Control-Allow-Headers :- is used in response to a preflight request to indicate which HTTP headers can be used when making the actual request.
+ ;
+ ; Add CORS headers
  I $G(CORS("enabled"))="Y" D
  . I $G(HTTPREQ("method"))="OPTIONS" D
  . . D W("Access-Control-Allow-Credentials: "_CORS("credentials")_$C(13,10))
  . . D W("Access-Control-Allow-Methods: "_CORS("method")_$C(13,10))
  . . D W("Access-Control-Allow-Headers: "_CORS("header")_$C(13,10))
- . . D W("Access-Control-Max-Age: 86400"_$C(13,10))
+ . . D W("Access-Control-Max-Age: "_CORS("maxAge")_$C(13,10))
  . D W("Access-Control-Allow-Origin: "_CORS("origin")_$C(13,10))
  ;
  I $P($SY,",")=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!

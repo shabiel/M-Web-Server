@@ -33,7 +33,7 @@ post ; [Public] Run this entry point if you don't want to download the code.
  D CORS(.CORS)
  ;
  ; Start Server
- D job^%webreq(PORT,,,,CORS("enabled"),CORS("header"),CORS("method"),CORS("origin"),CORS("credentials"))
+ D job^%webreq(PORT,,,,CORS("enabled"),CORS("header"),CORS("method"),CORS("origin"),CORS("credentials"),CORS("maxAge"))
  ;
  W !!,"Mumps Web Services is now listening to port "_PORT,!
  N SERVER S SERVER="http://localhost:"_PORT_"/"
@@ -415,7 +415,7 @@ CORS(CORS) ; $$; set CORS configuration
  I (TMP="Y")!(TMP="N") S CORS("enabled")=TMP
  I CORS("enabled")="N" Q
  N TMPORG
-ACAO ; Set Allowed Origins
+ACAO ; Set Allowed Origins, Allowed Credentials flag and Max Age value
  N TMP
  R !,"Access Control Allowed Origin: // ",TMP:30
  I TMP'="" S TMPORG=$G(TMPORG)_TMP_","
@@ -426,6 +426,10 @@ ACAO ; Set Allowed Origins
  N TMP
  R !,"Access Control Allow Credentials: true/false// ",TMP:30
  I (TMP="true")!(TMP="false") S CORS("credentials")=TMP
+ N TMP
+ S CORS("maxAge")=86400
+ R !,"Access Control Max Age: (Time in Seconds)// ",TMP:30
+ I (TMP?.N)&TMP>0 S CORS("maxAge")=TMP
  N TMPMTH
 ACAM ; Set Allowed Methods
  N TMP

@@ -16,7 +16,7 @@ STARTUP ; [Adjust the acvc and dfn to suit your environment]
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
  do resetURLs
- job start^%webreq(55728,,,,1,,"Y","Content-Type","OPTIONS, POST","*","true"):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%webreq(55728,,,,1,,"Y","Content-Type","OPTIONS, POST","*","true",86400):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
  quit
@@ -358,7 +358,7 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  n nogblJob
  ;
  ; Now start a webserver with a passed username/password
- j start^%webreq(55731,"",,1,,,"Y","Content-Type","OPTIONS, POST","*","true")
+ j start^%webreq(55731,"",,1,,,"Y","Content-Type","OPTIONS, POST","*","true",86400)
  h .1
  s nogblJob=$zjob
  ;
