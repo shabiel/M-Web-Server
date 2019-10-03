@@ -278,7 +278,7 @@ SENDATA ; write out the data as an HTTP response
  I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
  D W("Access-Control-Allow-Origin: *"_$C(13,10))
  ;
- I $P($SY,",")=47,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
+ I $P($SY,",")=47,'$G(NOGZIP),$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty

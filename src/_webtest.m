@@ -101,6 +101,32 @@ tgzip ; @TEST Test gzip encoding
  view "badchar"
  quit
  ;
+tnogzipflag ; @TEST Test nogzip flag
+ k ^%webhttp("log",+$H)
+ n gzipflagjob
+ ;
+ ; Now start a webserver with a passed username/password
+ j start^%webreq(55732,"",,,,,1)
+ h .1
+ s gzipflagjob=$zjob
+ ;
+ n httpStatus,return,headers
+ d &libcurl.init
+ d &libcurl.addHeader("Accept-Encoding: gzip") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/r/%25webapi",,,1,.headers)
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(headers'["Content-Encoding: gzip")
+ do CHKTF^%ut(return["webapi ; OSE/SMH - Infrastructure web services hooks")
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_gzipflagjob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ ;
+ kill gzipflagjob
+ quit
+ ;
 tping ; @TEST Ping
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
