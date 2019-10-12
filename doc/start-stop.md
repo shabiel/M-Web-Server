@@ -19,7 +19,7 @@ A typical use of `job^%webreq` is `do job^%webreq(8080)`.
 
 TLSCONFIG's use is documented in detail in [this document](doc/tls-setup.md).
 
-Another entry point for advanced users/programmers is the `start^%webreq` entry point. I won't document it in detail here. It supports a DEBUG flag to cause you to break to debug your code, and also a TRACE flag to allow you to trace your code execution for coverage (GT.M/YottaDB only). DEBUG's use is described in detail in [this document](doc/documentation-debugging.md).
+Another entry point for advanced users/programmers is the `start^%webreq` entry point. I won't document it in detail here. It supports a DEBUG flag to cause you to break to debug your code, and also a TRACE flag to allow you to trace your code execution for coverage (GT.M/YottaDB only). DEBUG's use is described in detail in [this document](doc/debugging.md).
 
 # Stopping the M-Web-Server
 To stop the server, run `do stop^%webreq`. The loop that checks if a stop have been requested is 10 seconds long, so you need to wait at most that time to check that it stopped.
