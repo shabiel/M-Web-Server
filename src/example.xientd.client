@@ -1,4 +1,4 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 source ./set_env
-$gtm_dist/mumps -r GTMLNX^VPRJREQ
+$gtm_dist/mumps -r GTMLNX^%webreq
