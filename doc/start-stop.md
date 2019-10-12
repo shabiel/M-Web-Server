@@ -27,3 +27,33 @@ To stop the server, run `do stop^%webreq`. The loop that checks if a stop have b
 
 # Controlling M Web Server Start-Up from Xinetd
 This is not a commonly used feature; and we (as the developers) don't regression test for it. You can also run the M Web Server from Xinetd. A sample xinetd config can be found [here](src/example.xinetd.cleartext) and the script to run the job is [here](src/example.xientd.client). The key is that your Xinetd server will eventually call the Xinetd entry point `GTMLNX^%webreq`.
+
+# Testing that the server is actually running
+The easiest way to check that the sever is running is doing a curl against `/ping`. For example,
+
+```
+$ curl -s localhost:9080/ping | jq
+{
+"status": "19621 running"
+}
+```
+
+Also, navigating your browser to / will show you the home page.
+
+Another way is to check using ZSY (if installed). `do ^ZSY` will show the following:
+
+```
+GT.M System Status users on 12-OCT-19 16:09:30
+PID   PName   Device       Routine            Name                CPU Time
+19576 mumps   BG-S9080     LOOP+19^%webreq                        0:00.05
+```
+
+Last but not least, you can use netstat or lsof to check which process is listening on a specific port. For example,
+
+```
+$ lsof -iTCP -sTCP:LISTEN -P
+COMMAND    PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+rapportd   470  sam    3u  IPv4 0xd1f43f7b28c2f965      0t0  TCP *:55282 (LISTEN)
+rapportd   470  sam    4u  IPv6 0xd1f43f7b290e2cbd      0t0  TCP *:55282 (LISTEN)
+yottadb  19576  sam    6u  IPv6 0xd1f43f7b290e327d      0t0  TCP *:9080 (LISTEN)
+```
