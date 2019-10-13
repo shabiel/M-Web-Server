@@ -6,6 +6,7 @@
 * [Installation for GT.M](#installation-for-gtm)
 * [Installation on Cache/Windows](#installation-on-cachewindows)
 * [Installation on Cache/Unix](#installation-on-cacheunix)
+* [Manual Install from Source](#manual-install-from-source)
 * [Starting and Stopping the Server](#starting-and-stopping-the-server)
 
 While installation is intended to be mostly automatic, you need to download
@@ -363,8 +364,22 @@ Install the plugin
 
     make install
 
+## Manual Install from Source
+You can import all the M files to your M implementation. Next, run the following:
+
+```
+I $D(^DD) D ^%webINIT
+D LOADHAND^webinit
+```
+
+## Uninstalling
+Run the following
+```
+do uninstallMWS^webinit
+```
+
 ## Starting and Stopping the Server
 You can stop the server using `do stop^%webreq`.
 
 To start it again, run `D job^%webreq(portno)`, substituting a port number
-of your choice. If you run `D [start]^%webreq`, it will start at port number 9080.
+of your choice. If you run `D [go]^%webreq`, it will start at port number 9080.
