@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-08-12  5:47 PM
+%webtest ; ose/smh - Web Services Tester;2019-11-12  5:37 PM
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -125,6 +125,23 @@ tnogzipflag ; @TEST Test nogzip flag
  w !,x,!
  ;
  kill gzipflagjob
+ quit
+ ;
+temptynogzip ; @TEST Empty response with no gzip encoding
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/empty")
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(return="")
+ quit
+ ;
+temptygzip ; @TEST Empty response with gzip
+ n httpStatus,return
+ d &libcurl.init
+ d &libcurl.addHeader("Accept-Encoding: gzip")
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/empty",,,1,.headers)
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(headers'["Content-Encoding: gzip")
+ do CHKTF^%ut(return="")
  quit
  ;
 tping ; @TEST Ping
