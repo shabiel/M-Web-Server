@@ -1,4 +1,4 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;Feb 07, 2019@11:07
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-11-14  11:50 AM
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
@@ -140,6 +140,11 @@ setError1 ;
  E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
  I $L($G(MESSAGE)) S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"domain")=MESSAGE
  Q
+customError(ERRCODE,ERRARRAY) ; set custom error into ^TMP("HTTPERR",$J)
+ K ^TMP("HTTPERR",$J)
+ S HTTPERR=ERRCODE
+ M ^TMP("HTTPERR",$J,1)=ERRARRAY
+ QUIT
  ;
  ; Cache specific functions (selected one support GT.M too!)
  ;
