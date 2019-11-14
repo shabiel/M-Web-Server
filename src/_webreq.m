@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;2019-08-13  2:04 PM
+%webreq ;SLC/KCM -- Listen for HTTP requests;2019-11-14  2:05 PM
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -283,14 +283,21 @@ ETCODE ; error trap when calling out to routines
  ; Set the error information and write it as the HTTP response.
  I $D(%WNULL) C %WNULL
  U %WTCP
+ N ISGTM S ISGTM=$P($SYSTEM,",")=47
+ N ERRTXT S ERRTXT=$S(ISGTM:$ZSTATUS,1:$ZERROR_"  ($ECODE:"_$ECODE_")")
+ N ERRARR
+ S ERRARR("message")=ERRTXT
+ S ERRARR("reason")=$ECODE
+ S ERRARR("place")=$STACK($STACK(-1),"PLACE")
+ S ERRARR("mcode")=$STACK($STACK(-1),"MCODE")
+ S ERRARR("logID")=HTTPLOG("ID")
+ D:'$G(NOGBL) SETERROR^%webutils(501,,.ERRARR) ; sets HTTPERR
  D LOGERR
- D:'$G(NOGBL) SETERROR^%webutils(501,"Log ID:"_HTTPLOG("ID")) ; sets HTTPERR
  D:'$G(NOGBL) RSPERROR^%webrsp  ; switch to error response
  D SENDATA^%webrsp
- ; Leave $ECODE as non-null so that the error handling continues.
  ; This next line will 'unwind' the stack and got back to listening
  ; for the next HTTP request (goto NEXT).
- S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT"
+ S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT",$ECODE=",U-UNWIND,"
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
  D:HTTPLOG LOGDC
@@ -377,6 +384,8 @@ LOGERR ; log error information
  ; Works on GT.M and Cache to capture ST.
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
  I ISGTM ZSHOW "D":^%webhttp("log",%D,$J,%I,"error","devices")
+ ; If VistA Error Trap exists, log the error there too.
+ I $T(+0^%ZTER)'="" D ^%ZTER
  Q
  ;
 stop ; tell the listener to stop running

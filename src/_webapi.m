@@ -1,4 +1,4 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;2019-08-12  4:51 PM
+%webapi ; OSE/SMH - Infrastructure web services hooks;2019-11-14  11:35 AM
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -32,6 +32,9 @@ SAVE(RN) ; [Private] Save a routine
  ;
 ERR(RESULT,ARGS) ; GET /error Force M Error
  I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
+ D ERR1
+ QUIT
+ERR1 ;
  N X S X=1/0
  ;
 bigoutput(result,args) ; GET /bigoutput - Used by Unit Tests to ensure large output is handled appropriately
