@@ -73,7 +73,7 @@ tputr ; @TEST Put a Routine
  ;
 tgetxml ; @TEST Test Get Handler XML
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/xml")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/xml")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["xml")
  quit
@@ -83,7 +83,7 @@ thead ; #TEST HTTP Verb HEAD (only works with GET queries)
  n httpStatus,return,headers,status
  d
  . n $et,$es s $et="s ec=$ec,$ec="""""
- . s status=$&libcurl.curl(.httpStatus,.return,"HEAD","http://127.0.0.1:55728/xml",,,1,.headers)
+ . s status=$&libcurl.curl(.httpStatus,.return,"HEAD","http://127.0.0.1:55728/test/xml",,,1,.headers)
  zwrite ec
  zwrite httpStatus
  zwrite headers
@@ -129,7 +129,7 @@ tnogzipflag ; @TEST Test nogzip flag
  ;
 temptynogzip ; @TEST Empty response with no gzip encoding
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/empty")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/empty")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return="")
  quit
@@ -138,7 +138,7 @@ temptygzip ; @TEST Empty response with gzip
  n httpStatus,return
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/empty",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/empty",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers'["Content-Encoding: gzip")
  do CHKTF^%ut(return="")
@@ -153,14 +153,21 @@ tping ; @TEST Ping
  ;
 terr ; @TEST generating an error
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/error")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/error")
  do CHKEQ^%ut(httpStatus,500)
  quit
  ;
 terr2 ; @TEST crashing the error trap
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/error?foo=crash2")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/error?foo=crash2")
  do CHKEQ^%ut(httpStatus,500)
+ quit
+ ;
+tcustomError ; @TEST Custom Error
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/customerror")
+ do CHKTF^%ut(return["OperationOutcome")
+ do CHKEQ^%ut(httpStatus,400)
  quit
  ;
 tlong ; @TEST get a long message
@@ -481,14 +488,14 @@ cov ; [Private: Calculate Coverage]
 resetURLs ; Reset all the URLs; Called upon start-up
  d deleteService^%webutils("GET","r/{routine?.1""%25"".32AN}")
  d deleteService^%webutils("PUT","r/{routine?.1""%25"".32AN}")
- d deleteService^%webutils("GET","error")
+ d deleteService^%webutils("GET","/test/error")
  d deleteService^%webutils("GET","bigoutput")
  d deleteService^%webutils("POST","rpc/{rpc}")
  d deleteService^%webutils("POST","rpc2/{rpc}")
  ;
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
  do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
- do addService^%webutils("GET","error","ERR^%webapi")
+ do addService^%webutils("GET","/test/error","ERR^%webapi")
  do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"

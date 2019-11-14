@@ -47,6 +47,34 @@ bigoutput(result,args) ; GET /bigoutput - Used by Unit Tests to ensure large out
  s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
+ping(RESULT,ARGS) ; writes out a ping response
+ S RESULT="{""status"":"""_$J_" running""}"
+ Q
+xml(RESULT,ARGS) ; text XML
+ S HTTPRSP("mime")="text/xml"
+ S RESULT=$NA(^TMP($J))
+ S ^TMP($J,1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
+ S ^TMP($J,2)="<note>"
+ S ^TMP($J,3)="<to>Tovaniannnn</to>"
+ S ^TMP($J,4)="<from>Jani</from>"
+ S ^TMP($J,5)="<heading>Reminders</heading>"
+ S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
+ S ^TMP($J,7)="</note>"
+ QUIT
+ ;
+customerr(r,a) ; custom error
+ n errarr
+ s errarr("resourceType")="OperationOutcome"
+ s errarr("issue",1,"severity")="error"
+ s errarr("issue",1,"code")="processing"
+ s errarr("issue",1,"diagnostics")="Test message"
+ d customError^%webutils(400,.errarr)
+ quit
+ ;
+empty(r,a) ; Empty. Used For Unit Tests
+ s r=""
+ QUIT
+ ;
 FV(RESULTS,ARGS) ; Get fileman field value, handles fileman/file/iens/field
  I $$UNKARGS^%webutils(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
  S RESULTS("mime")="text/plain; charset=utf-8" ; type of data to send browser

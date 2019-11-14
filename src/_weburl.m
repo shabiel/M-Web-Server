@@ -1,15 +1,17 @@
-%weburl ;YottaDB/CJE -- URL Matching routine;2019-11-12  5:28 PM
+%weburl ;YottaDB/CJE -- URL Matching routine;2019-11-14  11:14 AM
  ;
  ; This routine is used to map URLs to entry points under
  ; the URLMAP entry point.
  ;
 URLMAP ;
- ;;GET ping PING^%webrsp
- ;;GET xml XML^%webrsp
- ;;GET empty empty^%webrsp
+ ;;GET ping ping^%webapi
+ ;;GET /test/xml xml^%webapi
+ ;;GET /test/empty empty^%webapi
+ ;;GET /test/customerror customerr^%webapi
  ;;zzzzz
  ;
  ; Copyright 2019 Christopher Edwards
+ ; Copyright 2019 Sam Habiel
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

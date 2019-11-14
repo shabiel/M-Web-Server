@@ -381,25 +381,6 @@ RSPLINE() ; writes out a response line based on HTTPERR
  I $G(HTTPERR)=405 Q "HTTP/1.1 405 Method Not Allowed"
  Q "HTTP/1.1 500 Internal Server Error"
  ;
-PING(RESULT,ARGS) ; writes out a ping response
- S RESULT="{""status"":"""_$J_" running""}"
- Q
-XML(RESULT,ARGS) ; text XML
- S HTTPRSP("mime")="text/xml"
- S RESULT=$NA(^TMP($J))
- S ^TMP($J,1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
- S ^TMP($J,2)="<note>"
- S ^TMP($J,3)="<to>Tovaniannnn</to>"
- S ^TMP($J,4)="<from>Jani</from>"
- S ^TMP($J,5)="<heading>Reminders</heading>"
- S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
- S ^TMP($J,7)="</note>"
- QUIT
- ;
-empty(r,a) ; Empty. Used For Unit Tests
- s r=""
- QUIT
- ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
  ;
  ; We only support Basic authentication right now
