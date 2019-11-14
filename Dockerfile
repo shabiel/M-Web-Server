@@ -16,13 +16,12 @@ RUN cd fis-gtm-plugins/libcurl && \
     make install
 
 # Install M-Unit
-RUN git clone https://github.com/joelivey/M-Unit.git munit
+RUN git clone https://github.com/ChristopherEdwards/M-Unit.git munit
 
-# Note: this will translate the "%" into "_" for YottaDB
 RUN cd munit && \
     mkdir r && \
     cd Routines && \
-    for file in %*.m; do mv "$file" /data/munit/r/"$(echo "$file" | sed s/\%/\_/)"; done
+    for file in _*.m; do mv $file /data/munit/r/; done
 
 # Install M-Web-Server
 COPY ./src /mwebserver/r
