@@ -151,7 +151,7 @@ It's a good idea to accept the defaults. If you have Fileman installed,
 	Mumps Web Services is now listening to port 9080
 	Visit http://localhost:9080/ to see the home page.
 	Also, try the sample web services...
-	 - http://localhost:9080/xml
+	 - http://localhost:9080/test/xml
 	 - http://localhost:9080/ping
 
 	FOIA>
@@ -251,7 +251,7 @@ Once done, run the bootstrap routine to download everything else and start the s
 	Mumps Web Services is now listening to port 9080
 	Visit http://localhost:9080/ to see the home page.
 	Also, try the sample web services...
-	 - http://localhost:9080/xml
+	 - http://localhost:9080/test/xml
 	 - http://localhost:9080/ping
 
 ## Installation on Cache/Unix
@@ -276,7 +276,7 @@ Ignore this error.
 	TEST2>D ^%RI
 
 	Input routines from Sequential
-	Device: /tmp/WWWINIT.RSA
+	Device: /tmp/webinit.rsa
 	Parameters? "R" => 
 
 		*****  W A R N I N G   *****
@@ -341,7 +341,7 @@ Ignore this error.
 	Mumps Web Services is now listening to port 9080
 	Visit http://localhost:9080/ to see the home page.
 	Also, try the sample web services...
-	 - http://localhost:9080/xml
+	 - http://localhost:9080/test/xml
 	 - http://localhost:9080/ping
 
 ## Installation as a YottaDB Plugin
