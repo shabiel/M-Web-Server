@@ -325,6 +325,9 @@ addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: 
  ; if urlPattern or routine are empty, bad call
  if urlPattern=""!(routine="") quit:$q 0 q
  ;
+ ; Remove leading slashes
+ if $e(urlPattern)="/" s $e(urlPattern)=""
+ ;
  ; Lock for edits
  if $P($SY,",")=47 tstart ():serial
  else  lock +^%webutils:1 else  quit:$q 0 q
@@ -374,6 +377,9 @@ deleteService(method,urlPattern) ; [Public: Delete Service]
  set urlPattern=$get(urlPattern)
  if method="" quit
  if urlPattern="" quit
+ ;
+ ; Remove leading slashes
+ if $e(urlPattern)="/" s $e(urlPattern)=""
  ;
  new ien
  if $P($SY,",")=47 tstart ():serial

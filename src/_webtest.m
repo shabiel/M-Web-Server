@@ -491,7 +491,7 @@ resetURLs ; Reset all the URLs; Called upon start-up
  d deleteService^%webutils("GET","/test/error")
  d deleteService^%webutils("GET","bigoutput")
  d deleteService^%webutils("POST","rpc/{rpc}")
- d deleteService^%webutils("POST","rpc2/{rpc}")
+ d deleteService^%webutils("POST","/rpc2/{rpc}")
  ;
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
  do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
@@ -499,7 +499,7 @@ resetURLs ; Reset all the URLs; Called upon start-up
  do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
- n ien s ien=$$addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
+ n ien s ien=$$addService^%webutils("POST","/rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
  quit
  ;
 XTROU ;

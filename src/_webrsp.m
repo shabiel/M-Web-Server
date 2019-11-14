@@ -181,6 +181,8 @@ MATCHF(ROUTINE,ARGS,PARAMS,AUTHNODE) ; Match against a file...
  . ; Loop through patterns. Start with first piece of path. quit if $order took us off the deep end.
  . F  S PATTERN=$O(^%web(17.6001,"B",METHOD,PATTERN)) Q:PATTERN=""  Q:PATH1'=$E(PATTERN,1,$L(PATH1))  D  Q:DONE
  . . ;
+ . . I $E(PATTERN)="/" S PATTERN=$E(PATTERN,2,$L(PATTERN))
+ . . ;
  . . ; TODO: only matches 1st piece then *. Second piece can be different.
  . . N I F I=2:1:$L(PATTERN,"/") D
  . . . N PATTSEG S PATTSEG=$$URLDEC^%webutils($P(PATTERN,"/",I),1) ; pattern Segment url-decoded
@@ -223,6 +225,7 @@ MATCHR(ROUTINE,ARGS) ; Match against this routine
  F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ^%weburl),";;",2,99) Q:PATTERN="zzzzz"  D  Q:DONE
  . K ARGS
  . S ROUTINE=$P(PATTERN," ",3),PATMETHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
+ . I $E(PATTERN)="/" S PATTERN=$E(PATTERN,2,$L(PATTERN))
  . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
  . F I=1:1:$L(PATH,"/") D  Q:FAIL
  . . S PATHSEG=$$URLDEC^%webutils($P(PATH,"/",I),1)
