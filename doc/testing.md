@@ -410,7 +410,9 @@ Tests without VistA:
 ```
 - curl localhost:9080
 - curl localhost:9080/ping
-- curl localhost:9080/xml
+- curl localhost:9080/test/xml
+- curl localhost:9080/test/empty
+- curl --compressed localhost:9080/test/empty
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
 - do resetURLs^%webtest
@@ -424,6 +426,9 @@ Tests without VistA:
 - do ^%webreq
 - curl -I localhost:9080/r/%25webapi
 - zwrite ^%webhttp("log")
+- set ^%webhome="/tmp/"
+- curl localhost:9080/webinit.rsa
+- kill ^%webhome
 - curl localhost:9080/cache.lck
 ```
 
@@ -433,7 +438,9 @@ Tests with VistA:
 - do ^webinit
 - curl localhost:9080
 - curl localhost:9080/ping
-- curl localhost:9080/xml
+- curl localhost:9080/test/xml
+- curl localhost:9080/test/empty
+- curl --compressed localhost:9080/test/empty
 - do resetURLs^%webtest
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
@@ -452,8 +459,7 @@ Tests with VistA:
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
 - zwrite ^%webhttp("log")
 - set ^%webhome="/tmp/"
-- curl localhost:9080/%25webinit.rsa
+- curl localhost:9080/webinit.rsa
 - kill ^%webhome
 - curl localhost:9080/cache.lck
 ```
-
