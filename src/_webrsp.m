@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;2019-08-12  4:38 PM
+%webrsp ;SLC/KCM -- Handle HTTP Response;2019-11-12  5:42 PM
  ;
  ; -- prepare and send RESPONSE
  ;
@@ -319,8 +319,8 @@ FLUSH ; EP to flush written data
 GZIP ; EP to write gzipped content
  ; Nothing to write?
  I 'SIZE D  QUIT  ; nothing to write!
- . W "Content-Length: 0"_$C(13,10,13,10)
- . W ! ; flush buffer
+ . D W("Content-Length: 0"_$C(13,10,13,10))
+ . D FLUSH
  ;
  ; zip away - Open gzip and write to it, then read back the zipped file.
  N OLDIO S OLDIO=$IO
@@ -394,6 +394,10 @@ XML(RESULT,ARGS) ; text XML
  S ^TMP($J,5)="<heading>Reminders</heading>"
  S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
  S ^TMP($J,7)="</note>"
+ QUIT
+ ;
+empty(r,a) ; Empty. Used For Unit Tests
+ s r=""
  QUIT
  ;
 AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Header
