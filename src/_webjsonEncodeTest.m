@@ -1,4 +1,4 @@
-%webjsonEncodeTest ;SLC/KCM -- Unit tests for JSON encoding;Feb 07, 2019@11:02
+%webjsonEncodeTest ;SLC/KCM -- Unit tests for JSON encoding;2019-11-14  9:08 AM
  ;
  D EN^%ut($T(+0),3)
  quit
@@ -183,6 +183,18 @@ KEYESC ;; @TEST keys should be escaped
  D ENCODE^%webjson("Y","JSON")
  D ASSERT(JSON(1),"{""names"":{""x(834038,\""237745\"":\""240474\"")"":""AREG""}}")
  Q
+EXTARRAY ;; @TEST No top object; first level is an array
+ ; Bug reported by Winfried on comp.lang.mumps
+ n t,t2
+ s t="[{""s"":1,""n"":123},{""N1"":true,""N2"":""true""}]"
+ d decode^%webjsonDecode("t","json","jerr")
+ D ASSERT($d(jerr),0)
+ k jerr
+ d encode^%webjsonEncode("json","t2","jerr")
+ D ASSERT($d(jerr),0)
+ D ASSERT(t2(1),"{[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]}")
+ quit
+ ;
 BUILDY(LABEL) ; build Y array based on LABEL
  ; expects Y from EXAMPLE
  N I,X

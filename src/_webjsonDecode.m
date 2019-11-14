@@ -1,5 +1,6 @@
-%webjsonDecode ;SLC/KCM -- Decode JSON;2019-07-16  2:17 PM
+%webjsonDecode ;SLC/KCM -- Decode JSON;2019-11-14  9:06 AM
  ;
+decode(VVJSON,VVROOT,VVERR) G DIRECT
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
 DIRECT ; TAG for use by DECODE^%webjson

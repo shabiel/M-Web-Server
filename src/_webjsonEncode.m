@@ -1,5 +1,6 @@
-%webjsonEncode ;SLC/KCM -- Encode JSON;Feb 07, 2019@11:01
+%webjsonEncode ;SLC/KCM -- Encode JSON;2019-11-14  9:06 AM
  ;
+encode(VVROOT,VVJSON,VVERR) G DIRECT
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ;
 DIRECT ; TAG for use by ENCODE^%webjson
@@ -30,11 +31,14 @@ DIRECT ; TAG for use by ENCODE^%webjson
  Q
  ;
 SEROBJ(VVROOT) ; Serialize into a JSON object
- N VVFIRST,VVSUB,VVNXT
+ N VVFIRST,VVSUB,VVNXT,VVDONE
  S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"{"
- S VVFIRST=1
- S VVSUB="" F  S VVSUB=$O(@VVROOT@(VVSUB)) Q:VVSUB=""  D
+ S VVFIRST=1,VVDONE=0
+ S VVSUB="" F  S VVSUB=$O(@VVROOT@(VVSUB)) Q:VVSUB=""  D  Q:VVDONE
  . S:'VVFIRST @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"," S VVFIRST=0
+ . ; If first subscript is numeric, run array code and done
+ . ; https://groups.google.com/d/msg/comp.lang.mumps/RcogxQKtkJw/lN7AzAVzBAAJ
+ . I +VVSUB=VVSUB D SERARY($NA(@VVROOT)) S VVDONE=1 QUIT
  . ; get the name part
  . D SERNAME(VVSUB)
  . ; if this is a value, serialize it
