@@ -15,7 +15,7 @@ DIRECT ; TAG for use by ENCODE^%webjson
  S VVERR=$G(VVERR,"^TMP(""%webjsonerr"",$J)")
  I '$L($G(VVROOT)) ; set error info
  I '$L($G(VVJSON)) ; set error info
- N VVLINE,VVMAX,VVERRORS
+ N VVLINE,VVMAX,VVSUB,VVERRORS
  ;
  ; V4W/DLW - Changed VVMAX from 4000 (just under the 4096 string size limit)
  ; to 100. With large data arrays, the JSON encoder could exhaust system
@@ -27,18 +27,21 @@ DIRECT ; TAG for use by ENCODE^%webjson
  ; PRE^%webjsonEncodeTest, WP^%webjsonEncodeTest, EXAMPLE^%webjsonEncodeTest
  S VVLINE=1,VVMAX=100,VVERRORS=0 ; limit document lines to 100 characters
  S @VVJSON@(VVLINE)=""
- D SEROBJ(VVROOT)
+ ; If first subscript is numeric, run array code and done
+ ; https://groups.google.com/d/msg/comp.lang.mumps/RcogxQKtkJw/lN7AzAVzBAAJ
+ S VVSUB=$O(@VVROOT@(""))
+ I +VVSUB=VVSUB D
+ . D SERARY(VVROOT)
+ E  D
+ . D SEROBJ(VVROOT)
  Q
  ;
 SEROBJ(VVROOT) ; Serialize into a JSON object
- N VVFIRST,VVSUB,VVNXT,VVDONE
+ N VVFIRST,VVSUB,VVNXT
  S @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"{"
- S VVFIRST=1,VVDONE=0
- S VVSUB="" F  S VVSUB=$O(@VVROOT@(VVSUB)) Q:VVSUB=""  D  Q:VVDONE
+ S VVFIRST=1
+ S VVSUB="" F  S VVSUB=$O(@VVROOT@(VVSUB)) Q:VVSUB=""  D
  . S:'VVFIRST @VVJSON@(VVLINE)=@VVJSON@(VVLINE)_"," S VVFIRST=0
- . ; If first subscript is numeric, run array code and done
- . ; https://groups.google.com/d/msg/comp.lang.mumps/RcogxQKtkJw/lN7AzAVzBAAJ
- . I +VVSUB=VVSUB D SERARY($NA(@VVROOT)) S VVDONE=1 QUIT
  . ; get the name part
  . D SERNAME(VVSUB)
  . ; if this is a value, serialize it
