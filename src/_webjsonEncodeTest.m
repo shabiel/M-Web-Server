@@ -192,7 +192,7 @@ EXTARRAY ;; @TEST No top object; first level is an array
  k jerr
  d encode^%webjsonEncode("json","t2","jerr")
  D ASSERT($d(jerr),0)
- D ASSERT(t2(1),"{[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]}")
+ D ASSERT(t2(1),"[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]")
  quit
  ;
 BUILDY(LABEL) ; build Y array based on LABEL
