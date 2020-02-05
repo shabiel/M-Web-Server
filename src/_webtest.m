@@ -10,7 +10,7 @@ test if $text(^%ut)="" quit
  ;
 STARTUP ; [Adjust the acvc and dfn to suit your environment]
  set acvc="SM1234;SM1234!!"
- set dfn=463
+ set dfn=1
  kill ^%wtrace,^%wcohort,^%wsurv
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
@@ -173,9 +173,17 @@ tcustomError ; @TEST Custom Error
 tlong ; @TEST get a long message
  ; Exercises the flushing
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/bigoutput")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/bigoutput")
  do CHKEQ^%ut(httpStatus,200)
  do CHKEQ^%ut($l(return),32769)
+ quit
+ ;
+tKillGlo ; @TEST kill global after sending result in it
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gloreturn")
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(return["coo")
+ do CHKTF^%ut('$d(^web("%webapi")))
  quit
  ;
 trpc1 ; @TEST Run a VistA RPC w/o authentication - should fail
@@ -460,7 +468,7 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  ;
  ; Make sure ^%web(17.6001) isn't used
  k httpStatus,return
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/bigoutput")
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/bigoutput")
  do CHKEQ^%ut(httpStatus,404)
  do CHKEQ^%ut($l(return),0)
  ;
@@ -489,14 +497,16 @@ resetURLs ; Reset all the URLs; Called upon start-up
  d deleteService^%webutils("GET","r/{routine?.1""%25"".32AN}")
  d deleteService^%webutils("PUT","r/{routine?.1""%25"".32AN}")
  d deleteService^%webutils("GET","/test/error")
- d deleteService^%webutils("GET","bigoutput")
+ d deleteService^%webutils("GET","test/bigoutput")
+ d deleteService^%webutils("GET","test/gloreturn")
  d deleteService^%webutils("POST","rpc/{rpc}")
  d deleteService^%webutils("POST","/rpc2/{rpc}")
  ;
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
  do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
  do addService^%webutils("GET","/test/error","ERR^%webapi")
- do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
+ do addService^%webutils("GET","test/bigoutput","bigoutput^%webapi")
+ do addService^%webutils("GET","test/gloreturn","gloreturn^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  n ien s ien=$$addService^%webutils("POST","/rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
@@ -518,7 +528,7 @@ covlist ; Coverage List for ACTIVE (non-test) routines
  ;;
 EOR ;
  ;
- ; Copyright 2018-2019 Sam Habiel
+ ; Copyright 2018-2020 Sam Habiel
  ; Copyright 2019 Christopher Edwards
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");

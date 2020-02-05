@@ -32,7 +32,7 @@ post ; [Public] Run this entry point if you don't want to download the code.
  N SERVER S SERVER="http://localhost:"_PORT_"/"
  W "Visit "_SERVER_" to see the home page.",!
  W "Also, try the sample web services...",!
- W " - "_SERVER_"xml",!
+ W " - "_SERVER_"/test/xml",!
  W " - "_SERVER_"ping",!
  ;
  QUIT
@@ -321,9 +321,10 @@ TESTDET ; Open File Error handler
 LOADHAND ;
  do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
  do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
- do addService^%webutils("GET","error","ERR^%webapi")
+ do addService^%webutils("GET","test/error","ERR^%webapi")
  do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
- do addService^%webutils("GET","bigoutput","bigoutput^%webapi")
+ do addService^%webutils("GET","test/bigoutput","bigoutput^%webapi")
+ do addService^%webutils("GET","test/gloreturn","gloreturn^%webapi")
  n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
  do addService^%webutils("POST","rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
  quit
@@ -509,7 +510,7 @@ PORTOKT ; @TEST - Test Port Okay
  do CHKEQ^%ut($$PORTOK(61232),1)
  QUIT
  ;
- ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2013-2020 Sam Habiel
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

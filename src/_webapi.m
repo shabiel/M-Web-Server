@@ -30,20 +30,28 @@ SAVE(RN) ; [Private] Save a routine
  U %I
  Q
  ;
-ERR(RESULT,ARGS) ; GET /error Force M Error
+ERR(RESULT,ARGS) ; GET /test/error Force M Error
  I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
  D ERR1
  QUIT
 ERR1 ;
  N X S X=1/0
  ;
-bigoutput(result,args) ; GET /bigoutput - Used by Unit Tests to ensure large output is handled appropriately
+bigoutput(result,args) ; GET /test/bigoutput - Used by Unit Tests to ensure large output is handled appropriately
  n a,b,c
  s $p(a,"a",2**10)="a"
  n i for i=1:1:32 s result(i)=a
  s result(32)=$e(result(32),1,$l(result(32))-1)
  s b=$c(13,10)
  s result(33)=b
+ s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
+ quit
+ ;
+gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Global deleted properly
+ s result=$name(^web("%webapi"))
+ s @result="coo"_$c(13,10)
+ s @result@(1)="boo"_$c(13,10)
+ s @result@(2)="foo"_$c(13,10)
  s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
@@ -363,7 +371,7 @@ FILESYSE ; 500
  D setError^%webutils("500",$S($P($SY,",")=47:$ZS,1:$ZE))
  QUIT
  ;
- ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2013-2020 Sam Habiel
  ; Copyright 2018 Kenneth McLoghlen
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
