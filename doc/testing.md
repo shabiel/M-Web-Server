@@ -416,9 +416,10 @@ Tests without VistA:
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
 - do resetURLs^%webtest
-- curl localhost:9080/error
-- curl localhost:9080/error?foo=crash2
-- curl localhost:9080/bigoutput
+- curl localhost:9080/test/error
+- curl localhost:9080/test/error?foo=crash2
+- curl localhost:9080/test/bigoutput
+- curl localhost:9080/test/gloreturn
 - nc -v localhost 9080 # CTRL-C after that
 - curl -I localhost:9080/r/%25webapi
 - do stop^%webreq
@@ -444,9 +445,10 @@ Tests with VistA:
 - do resetURLs^%webtest
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
-- curl localhost:9080/error
-- curl localhost:9080/error?foo=crash2
-- curl localhost:9080/bigoutput
+- curl localhost:9080/test/error
+- curl localhost:9080/test/error?foo=crash2
+- curl localhost:9080/test/bigoutput
+- curl localhost:9080/test/gloreturn
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/ORWU%20NEWPERS' -d '["A", "1"]'
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/VPR%20GET%20PATIENT%20DATA' -d '["1"]' 
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc/VPR%20GET%20PATIENT%20DATA%20JSON' -d '[{"patientId":"1","domain":""}]'
