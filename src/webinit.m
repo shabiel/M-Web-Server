@@ -1,5 +1,5 @@
 webinit ; OSE/SMH - Initialize Web Server;2019-11-14  2:36 PM
- ;;1.1.1;MASH WEB SERVER/WEB SERVICES
+ ;;1.1.2;MASH WEB SERVER/WEB SERVICES
  ;
  ; Map %web on Cache
  DO CACHEMAP("%web")
@@ -8,7 +8,7 @@ webinit ; OSE/SMH - Initialize Web Server;2019-11-14  2:36 PM
  DO CACHETLS
  ;
  ; Install the package
- D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.1.1/mws.rsa")
+ D INSTALLRO("https://github.com/shabiel/M-Web-Server/releases/download/1.1.2/mws.rsa")
  ;
  ; If fileman is installed, do an init for the %web(17.001 file
 post ; [Public] Run this entry point if you don't want to download the code.
