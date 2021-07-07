@@ -1,6 +1,5 @@
 # M Web Server
 This source tree represents a web (HTTP) server implemented in the M language.
-It is maintained by OSEHRA, the Open Source Electronic Health Record Alliance.
 
 ## Purpose
 The MUMPS Advanced Shell MUMPS Web Server (MWS) provides for a way to serve web

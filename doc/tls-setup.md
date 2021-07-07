@@ -35,7 +35,7 @@ tls: {
   }
 }
 
-# In your file that sets up the GT.M environment, add set the env variable
+# In your file that sets up the YottaDB environment, add set the env variable
 # gtmcrypt_config to be the path to your config file:
 export ydbcrypt_config="/data/gtmcrypt_config.libconfig"
 

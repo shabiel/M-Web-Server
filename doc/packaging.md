@@ -10,5 +10,5 @@ VistA repo contains the PackRO script which is used here.
  * Commit and push
  * git tag the new version number; and git push --tags
  * Attach code to the new version in releases.
- * Test on GT.M and Cache
+ * Test on YottaDB and Cache
 

@@ -3,7 +3,7 @@
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
 * [Platform and Dependencies](#platform-and-dependencies)
-* [Installation for GT.M](#installation-for-gtm)
+* [Installation for GT.M/YottaDB](#installation-for-gtmyottadb)
 * [Installation on Cache/Windows](#installation-on-cachewindows)
 * [Installation on Cache/Unix](#installation-on-cacheunix)
 * [Manual Install from Source](#manual-install-from-source)
@@ -27,12 +27,12 @@ To stop the web server after it is automatically started, type
 
 	D stop^%webreq
 
-The installation is divided into 3 sections. One for GT.M/Any Unix, one for
+The installation is divided into 3 sections. One for GT.M and YottaDB/Any Unix, one for
 Cache/Windows, and one for Cache/Any Unix.
 
 ## Platform and Dependencies
-The M Web Server (MWS) runs on GT.M (Unix) and Caché (Windows and Unix). The
-instructions assume a GT.M or equivalent YottaDB version >= 6.1; however, it
+The M Web Server (MWS) runs on GT.M or YottaDB (Unix) and Caché (Windows and Unix). The
+instructions assume a GT.M >= 6.1; or any YottaDB version; however, it
 possible to run it as well with xinetd for any GT.M version.
 
 MWS is completely self-contained and does not have any internal dependencies on
@@ -47,11 +47,11 @@ MWS has some external dependencies
 - GT.M/YottaDB: Operational: gzip, date, sed. Installer only: curl, perl, mkdir.
 - Caché: Operational: none. Installer only: mkdir.
 
-## Installation for GT.M
-Open a linux terminal and source your GT.M environment file first. To check
+## Installation for GT.M/YottaDB
+Open a linux terminal and source your GT.M/YottaDB environment file first. To check
 that that has happened properly, type
 
-	echo $gtmroutines
+	echo $gtmroutines/echo $ydb_routines
 
 in your shell. If you see anything other than a blank, you are ready to go.
 
@@ -59,9 +59,9 @@ On the linux terminal, Use cURL to download the bootstrap routine.
 
     curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.2/webinit.rsa > /tmp/webinit.rsa
 
-Run GT.M using `$gtm_dist/mumps -dir`.
+Run GT.M/YottaDB using `$gtm_dist/mumps -dir` or `$ydb_dist/yottadb -dir`.
 
-Once inside GT.M, find your routine directory in GT.M:
+Once inside GT.M/YottaDB, find your routine directory in GT.M/YottaDB:
     
     GTM>W $ZRO
     o(r) /usr/lib/fis-gtm/V6.1-000_x86_64/libgtmutil.so
@@ -161,7 +161,7 @@ Before starting, make sure you have enough licenses to run the web server.
 I generally recommend having at least 5 licenses.
 
 If the output of `Write $System.License.LUAvailable()` is less than 5, I don't
-recommend continuing. Use GT.M instead.
+recommend continuing. Use YottaDB instead.
 
 Because I use Unix utitlies to download files and zip/unzip, you need to
 install those first. Download <https://github.com/downloads/bmatzelle/gow/Gow-0.5.0.exe>
@@ -259,7 +259,7 @@ Before starting, make sure you have enough licenses to run the web server.
 I generally recommend having at least 5 licenses.
 
 If the output of `Write $System.License.LUAvailable()` is less than 5, I don't
-recommend continuing. Use GT.M instead.
+recommend continuing. Use YottaDB instead.
 
 Open the Linux Terminal.
 
