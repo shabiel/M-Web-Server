@@ -37,7 +37,7 @@ the entire global for reference.
 	^%web(17.6001,3,1)="error"
 	^%web(17.6001,3,2)="ERR^%webapi"
 	^%web(17.6001,4,0)="GET"
-	^%web(17.6001,4,1)="bigoutput"
+	^%web(17.6001,4,1)="test/bigoutput"
 	^%web(17.6001,4,2)="bigoutput^%webapi"
 	^%web(17.6001,5,0)="POST"
 	^%web(17.6001,5,1)="rpc/{rpc}"
@@ -52,7 +52,7 @@ the entire global for reference.
 	^%web(17.6001,6,"PARAMS",2,0)="F^start"
 	^%web(17.6001,6,"PARAMS",3,0)="F^direction"
 	^%web(17.6001,6,"PARAMS",4,0)="B"
-	^%web(17.6001,"B","GET","bigoutput","bigoutput^%webapi",4)=""
+	^%web(17.6001,"B","GET","test/bigoutput","bigoutput^%webapi",4)=""
 	^%web(17.6001,"B","GET","error","ERR^%webapi",3)=""
 	^%web(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%webapi",1)=""
 	^%web(17.6001,"B","POST","rpc/{rpc}","RPC^%webapi",5)=""
@@ -64,13 +64,13 @@ the entire global for reference.
 Let's examine how the server figures out which routine to invoke in those simple examples using HTTP GET. 
 Let's start with the simplest entry:
 
-	^%web(17.6001,"B","GET","bigoutput","bigoutput^%webapi",4)=""
+	^%web(17.6001,"B","GET","test/bigoutput","bigoutput^%webapi",5)=""
 
 Let's say that your server is listening at <http://localhost:9080>. If you
-type <http://localhost:9080/bigoutput>, the server is going to look at the HTTP
+type <http://localhost:9080/test/bigoutput>, the server is going to look at the HTTP
 method first, `GET`, then it will try to match the path, `bigoutput`, and from there
 grab the routine name.  In this case, it will just run the routine
-bigoutput^%webapi. We will also talk about how to write such a routine later.
+`bigoutput^%webapi`. We will also talk about how to write such a routine later.
 
 Let's check the second example:
 
