@@ -260,7 +260,7 @@ SENDATA ; write out the data as an HTTP response
  . D FLUSH
  . K @ARY
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
- S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
+ S RSPTYPE=$S($ZE($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
  I RSPTYPE=1 S SIZE=$$VARSIZE^%webutils(.HTTPRSP)
  I RSPTYPE=2 S SIZE=$$REFSIZE^%webutils(.HTTPRSP)
  ;

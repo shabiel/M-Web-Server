@@ -251,7 +251,7 @@ RDLOOP ;
  R X#LENGTH:TIMEOUT
  I '$T D:HTTPLOG>1 LOGRAW("timeout:"_X) S LINE=LINE+1,HTTPREQ("body",LINE)=X Q
  I HTTPLOG>1 D LOGRAW(X)
- S REMAIN=REMAIN-$L(X),LINE=LINE+1,HTTPREQ("body",LINE)=X
+ S REMAIN=REMAIN-$ZL(X),LINE=LINE+1,HTTPREQ("body",LINE)=X
  G:REMAIN RDLOOP
  Q
  ;
@@ -350,11 +350,11 @@ LOGBODY ; log the request body
  M ^%webhttp("log",DT,$J,ID,"req","body")=HTTPREQ("body")
  Q
 LOGRSP ; log the response before sending
- I '$L($G(HTTPRSP))&'$O(HTTPRSP("")) QUIT  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
+ I '$ZL($G(HTTPRSP))&'$O(HTTPRSP("")) QUIT  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
  I $G(NOGBL) QUIT
- I $E($G(HTTPRSP))="^" M ^%webhttp("log",DT,$J,ID,"response")=@HTTPRSP
+ I $ZE($G(HTTPRSP))="^" M ^%webhttp("log",DT,$J,ID,"response")=@HTTPRSP
  E  M ^%webhttp("log",DT,$J,ID,"response")=HTTPRSP
  Q
 LOGCN ; log continue
