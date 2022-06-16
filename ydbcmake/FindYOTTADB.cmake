@@ -29,7 +29,7 @@
 
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
-    # See comment in ydbcmake/CMakeDetermineMUMPSCompiler.cmake for why the below two set commands are needed.
+    # See comment in ydbcmake/CMakeDetermineMCompiler.cmake for why the below two set commands are needed.
     set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".so;.a;.dylib")
     pkg_check_modules(PC_YOTTADB QUIET yottadb)
@@ -45,7 +45,11 @@ find_library(YOTTADB_LIBRARY NAMES yottadb gtmshr
   HINTS $ENV{ydb_dist} $ENV{gtm_dist} ${PC_YOTTADB_LIBRARY_DIRS} )
 
 set(YOTTADB_LIBRARIES ${YOTTADB_LIBRARY})
-set(YOTTADB_PLUGIN_DIR "${YOTTADB_INCLUDE_DIRS}/plugin/")
+if(M_UTF8_MODE)
+	set(YOTTADB_PLUGIN_DIR "${YOTTADB_INCLUDE_DIRS}/plugin/o/utf8")
+else()
+	set(YOTTADB_PLUGIN_DIR "${YOTTADB_INCLUDE_DIRS}/plugin/o")
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(YOTTADB  DEFAULT_MSG
