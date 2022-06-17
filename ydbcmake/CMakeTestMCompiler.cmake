@@ -23,5 +23,4 @@
 #
 # For more information, please refer to <http://unlicense.org/>
 
-set(CMAKE_MUMPS_COMPILER "@CMAKE_MUMPS_COMPILER@")
-set(CMAKE_MUMPS_SOURCE_FILE_EXTENSIONS m)
+set(CMAKE_M_COMPILER_WORKS 1 CACHE INTERNAL "")

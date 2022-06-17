@@ -23,39 +23,31 @@
 #
 # For more information, please refer to <http://unlicense.org/>
 
-# Prelim
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/ydbcmake/")
-project(MWebServer C M) # C needed for ld
-cmake_minimum_required(VERSION 3.0.0)
+set(CMAKE_M_CREATE_SHARED_LIBRARY "<CMAKE_C_COMPILER> -shared -o <TARGET> <OBJECTS>")
+set(CMAKE_M_CREATE_SHARED_MODULE "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> -o <TARGET> <OBJECTS>")
+set(CMAKE_M_CREATE_STATIC_LIBRARY "")
 
-# Find YottaDB and set Install Destination
-find_package(YOTTADB REQUIRED)
-include_directories("${YOTTADB_INCLUDE_DIRS}")
-set(CMAKE_INSTALL_PREFIX ${YOTTADB_PLUGIN_DIR})
-message(STATUS "Install Location: ${YOTTADB_PLUGIN_DIR}")
+# Option to suppress mumps compiler warnings
+option(M_NOWARNING "Disable warnings and ignore status code from M compiler")
+option(M_EMBED_SOURCE "Embed source code in generated shared object" ON)
+option(M_DYNAMIC_LITERALS "Enable dynamic loading of source code literals" OFF)
 
-# CMake Build Type (req b/c it's C code (we need ld from the C toolkit))
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_M_COMPILE_OBJECT "LC_ALL=\"${LC_ALL}\" ydb_chset=\"${ydb_chset}\" ydb_icu_version=\"${icu_version}\" <CMAKE_M_COMPILER> -object=<OBJECT>")
+
+if(M_EMBED_SOURCE)
+  set(CMAKE_M_COMPILE_OBJECT "${CMAKE_M_COMPILE_OBJECT} -embed_source")
 endif()
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Sources
-set(source_files
-  src/_webapi.m
-  src/_webhome.m
-  src/_webjson.m
-  src/_webjsonDecode.m
-  src/_webjsonEncode.m
-  src/_webreq.m
-  src/_webrsp.m
-  src/_webutils.m
-  src/_weburl.m
-)
+if(M_DYNAMIC_LITERALS)
+  set(CMAKE_M_COMPILE_OBJECT "${CMAKE_M_COMPILE_OBJECT} -dynamic_literals")
+endif()
 
-# .so file for plugin
-add_library(_ydbmwebserver SHARED ${source_files})
-SET_TARGET_PROPERTIES(_ydbmwebserver PROPERTIES PREFIX "")
+if(M_NOWARNING)
+  set(CMAKE_M_COMPILE_OBJECT "${CMAKE_M_COMPILE_OBJECT} -nowarning -ignore <SOURCE> || true")
+else()
+  set(CMAKE_M_COMPILE_OBJECT "${CMAKE_M_COMPILE_OBJECT} <SOURCE>")
+endif()
 
-# Install shared library
-install(TARGETS _ydbmwebserver DESTINATION ${CMAKE_INSTALL_PREFIX})
+set(CMAKE_M_LINK_EXECUTABLE "")
+
+set(CMAKE_M_OUTPUT_EXTENSION .o)
