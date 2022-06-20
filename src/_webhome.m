@@ -1,4 +1,4 @@
-%webhome ; VEN/SMH - Home page processor;Jun 20, 2022@14:46
+%webhome ; VEN/SMH - Home page processor;Jun 20, 2022@15:59
  ;;
  ; Copyright 2013-2019 Sam Habiel
  ; Copyright 2022 YottaDB LLC
@@ -22,7 +22,7 @@ en(RESULT) ; PEP
  ; Retrieve index.html from filesystem before returning default page
  D FILESYS^%webapi(.RESULT,.ARGS)
  ; If we have an error, it means we don't have an index page; ignore and return handlers page instead
- I $D(HTTPERR) K HTTPERR,RESULT
+ I HTTPERR S HTTPERR=0 K RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT
  ; If we are in no global mode quit as well as the below loop won't tell us anything

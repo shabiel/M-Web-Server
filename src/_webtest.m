@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;Jun 20, 2022@14:47
+%webtest ; ose/smh - Web Services Tester;Jun 20, 2022@15:59
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -341,6 +341,27 @@ tWebPage ; @TEST Test Getting a web page
  d CHKTF^%ut(return[random)
  set ^%webhome="/tmp"
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/foo/boo.html")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ set ^%webhome=oldDir
+ quit
+ ;
+tHomePage ; @Test Getting index.html page
+ new oldDir set oldDir=$g(^%webhome)
+ set ^%webhome="/tmp/"
+ new random s random=$R(9817234)
+ open "/tmp/index.html":(newversion)
+ use "/tmp/index.html"
+ write "<!DOCTYPE html>",!
+ write "<html>",!
+ write "<body>",!
+ write "<h1>My First Heading</h1>",!
+ write "<p>My first paragraph."_random_"</p>",!
+ write "</body>",!
+ write "</html>",!
+ close "/tmp/index.html"
+ n httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/")
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
  set ^%webhome=oldDir
