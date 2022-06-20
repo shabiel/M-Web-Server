@@ -1,6 +1,7 @@
-%webhome ; VEN/SMH - Home page processor;Feb 07, 2019@10:49
+%webhome ; VEN/SMH - Home page processor;Jun 20, 2022@14:46
  ;;
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
@@ -20,7 +21,8 @@ en(RESULT) ; PEP
  N ARGS S ARGS("*")="index.html"
  ; Retrieve index.html from filesystem before returning default page
  D FILESYS^%webapi(.RESULT,.ARGS)
- I ('$G(NOGBL)),$D(^TMP("HTTPERR",$J)) K ^TMP("HTTPERR",$J),HTTPERR,RESULT
+ ; If we have an error, it means we don't have an index page; ignore and return handlers page instead
+ I $D(HTTPERR) K HTTPERR,RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT
  ; If we are in no global mode quit as well as the below loop won't tell us anything
@@ -29,6 +31,7 @@ en(RESULT) ; PEP
  S RESULT("mime")="text/html; charset=utf-8"
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D
  . I RESULT(I)["<%TABLEDATA%>" D
+ .. I '$DATA(^%web(17.6001)) SET RESULT(I)="<strong>No web request handlers installed.</strong>"
  .. N IEN S IEN=0 F J=I:.0001 S IEN=$O(^%web(17.6001,IEN)) Q:'IEN  D
  ... S RESULT(J)="<tr>",J=J+.0001
  ... S RESULT(J)="<td>"_^%web(17.6001,IEN,0)_"</td>",J=J+.0001

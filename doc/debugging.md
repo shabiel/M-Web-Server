@@ -12,8 +12,8 @@ us at r/{routine}. From the home page, we know that it calls R^%W0. So what we
 can do is put a break point there, and then launch the web server in debug mode.
 
 ```
-ZB R^%W0
-D START^VPRJREQ(9080,1)
+zbreak R^%webapi
+D start^%webreq(9080,1)
 ```
 
 Now, we need to make a web service call to get a routine. In another terminal

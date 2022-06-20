@@ -57,7 +57,7 @@ in your shell. If you see anything other than a blank, you are ready to go.
 
 On the linux terminal, Use cURL to download the bootstrap routine.
 
-    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.2/webinit.rsa > /tmp/webinit.rsa
+    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.3/webinit.rsa > /tmp/webinit.rsa
 
 Run GT.M/YottaDB using `$gtm_dist/mumps -dir` or `$ydb_dist/yottadb -dir`.
 
@@ -176,7 +176,7 @@ Then download the bootstrap file as follows:
 
 	C:\Users\VISTAEXPERTISE>cd %temp%
 
-	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://github.com/shabiel/M-Web-Server/releases/download/1.1.2/webinit.rsa
+	C:\Users\VISTAE~1\AppData\Local\Temp>curl -k -L -O https://github.com/shabiel/M-Web-Server/releases/download/1.1.3/webinit.rsa
 
 Open the Cache Terminal from the Cache Cube, or use another method to get in. Read the routine archive in. Cache will complain that it doesn't recoginze GT.M's format. Ignore this error.
 
@@ -265,7 +265,7 @@ Open the Linux Terminal.
 
 Use cURL to download the bootstrap routine.
 
-    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.2/webinit.rsa > /tmp/webinit.rsa
+    curl -L https://github.com/shabiel/M-Web-Server/releases/download/1.1.3/webinit.rsa > /tmp/webinit.rsa
 
 Open the Cache Terminal using `csession CACHE`, and switch to the appropriate
 namespace.

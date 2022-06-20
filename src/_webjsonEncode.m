@@ -3,10 +3,10 @@
 encode(VVROOT,VVJSON,VVERR) G DIRECT
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ;
-DIRECT ; TAG for use by ENCODE^%webjson
+DIRECT ; TAG for use by encode^%webjson
  ;
- ; Examples:  D ENCODE^%webjson("^GLO(99,2)","^TMP($J)")
- ;            D ENCODE^%webjson("LOCALVAR","MYJSON","LOCALERR")
+ ; Examples:  D encode^%webjson("^GLO(99,2)","^TMP($J)")
+ ;            D encode^%webjson("LOCALVAR","MYJSON","LOCALERR")
  ;
  ; VVROOT: closed array reference for M representation of object
  ; VVJSON: destination variable for the string array formatted as JSON

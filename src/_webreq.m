@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;2019-11-14  2:05 PM
+%webreq ;SLC/KCM -- Listen for HTTP requests;Jun 20, 2022@14:46
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -167,7 +167,7 @@ TLS ; Turn on TLS?
  ;
 NEXT ; begin next request
  K HTTPREQ,HTTPRSP,HTTPERR
- K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J) ; TODO: change the namespace for the error global
+ K:'$G(NOGBL) ^TMP($J)
  ;
 WAIT ; wait for request on this connection
  I '$G(NOGBL),$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
@@ -217,7 +217,7 @@ WAIT ; wait for request on this connection
  ;
  ; -- exit on Connection: Close (or if tracing is on so that we can get our trace results)
  I $$LOW^%webutils($G(HTTPREQ("header","connection")))="close"!$G(TRACE) D  HALT
- . K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
+ . K:'$G(NOGBL) ^TMP($J)
  . C %WTCP
  ;
  ; -- otherwise get ready for the next request
@@ -291,9 +291,9 @@ ETCODE ; error trap when calling out to routines
  S ERRARR("place")=$STACK($STACK(-1),"PLACE")
  S ERRARR("mcode")=$STACK($STACK(-1),"MCODE")
  S ERRARR("logID")=HTTPLOG("ID")
- D:'$G(NOGBL) SETERROR^%webutils(501,,.ERRARR) ; sets HTTPERR
+ D SETERROR^%webutils(501,,.ERRARR) ; sets HTTPERR
  D LOGERR
- D:'$G(NOGBL) RSPERROR^%webrsp  ; switch to error response
+ D RSPERROR^%webrsp  ; switch to error response
  D SENDATA^%webrsp
  ; This next line will 'unwind' the stack and got back to listening
  ; for the next HTTP request (goto NEXT).
@@ -301,14 +301,14 @@ ETCODE ; error trap when calling out to routines
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
  D:HTTPLOG LOGDC
- K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
+ K:'$G(NOGBL) ^TMP($J)
  C $P  
  HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
  U %WTCP
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
- K:'$G(NOGBL) ^TMP($J),^TMP("HTTPERR",$J)
+ K:'$G(NOGBL) ^TMP($J)
  C %WTCP
  HALT  ; exit because we can't recover
  ;
@@ -395,6 +395,7 @@ stop ; tell the listener to stop running
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2013-2019 Sam Habiel
  ; Copyright 2018-2019 Christopher Edwards
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

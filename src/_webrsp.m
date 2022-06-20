@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;2019-11-14  11:02 AM
+%webrsp ;SLC/KCM -- Handle HTTP Response;Jun 20, 2022@14:47
  ;
  ; -- prepare and send RESPONSE
  ;
@@ -371,10 +371,10 @@ GZIP ; EP to write gzipped content
  QUIT
  ;
 RSPERROR ; set response to be an error response
- Q:$G(NOGBL)
- D encode^%webjson("^TMP(""HTTPERR"",$J,1)","^TMP(""HTTPERR"",$J,""JSON"")")
- S HTTPRSP="^TMP(""HTTPERR"",$J,""JSON"")"
- K HTTPRSP("pageable")
+ ; Count is a temporary variable to track multiple errors... don't send it back
+ ; pageable is VPR code, not used, but kept for now.
+ K HTTPERR("count"),HTTPRSP("pageable")
+ D encode^%webjson($NAME(HTTPERR),$NAME(HTTPRSP))
  Q
 RSPLINE() ; writes out a response line based on HTTPERR
  ; VEN/SMH: TODO: There ought to be a simpler way to do this!!!
@@ -411,6 +411,7 @@ AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Heade
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2013-2020 Sam Habiel
  ; Copyright 2018-2019 Christopher Edwards
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

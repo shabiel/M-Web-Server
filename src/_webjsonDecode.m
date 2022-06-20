@@ -5,8 +5,8 @@ DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
 DIRECT ; TAG for use by DECODE^%webjson
  ;
- ; Examples: D DECODE^%webjson("MYJSON","LOCALVAR","LOCALERR")
- ;           D DECODE^%webjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
+ ; Examples: D decode^%webjson("MYJSON","LOCALVAR","LOCALERR")
+ ;           D decode^%webjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
  ;
  ; VVJSON: string/array containing serialized JSON object
  ; VVROOT: closed array reference for M representation of object

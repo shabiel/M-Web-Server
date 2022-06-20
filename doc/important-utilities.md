@@ -21,7 +21,7 @@ Decoding is done using:
 `D DECODE^%webjson(JSON ARRAY INPUT BY NAME, M DEST ARRAY BY NAME, ERROR MESSAGES BY NAME)`
 
 The first two arguments are required; the third argument is optional. If
-not supplied, error messages will be dumped into `^TMP("VPRJERR",$J)`.
+not supplied, error messages will be dumped into `^TMP("%webjsonerr",$J)`.
 
 For novice Mumpsters, an array input by name is something like this:
 

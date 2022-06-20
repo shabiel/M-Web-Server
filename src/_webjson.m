@@ -5,12 +5,12 @@
  ;
 decode(VVJSON,VVROOT,VVERR) G DIRECT^%webjsonDecode
 DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
- ; Examples: D DECODE^VPRJSON("MYJSON","LOCALVAR","LOCALERR")
- ;           D DECODE^VPRJSON("^MYJSON(1)","^GLO(99)","^TMP($J)")
+ ; Examples: D decode^%webjson("MYJSON","LOCALVAR","LOCALERR")
+ ;           D decode^%webjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
  ;
  ; VVJSON: string/array containing serialized JSON object
  ; VVROOT: closed array reference for M representation of object
- ;  VVERR: contains error messages, defaults to ^TMP("VPRJERR",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
  ;
  ;   VVIDX: points to next character in JSON string to process
  ; VVSTACK: manages stack of subscripts
@@ -20,12 +20,12 @@ DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
  ;
 encode(VVROOT,VVJSON,VVERR) G DIRECT^%webjsonEncode
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
- ; Examples:  D ENCODE^VPRJSON("^GLO(99,2)","^TMP($J)")
- ;            D ENCODE^VPRJSON("LOCALVAR","MYJSON","LOCALERR")
+ ; Examples:  D encode^%webjson("^GLO(99,2)","^TMP($J)")
+ ;            D encode^%webjson("LOCALVAR","MYJSON","LOCALERR")
  ;
  ; VVROOT: closed array reference for M representation of object
  ; VVJSON: destination variable for the string array formatted as JSON
- ;  VVERR: contains error messages, defaults to ^TMP("VPRJERR",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
  ;
  G DIRECT^%webjsonEncode
  ;

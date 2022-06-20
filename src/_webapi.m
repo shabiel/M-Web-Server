@@ -1,4 +1,4 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;2019-11-14  11:35 AM
+%webapi ; OSE/SMH - Infrastructure web services hooks;Jun 20, 2022@14:45
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
@@ -209,14 +209,12 @@ F(RESULT,ARGS) ; handles fileman/{file}/{iens}
  QUIT
  ;
 POSTTEST(ARGS,BODY,RESULT) ; POST XML to a WP field in Fileman; handles /xmlpost
- N IEN S IEN=$O(^%W(6.6002,""),-1)+1
- N %WFDA S %WFDA(6.6002,"?+1,",.01)=IEN D UPDATE^DIE("",$NA(%WFDA))
- S RESULT="/fileman/6.6002/"_IEN_"/"_1 ; Stored URL
- N PARSED ; Parsed array which stores each line on a separate node.
- D PARSE10^%webutils(.BODY,.PARSED) ; Parser
- D WP^DIE(6.6002,IEN_",",1,"K",$NA(PARSED)) ; File WP field; lock record in process.
- ; ZSHOW "V":^KBANPARSED
+ N PARAMS ; Parsed array which stores each line on a separate node.
+ D decode^%webjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ I $D(%WERR) D SETERROR^%webutils("400","Input parameters not correct") QUIT ""
+ ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ S RESULT="/fileman/6.6002/"_PARAMS("random")_"/1" ; Stored URL
  Q RESULT
  ;
 RPC(ARGS,BODY,RESULT) ; POST to execute Remote Procedure Calls; handles POST rpc/{rpc}
@@ -355,6 +353,11 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  set MIMELKUP("wav")="audio/wav"
  set MIMELKUP("xls")="application/vnd.ms-excel"
  set MIMELKUP("zip")="application/zip"
+ set MIMELKUP("woff")="font/woff"
+ set MIMELKUP("woff2")="font/woff2"
+ set MIMELKUP("ttf")="font/ttf"
+ set MIMELKUP("eot")="font/eot"
+ set MIMELKUP("otf")="font/otf"
  new EXT set EXT=$PIECE(PATH,".",$LENGTH(PATH,"."))
  if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
  else  set RESULT("mime")=MIMELKUP("txt")
@@ -373,6 +376,7 @@ FILESYSE ; 500
  ;
  ; Copyright 2013-2020 Sam Habiel
  ; Copyright 2018 Kenneth McLoghlen
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

@@ -1,4 +1,4 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;2019-11-14  11:50 AM
+%webutils ;SLC/KCM -- Utilities for HTTP communications ;Jun 20, 2022@12:21
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
@@ -78,43 +78,18 @@ VARSIZEGTM ; Varsize for GT.M/UTF-8
  Q SIZE
  ;
 setError(ERRCODE,MESSAGE,ERRARRAY) G setError1
-SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into ^TMP("HTTPERR",$J)
+SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into HTTPERR
 setError1 ;
  ; causes HTTPERR system variable to be set
  ; ERRCODE:  query errors are 100-199, update errors are 200-299, M errors are 500
  ; MESSAGE:  additional explanatory material
  ; ERRARRAY: An Array to use instead of the Message for information to the user.
  ;
- N NEXTERR,ERRNAME,TOPMSG
+ N ERRNAME,TOPMSG
  S HTTPERR=400,TOPMSG="Bad Request"
- ; query errors (100-199)
- I ERRCODE=101 S ERRNAME="Missing name of index"
- I ERRCODE=102 S ERRNAME="Invalid index name"
- I ERRCODE=103 S ERRNAME="Parameter error"
- I ERRCODE=104 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Bad key"
- I ERRCODE=105 S ERRNAME="Template required"
- I ERRCODE=106 S ERRNAME="Bad Filter Parameter"
- I ERRCODE=107 S ERRNAME="Unsupported Field Name"
- I ERRCODE=108 S ERRNAME="Bad Order Parameter"
- I ERRCODE=109 S ERRNAME="Operation not supported with this index"
- I ERRCODE=110 S ERRNAME="Order field unknown"
- I ERRCODE=111 S ERRNAME="Unrecognized parameter"
- I ERRCODE=112 S ERRNAME="Filter required"
  ; update errors (200-299)
  I ERRCODE=201 S ERRNAME="Unable to encode JSON"
  I ERRCODE=202 S ERRNAME="Unable to decode JSON"
- I ERRCODE=203 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Unable to determine patient"
- I ERRCODE=204 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Unable to determine collection" ; unused?
- I ERRCODE=205 S ERRNAME="Patient mismatch with object"
- I ERRCODE=207 S ERRNAME="Missing UID"
- I ERRCODE=209 S ERRNAME="Missing range or index" ; unused?
- I ERRCODE=210 S ERRNAME="Unknown UID format"
- I ERRCODE=211 S HTTPERR=404,TOPMSG="Not Found",ERRNAME="Missing patient identifiers"
- I ERRCODE=212 S ERRNAME="Mismatch of patient identifiers"
- I ERRCODE=213 S ERRNAME="Delete demographics only not allowed"
- I ERRCODE=214 S HTTPERR=404,ERRNAME="Patient ID not found in database"
- I ERRCODE=215 S ERRNAME="Missing collection name"
- I ERRCODE=216 S ERRNAME="Incomplete deletion of collection"
  ; Generic Errors
  I ERRCODE=301 S ERRNAME="Required variable undefined"
  ; HTTP errors
@@ -129,21 +104,22 @@ setError1 ;
  ;
  I ERRCODE>500 S HTTPERR=500,TOPMSG="Internal Server Error"  ; M Server Error
  I ERRCODE<500,ERRCODE>400 S HTTPERR=ERRCODE,TOPMSG=ERRNAME  ; Other HTTP Errors
- Q:$G(NOGBL)
- S NEXTERR=$G(^TMP("HTTPERR",$J,0),0)+1,^TMP("HTTPERR",$J,0)=NEXTERR
- S ^TMP("HTTPERR",$J,1,"apiVersion")="1.0"
- S ^TMP("HTTPERR",$J,1,"error","code")=HTTPERR
- S ^TMP("HTTPERR",$J,1,"error","message")=TOPMSG
- S ^TMP("HTTPERR",$J,1,"error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
- I $D(ERRARRAY) M ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR)=ERRARRAY  ; VEN/SMH
- E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"reason")=ERRCODE
- E  S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"message")=ERRNAME
- I $L($G(MESSAGE)) S ^TMP("HTTPERR",$J,1,"error","errors",NEXTERR,"domain")=MESSAGE
+ ;
+ I $I(HTTPERR("count"))
+ S HTTPERR("apiVersion")="1.0"
+ S HTTPERR("error","code")=HTTPERR
+ S HTTPERR("error","message")=TOPMSG
+ S HTTPERR("error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
+ I $D(ERRARRAY) D
+ . M HTTPERR("error","errors",HTTPERR("count"))=ERRARRAY  ; VEN/SMH
+ E  D
+ . S HTTPERR("error","errors",HTTPERR("count"),"reason")=ERRCODE
+ . S HTTPERR("error","errors",HTTPERR("count"),"message")=ERRNAME
+ I $L($G(MESSAGE)) S HTTPERR("error","errors",HTTPERR("count"),"domain")=MESSAGE
  Q
-customError(ERRCODE,ERRARRAY) ; set custom error into ^TMP("HTTPERR",$J)
- K ^TMP("HTTPERR",$J)
+customError(ERRCODE,ERRARRAY) ; set custom error into HTTPERR
  S HTTPERR=ERRCODE
- M ^TMP("HTTPERR",$J,1)=ERRARRAY
+ M HTTPERR=ERRARRAY
  QUIT
  ;
  ; Cache specific functions (selected one support GT.M too!)
@@ -401,6 +377,7 @@ deleteService(method,urlPattern) ; [Public: Delete Service]
  ;
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

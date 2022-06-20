@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;2019-11-14  11:53 AM
+%webtest ; ose/smh - Web Services Tester;Jun 20, 2022@14:47
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -155,6 +155,7 @@ terr ; @TEST generating an error
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/error")
  do CHKEQ^%ut(httpStatus,500)
+ do CHKTF^%ut(return["DIVZERO")
  quit
  ;
 terr2 ; @TEST crashing the error trap
@@ -410,12 +411,22 @@ USERPASS ; @TEST Test that passing a username/password works
  kill passwdJob
  quit
  ;
+tpost ; @TEST simple post
+ n httpStatus,return
+ n random set random=$random(99999999)
+ n payload s payload="{ ""random"" : """_random_""" } "
+ d &libcurl.init
+ d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/post",payload,"application/json")
+ d &libcurl.cleanup
+ do CHKTF^%ut(return[random)
+ quit
+ ;
 NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  k ^%webhttp("log",+$H)
  k ^%webhttp(0,"listener")
  n nogblJob
  ;
- ; Now start a webserver with a passed username/password
+ ; Now start a webserver with "nogbl" set to 1
  j start^%webreq(55731,"",,1)
  h .1
  s nogblJob=$zjob
@@ -448,15 +459,7 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  ; Make sure that the default index.html isn't returned
  k httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/index.html")
- d CHKEQ^%ut(httpStatus,404)
- ;
- ; Make sure there is nothing in ^TMP("HTTPERR",$J)
- k ^TMP("HTTPERR")
- k httpStatus,return
- ; known invalid URL
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/asdf.html")
- d CHKEQ^%ut(httpStatus,404)
- d CHKEQ^%ut($d(^TMP("HTTPERR")),0)
+ d CHKEQ^%ut(httpStatus,404,"index.html found")
  ;
  ; Make sure HTTP Listener status doesn't control anything
  d CHKEQ^%ut($d(^%webhttp(0,"listener")),0)
@@ -464,13 +467,12 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  h .1
  k httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
- d CHKEQ^%ut(httpStatus,200)
+ d CHKEQ^%ut(httpStatus,200,"ping failed")
  ;
  ; Make sure ^%web(17.6001) isn't used
  k httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/bigoutput")
- do CHKEQ^%ut(httpStatus,404)
- do CHKEQ^%ut($l(return),0)
+ do CHKEQ^%ut(httpStatus,404,"bigoutput shouldn't be found")
  ;
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
@@ -480,10 +482,66 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  set ^%webhome=oldDir
  kill nogblJob
  quit
+ ;
+NOGBLERR ; @TEST No globals properly reports errors (Issue #50)
+ n nogblJob
+ ;
+ ; Now start a webserver with "nogbl" set to 1
+ j start^%webreq(55731,"",,1)
+ h .1
+ s nogblJob=$zjob
+ ;
+ ;generating an error
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/error")
+ do CHKEQ^%ut(httpStatus,500,"/error needs to return 500")
+ do CHKTF^%ut(return["DIVZERO")
+ ;
+ ;crashing the error trap
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/error?foo=crash2")
+ do CHKEQ^%ut(httpStatus,500,"crashing error trap needs to return 500")
+ do CHKTF^%ut(return="")
+ ;
+ ; Custom Error
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/customerror")
+ do CHKTF^%ut(return["OperationOutcome","Setting a custom error should work")
+ do CHKEQ^%ut(httpStatus,400,"Custom error status should be 400")
+ ; 
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ quit
+ ;
+NOGBLPOST ; @TEST No globals properly works with HTTP POST
+ n nogblJob
+ ;
+ ; Now start a webserver with "nogbl" set to 1
+ j start^%webreq(55731,"",,1)
+ h .1
+ s nogblJob=$zjob
+ ;
+ n httpStatus,return
+ n random set random=$random(99999999)
+ n payload s payload="{ ""random"" : """_random_""" } "
+ d &libcurl.init
+ d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55731/test/post",payload,"application/json")
+ d &libcurl.cleanup
+ do CHKTF^%ut(return[random)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ w !,x,!
+ quit
+ ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  do stop^%webreq
  quit
- ;
  ;
 cov ; [Private: Calculate Coverage]
  n rtn,t1,t2 f i=1:1 s t1=$t(covlist+i),t2=$p(t1,";;",2) quit:t2=""  s rtn(t2)=""
@@ -530,6 +588,7 @@ EOR ;
  ;
  ; Copyright 2018-2020 Sam Habiel
  ; Copyright 2019 Christopher Edwards
+ ; Copyright 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
