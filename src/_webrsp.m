@@ -345,6 +345,7 @@ GZIP ; EP to write gzipped content
  . I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  W @HTTPRSP@(I)
  ;
  ; Close
+ s $x=0 ; needed to prevent adding an EOF to the file
  c file
  ;
  O "D":(shell="/bin/sh":command="gzip "_file:parse):0:"pipe"
