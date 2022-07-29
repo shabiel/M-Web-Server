@@ -9,7 +9,7 @@ go ; start up REST listener with defaults
  ;
 job(PORT,TLSCONFIG,NOGBL,USERPASS,NOGZIP) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="webreq.mje"):5  ; no in and out files please.
+ I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
  E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),"",$G(USERPASS),$G(NOGZIP)) ; Cache can't accept empty arguments. Change to empty strings.
  QUIT
  ;
@@ -86,7 +86,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . . U TCPIO:(detach=CHILDSOCK)
  . . N Q S Q=""""
  . . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS),$G(NOGZIP)):(input="_ARG_":output="_ARG_")"
+ . . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS),$G(NOGZIP)):(input="_ARG_":output="_ARG_":error=""/dev/null"")"
  . . J @J
  . ;
  . ; GT.M before 6.1:
