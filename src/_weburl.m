@@ -11,6 +11,7 @@ URLMAP ;
  ;;GET test/customerror customerr^%webapi
  ;;GET test/error ERR^%webapi
  ;;POST test/post POSTTEST^%webapi
+ ;;GET test/utf8/get utf8get^%webapi
  ;;zzzzz
  ;
  ; Copyright 2019 Christopher Edwards

@@ -11,33 +11,37 @@ LTRIM(%X) ; Trim whitespace from left side of string
  Q $E(%X,%L,%R)
  ;
 URLENC(X) ; Encode a string for use in a URL
- ; Q $ZCONVERT(X,"O","URL")  ; uncomment for fastest performance on Cache
- ; =, &, %, +, non-printable 
- ; {, } added JC 7-24-2012
- N I,Y,Z,LAST
-     S Y=$P(X,"%") F I=2:1:$L(X,"%") S Y=Y_"%25"_$P(X,"%",I)
- S X=Y,Y=$P(X,"&") F I=2:1:$L(X,"&") S Y=Y_"%26"_$P(X,"&",I)
- S X=Y,Y=$P(X,"=") F I=2:1:$L(X,"=") S Y=Y_"%3D"_$P(X,"=",I)
- S X=Y,Y=$P(X,"+") F I=2:1:$L(X,"+") S Y=Y_"%2B"_$P(X,"+",I)
- S X=Y,Y=$P(X,"{") F I=2:1:$L(X,"{") S Y=Y_"%7B"_$P(X,"{",I)
- S X=Y,Y=$P(X,"}") F I=2:1:$L(X,"}") S Y=Y_"%7D"_$P(X,"}",I)
- S Y=$TR(Y," ","+")
- S Z="",LAST=1
- F I=1:1:$L(Y) I $A(Y,I)<32 D
- . S CODE=$$DEC2HEX($A(Y,I)),CODE=$TR($J(CODE,2)," ","0")
- . S Z=Z_$E(Y,LAST,I-1)_"%"_CODE,LAST=I+1
- S Z=Z_$E(Y,LAST,$L(Y))
- Q Z
+ I $L($SY,":")=2 Q $ZCONVERT(X,"O","URL")  ; Cache
+ I '$P($SY,",")=47 S $EC=",U-UNSUPPORTED-SYSTEM,"
+ ;
+ ; This algorithm is based on https://github.com/lparenteau/DataBallet/blob/master/r/url.m
+ ; The old algorithm didn't work for non-UTF8 characters and was designed around ASCII only
+ ; Output variable
+ N ENCODED S ENCODED=""
+ ;
+ ; Construct the do not encode array in SAFE (includes English alphabet)
+ N I,SAFE
+ F I=45,46,95,126,48:1:57,65:1:90,97:1:122 S SAFE(I)=""
+ ;
+ F I=1:1:$ZL(X) D
+ . N BYTE S BYTE=$ZE(X,I) ; Each byte (char)
+ . N VAL  S VAL=$ZA(X,I)  ; byte value (0-255)
+ . I $D(SAFE(VAL)) S ENCODED=ENCODED_BYTE QUIT
+ . I BYTE=" " S ENCODED=ENCODED_"+" QUIT
+ . S CODE=$$DEC2HEX(VAL),CODE=$TR($J(CODE,2)," ","0")
+ . S ENCODED=ENCODED_"%"_CODE QUIT
+ Q ENCODED
  ;
 URLDEC(X,PATH) ; Decode a URL-encoded string
- ; Q $ZCONVERT(X,"I","URL")  ; uncomment for fastest performance on Cache
+ I $L($SY,":")=2 Q $ZCONVERT(X,"I","URL")  ; Cache
+ I '$P($SY,",")=47 S $EC=",U-UNSUPPORTED-SYSTEM,"
  ;
  N I,OUT,FRAG,ASC
  S:'$G(PATH) X=$TR(X,"+"," ") ; don't convert '+' in path fragment
  F I=1:1:$L(X,"%") D
  . I I=1 S OUT=$P(X,"%") Q
  . S FRAG=$P(X,"%",I),ASC=$E(FRAG,1,2),FRAG=$E(FRAG,3,$L(FRAG))
- . I $L(ASC) S OUT=OUT_$C($$HEX2DEC(ASC))
+ . I $L(ASC) S OUT=OUT_$ZC($$HEX2DEC(ASC))
  . S OUT=OUT_FRAG
  Q OUT
  ;

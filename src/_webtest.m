@@ -78,6 +78,23 @@ tgetxml ; @TEST Test Get Handler XML
  do CHKTF^%ut(return["xml")
  quit
  ;
+tdecodeutf8 ; @TEST Test Decode UTF-8 URL
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/utf8/get?foo=こにちは")
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(return="こにちは")
+ quit
+ ;
+tencdecutf8 ; @Test Encode and Decode UTF-8
+ n x s x="foo=Å"
+ do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
+ quit
+ ;
+tencdecx ; @Test Encode and Decode an excepted character
+ n x s x=","
+ do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
+ quit
+ ;
 thead ; #TEST HTTP Verb HEAD (only works with GET queries)
  ; my libcurl doesn't do HEAD :-( - but head works
  n httpStatus,return,headers,status

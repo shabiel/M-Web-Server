@@ -55,6 +55,11 @@ gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Glob
  s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
+utf8get(res,params) ;
+ set res=params("foo")
+ set res("mime")="text/plain; charset=UTF-8"
+ quit
+ ;
 ping(RESULT,ARGS) ; writes out a ping response
  S RESULT="{""status"":"""_$J_" running""}"
  Q
