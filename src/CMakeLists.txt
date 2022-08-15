@@ -23,4 +23,37 @@
 #
 # For more information, please refer to <http://unlicense.org/>
 
-set(CMAKE_M_COMPILER_WORKS 1 CACHE INTERNAL "")
+# Prelim
+cmake_minimum_required(VERSION 3.14)
+project(MWebServer C M)
+set(M_NOWARNING "ON")
+
+# Find YottaDB and set Install Destination
+find_package(YOTTADB REQUIRED)
+set(CMAKE_INSTALL_PREFIX ${YOTTADB_M_PLUGIN_DIR})
+message(STATUS "Install Location: ${YOTTADB_M_PLUGIN_DIR}")
+
+# CMake Build Type (req b/c it's C code (we need ld from the C toolkit))
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release)
+endif()
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+# Sources
+set(source_files
+  _webapi.m
+  _webhome.m
+  _webjson.m
+  _webjsonDecode.m
+  _webjsonEncode.m
+  _webreq.m
+  _webrsp.m
+  _webutils.m
+)
+
+# .so file for plugin
+add_library(_ydbmwebserver SHARED ${source_files})
+SET_TARGET_PROPERTIES(_ydbmwebserver PROPERTIES PREFIX "")
+
+# Install shared library
+install(TARGETS _ydbmwebserver DESTINATION ${CMAKE_INSTALL_PREFIX})

@@ -24,38 +24,42 @@
 # For more information, please refer to <http://unlicense.org/>
 
 # Prelim
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/ydbcmake/")
-project(MWebServer C M) # C needed for ld
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.14)
+include(ExternalProject)
+include(FetchContent)
 
-# Find YottaDB and set Install Destination
-find_package(YOTTADB REQUIRED)
-include_directories("${YOTTADB_INCLUDE_DIRS}")
-set(CMAKE_INSTALL_PREFIX ${YOTTADB_PLUGIN_DIR})
-message(STATUS "Install Location: ${YOTTADB_PLUGIN_DIR}")
-
-# CMake Build Type (req b/c it's C code (we need ld from the C toolkit))
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release)
-endif()
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-
-# Sources
-set(source_files
-  src/_webapi.m
-  src/_webhome.m
-  src/_webjson.m
-  src/_webjsonDecode.m
-  src/_webjsonEncode.m
-  src/_webreq.m
-  src/_webrsp.m
-  src/_webutils.m
-  src/_weburl.m
+# The tag is at the time of writing the latest tag in YDBCMake.
+# The tag is fixed at that point to ensure reproducible builds.
+FetchContent_Declare(YDBCMake
+	GIT_REPOSITORY	https://gitlab.com/YottaDB/Tools/YDBCMake.git
+	GIT_TAG		84c5180d1f184a892f5cc52367ce51f9bc2eac7e
 )
+# The following sets ydbcmake_SOURCE_DIR
+FetchContent_MakeAvailable(YDBCMake)
+message(STATUS "YDBCMake Source Directory: ${ydbcmake_SOURCE_DIR}")
+set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
-# .so file for plugin
-add_library(_ydbmwebserver SHARED ${source_files})
-SET_TARGET_PROPERTIES(_ydbmwebserver PROPERTIES PREFIX "")
+project(MWebServer)
+find_package(YOTTADB REQUIRED)
 
-# Install shared library
-install(TARGETS _ydbmwebserver DESTINATION ${CMAKE_INSTALL_PREFIX})
+ExternalProject_Add(mwebserver-m
+	PREFIX		mwebserver-m
+	BUILD_ALWAYS	1  # Always rescan source directory for changes
+	SOURCE_DIR	${CMAKE_CURRENT_SOURCE_DIR}/src/
+	CMAKE_ARGS	-DM_NOWARNING=1 -DM_UTF8_MODE=0 -DCMAKE_MODULE_PATH=${ydbcmake_SOURCE_DIR}/ydbcmake/
+	INSTALL_COMMAND	"" # Disable Install in the External Project portion
+	)
+ExternalProject_Get_Property(mwebserver-m binary_dir)
+install(FILES ${binary_dir}/_ydbmwebserver.so DESTINATION "${YOTTADB_PLUGIN_PREFIX}/o")
+
+if(EXISTS ${YOTTADB_INCLUDE_DIRS}/utf8)
+	ExternalProject_Add(mwebserver-utf8
+		PREFIX		mwebserver-utf8
+		BUILD_ALWAYS	1  # Always rescan source directory for changes
+		SOURCE_DIR	${CMAKE_CURRENT_SOURCE_DIR}/src/
+		CMAKE_ARGS	-DM_UTF8_MODE=1 -DM_NOWARNING=1 -DCMAKE_MODULE_PATH=${ydbcmake_SOURCE_DIR}/ydbcmake/
+		INSTALL_COMMAND	"" # Disable Install in the External Project portion
+		)
+	ExternalProject_Get_Property(mwebserver-utf8 binary_dir)
+	install(FILES ${binary_dir}/_ydbmwebserver.so DESTINATION "${YOTTADB_PLUGIN_PREFIX}/o/utf8")
+endif()
