@@ -85,7 +85,7 @@ tdecodeutf8 ; @TEST Test Decode UTF-8 URL
  do CHKTF^%ut(return="こにちは")
  quit
  ;
-tencdecutf8 ; @Test Encode and Decode UTF-8
+tencdecutf8 ; @TEST Encode and Decode UTF-8
  n x s x="foo=Å"
  do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
  quit
@@ -93,6 +93,22 @@ tencdecutf8 ; @Test Encode and Decode UTF-8
 tencdecx ; @Test Encode and Decode an excepted character
  n x s x=","
  do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
+ quit
+ ;
+tpostutf8 ; @TEST Post UTF8 data, expect part of the URL and Post Data back
+ ; curl -XPOST -d '{"直接": "人生"}' localhost:9080/test/utf8/post?foo=こにちは
+ ; Result:
+ ; Line 1: こにち
+ ; Line 2: 人生
+ n httpStatus,return
+ n payload s payload="{""直接"":""人生""}"
+ d &libcurl.init
+ d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/utf8/post?foo=こにちは",payload,"application/json")
+ d &libcurl.cleanup
+ set return(1)=$piece(return,$C(13,10),1)
+ set return(2)=$piece(return,$C(13,10),2)
+ do CHKEQ^%ut(return(1),"こにち")
+ do CHKEQ^%ut(return(2),"人生")
  quit
  ;
 thead ; #TEST HTTP Verb HEAD (only works with GET queries)

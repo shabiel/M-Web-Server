@@ -55,10 +55,17 @@ gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Glob
  s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
-utf8get(res,params) ;
+utf8get(res,params) ; /test/utf8/get
  set res=params("foo")
  set res("mime")="text/plain; charset=UTF-8"
  quit
+ ;
+utf8post(params,body,res) ; /test/utf8/post
+ new output
+ do decode^%webjson($na(body),$na(output))
+ set res(1)=$extract(params("foo"),1,3)_$C(13,10)
+ set res(2)=$get(output("直接"))
+ quit "test/utf8/post?foo="_params("foo")
  ;
 ping(RESULT,ARGS) ; writes out a ping response
  S RESULT="{""status"":"""_$J_" running""}"
