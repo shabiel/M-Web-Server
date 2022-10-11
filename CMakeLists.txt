@@ -32,7 +32,7 @@ include(FetchContent)
 # The tag is fixed at that point to ensure reproducible builds.
 FetchContent_Declare(YDBCMake
 	GIT_REPOSITORY	https://gitlab.com/YottaDB/Tools/YDBCMake.git
-	GIT_TAG		ec3ed1781a8a9ebeee67cd524029da5176183e8b
+	GIT_TAG		c0458d5bd2b672b12c4b73cc47e2221146a40502
 )
 # The following sets ydbcmake_SOURCE_DIR
 FetchContent_MakeAvailable(YDBCMake)
